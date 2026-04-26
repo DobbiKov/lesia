@@ -3,8 +3,10 @@ import xml.etree.ElementTree as ET
 import pytest
 
 from trans_lib.enums import ChunkType
+from trans_lib.errors import PlaceholderVerificationError
+from trans_lib.translator_retrieval import PromptContext, _xml_postprocess
 from trans_lib.xml_manipulator_mod.mod import chunk_to_xml_with_placeholders, latex_to_xml, myst_to_xml
-from trans_lib.xml_manipulator_mod.xml import reconstruct_from_xml
+from trans_lib.xml_manipulator_mod.xml import reconstruct_from_xml, verify_placeholders
 
 
 LATEX_SAMPLE = r"""\section*{Introduction}
@@ -1046,3 +1048,137 @@ def test_myst_video_round_trip():
     xml_output, placeholders, _ = myst_to_xml(source)
     reconstructed = reconstruct_from_xml(xml_output, placeholders)
     assert reconstructed == source
+
+
+# ---------------------------------------------------------------------------
+# verify_placeholders — unit tests
+# ---------------------------------------------------------------------------
+
+def _make_xml(ph_ids: list[str]) -> str:
+    """Build a minimal translated XML containing the given PH IDs."""
+    phs = "".join(f'<PH id="{pid}">content</PH>' for pid in ph_ids)
+    return f"<document><TEXT>text {phs}</TEXT></document>"
+
+
+def test_verify_placeholders_all_present_returns_empty():
+    expected = {"1": "\\ref{eq}", "2": "$E=mc^2$", "3": "\\label{x}"}
+    xml = _make_xml(["1", "2", "3"])
+    missing, extra = verify_placeholders(xml, expected)
+    assert missing == []
+    assert extra == []
+
+
+def test_verify_placeholders_detects_missing_id():
+    expected = {"1": "\\ref{eq}", "2": "$E=mc^2$"}
+    xml = _make_xml(["1"])  # PH 2 was dropped by the LLM
+    missing, extra = verify_placeholders(xml, expected)
+    assert missing == ["2"]
+    assert extra == []
+
+
+def test_verify_placeholders_detects_extra_id():
+    expected = {"1": "\\ref{eq}"}
+    xml = _make_xml(["1", "2"])  # LLM hallucinated PH 2
+    missing, extra = verify_placeholders(xml, expected)
+    assert missing == []
+    assert extra == ["2"]
+
+
+def test_verify_placeholders_detects_both_missing_and_extra():
+    expected = {"1": "\\ref{eq}", "2": "$x^2$"}
+    xml = _make_xml(["1", "3"])  # PH 2 dropped, PH 3 hallucinated
+    missing, extra = verify_placeholders(xml, expected)
+    assert missing == ["2"]
+    assert extra == ["3"]
+
+
+def test_verify_placeholders_empty_expected_always_ok():
+    xml = "<document><TEXT>Translated text.</TEXT></document>"
+    missing, extra = verify_placeholders(xml, {})
+    assert missing == []
+    assert extra == []
+
+
+def test_verify_placeholders_invalid_xml_returns_empty():
+    """ParseError must not propagate — it is handled separately in the retry logic."""
+    missing, extra = verify_placeholders("this is not xml", {"1": "content"})
+    assert missing == []
+    assert extra == []
+
+
+def test_verify_placeholders_ids_sorted_numerically():
+    expected = {"1": "a", "3": "b", "5": "c"}
+    xml = _make_xml(["1"])  # 3 and 5 are missing
+    missing, _ = verify_placeholders(xml, expected)
+    assert missing == ["3", "5"]
+
+
+# ---------------------------------------------------------------------------
+# _xml_postprocess integration — raises PlaceholderVerificationError
+# ---------------------------------------------------------------------------
+
+def _wrap_in_response(xml: str) -> str:
+    """Wrap XML in the fenced block that extract_translated_from_response expects."""
+    return f"```xml\n{xml}\n```"
+
+
+def test_xml_postprocess_raises_on_missing_structural_placeholder():
+    source = "Some text with $E=mc^2$ and more text.\n"
+    xml_output, placeholders, _ = myst_to_xml(source)
+
+    # Ensure there is at least one structural (non-whitespace) PH to drop
+    structural_ids = [k for k, v in placeholders.items() if v.strip()]
+    assert structural_ids, "test requires at least one structural PH"
+
+    # Simulate an LLM response that drops a structural PH tag
+    root = ET.fromstring(xml_output)
+    text_el = root.find("TEXT")
+    for ph in list(text_el):
+        if ph.get("id") == structural_ids[0]:
+            # Absorb tail into preceding text / container text before removing
+            tail = ph.tail or ""
+            prev = list(text_el)
+            idx = list(text_el).index(ph)
+            if idx == 0:
+                text_el.text = (text_el.text or "") + tail
+            else:
+                prev[idx - 1].tail = (prev[idx - 1].tail or "") + tail
+            text_el.remove(ph)
+            break
+    corrupted_xml = ET.tostring(root, encoding="unicode")
+
+    ctx = PromptContext(is_xml=True, placeholders=placeholders)
+    with pytest.raises(PlaceholderVerificationError) as exc_info:
+        _xml_postprocess(_wrap_in_response(corrupted_xml), ctx)
+
+    assert exc_info.value.missing
+
+
+def test_xml_postprocess_does_not_raise_on_missing_whitespace_placeholder():
+    """Dropping a bare '\\n' PH must not trigger a retry — it's an acceptable loss."""
+    # Build a minimal placeholder map that contains only a whitespace PH
+    whitespace_phs = {"1": "\n", "2": "\n\n"}
+    xml = "<document><TEXT>Translated paragraph without newline PHs.</TEXT></document>"
+
+    ctx = PromptContext(is_xml=True, placeholders=whitespace_phs)
+    # Should not raise even though both PHs are absent
+    result = _xml_postprocess(_wrap_in_response(xml), ctx)
+    assert "Translated paragraph" in result
+
+
+def test_xml_postprocess_succeeds_when_all_placeholders_present():
+    source = "Hello $E=mc^2$ world.\n"
+    xml_output, placeholders, _ = myst_to_xml(source)
+
+    ctx = PromptContext(is_xml=True, placeholders=placeholders)
+    result = _xml_postprocess(_wrap_in_response(xml_output), ctx)
+    assert "Hello" in result
+    assert "$E=mc^2$" in result
+
+
+def test_xml_postprocess_skips_verification_when_no_placeholders():
+    """Plain-text chunks have no placeholders — postprocess must not raise."""
+    xml = "<document><TEXT>Translated text with no syntax.</TEXT></document>"
+    ctx = PromptContext(is_xml=True, placeholders={})
+    result = _xml_postprocess(_wrap_in_response(xml), ctx)
+    assert "Translated text" in result
