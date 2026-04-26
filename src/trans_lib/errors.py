@@ -151,6 +151,20 @@ class ChunkTranslationFailed(TranslateFileError):
         super().__init__("Chunk translation failed.")
         self.chunk = chunk
         self.original_exception = original_exception
+
+
+class PlaceholderVerificationError(TranslateFileError):
+    """Raised when <PH> tags are missing or duplicated in the translated XML."""
+
+    def __init__(self, missing: list[str], extra: list[str] | None = None):
+        msg_parts = []
+        if missing:
+            msg_parts.append(f"missing PH IDs: {missing}")
+        if extra:
+            msg_parts.append(f"extra PH IDs: {extra}")
+        super().__init__("Placeholder verification failed: " + "; ".join(msg_parts))
+        self.missing = missing
+        self.extra = extra or []
        
 class CorrectTranslationError(ProjectError):
     """

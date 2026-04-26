@@ -10,7 +10,7 @@ from trans_lib.enums import ChunkType, DocumentType, Language
 from trans_lib.translation_cache.translation_cache import TranslationCache, TranslationCacheCsv
 from trans_lib.translator import finalize_prompt, finalize_xml_prompt, _prepare_prompt_for_language, _prepare_prompt_for_vocab_list, _prepare_prompt_for_content_type, _prepare_prompt_for_translation_example
 from trans_lib.vocab_list import VocabList
-from trans_lib.xml_manipulator_mod.xml import reconstruct_from_xml
+from trans_lib.xml_manipulator_mod.xml import reconstruct_from_xml, verify_placeholders
 from trans_lib.xml_manipulator_mod.mod import chunk_contains_ph_only, chunk_to_xml, chunk_to_xml_with_placeholders, code_to_xml
 from trans_lib.xml_manipulator_mod.typst import parse_typst
 from trans_lib.prompts import xml_translation_prompt
@@ -18,7 +18,7 @@ from trans_lib.translator import _ask_gemini_model
 from trans_lib.prompts import prompt4, xml_with_previous_translation_prompt
 from unified_model_caller import LLMCaller
 from unified_model_caller.errors import ApiCallError
-from trans_lib.errors import ChunkTranslationFailed
+from trans_lib.errors import ChunkTranslationFailed, PlaceholderVerificationError
 try:
     from unified_model_caller.errors import ModelOverloadedError
 except ImportError:  # pragma: no cover - unified_model_caller may not expose the new error yet
@@ -265,6 +265,22 @@ def _identity_prompt_builder():
 
     return _builder
 
+def _xml_postprocess(r: str, ctx: PromptContext) -> str:
+    """Extract translated XML, verify all placeholders survived, then reconstruct."""
+    xml = extract_translated_from_response(r)
+    if ctx.placeholders:
+        # Bare whitespace PHs (e.g. lone '\n') are structural line-break markers.
+        # The LLM may legitimately collapse them when rephrasing; don't retry over them.
+        structural_phs = {k: v for k, v in ctx.placeholders.items() if v.strip()}
+        missing, extra = verify_placeholders(xml, structural_phs)
+        # Extra IDs that exist in the full placeholder map are whitespace PHs that
+        # survived in the XML — that's fine. Only truly hallucinated IDs are a problem.
+        real_extra = [e for e in extra if e not in ctx.placeholders]
+        if missing or real_extra:
+            raise PlaceholderVerificationError(missing, real_extra)
+    return reconstruct_from_xml(xml, ctx.placeholders)
+
+
 async def _call_model_func(text: str) -> str:
     # print("=======================")
     # print("prompt:")
@@ -275,16 +291,12 @@ def _dont_call_model(text: str) -> str:
     return text
 
 # ---- Strategies map ------------------------------------------------ #
-LATEX_STRATEGY   = TranslateStrategy(_xml_prompt_builder(DocumentType.LaTeX, ChunkType.LaTeX), _dont_call_model, lambda r, ctx: reconstruct_from_xml(extract_translated_from_response(r), ctx.placeholders))
-MYST_STRATEGY    = TranslateStrategy(_xml_prompt_builder(DocumentType.JupyterNotebook, ChunkType.Myst), _dont_call_model,  lambda r, ctx: reconstruct_from_xml(extract_translated_from_response(r), ctx.placeholders))
-PLAIN_STRATEGY   = TranslateStrategy(_plain_prompt_builder(prompt4), _dont_call_model,                    lambda r, ctx: extract_translated_from_response(r))
-CODE_STRATEGY    = TranslateStrategy(_identity_prompt_builder(), _dont_call_model,  lambda r, ctx: r)
-MD_STRATEGY    = TranslateStrategy(_xml_prompt_builder(DocumentType.Markdown, ChunkType.Myst), _dont_call_model,  lambda r, ctx: reconstruct_from_xml(extract_translated_from_response(r), ctx.placeholders))
-TYPST_STRATEGY = TranslateStrategy(
-    _xml_prompt_builder(DocumentType.Typst, ChunkType.Typst),
-    _dont_call_model,
-    lambda r, ctx: reconstruct_from_xml(extract_translated_from_response(r), ctx.placeholders),
-)
+LATEX_STRATEGY   = TranslateStrategy(_xml_prompt_builder(DocumentType.LaTeX, ChunkType.LaTeX), _dont_call_model, _xml_postprocess)
+MYST_STRATEGY    = TranslateStrategy(_xml_prompt_builder(DocumentType.JupyterNotebook, ChunkType.Myst), _dont_call_model, _xml_postprocess)
+PLAIN_STRATEGY   = TranslateStrategy(_plain_prompt_builder(prompt4), _dont_call_model, lambda r, ctx: extract_translated_from_response(r))
+CODE_STRATEGY    = TranslateStrategy(_identity_prompt_builder(), _dont_call_model, lambda r, ctx: r)
+MD_STRATEGY      = TranslateStrategy(_xml_prompt_builder(DocumentType.Markdown, ChunkType.Myst), _dont_call_model, _xml_postprocess)
+TYPST_STRATEGY   = TranslateStrategy(_xml_prompt_builder(DocumentType.Typst, ChunkType.Typst), _dont_call_model, _xml_postprocess)
 
 STRATEGY_MAP: dict[tuple[DocumentType, ChunkType], TranslateStrategy] = {
     (DocumentType.LaTeX,            ChunkType.LaTeX): LATEX_STRATEGY,
@@ -456,13 +468,13 @@ class ChunkTranslator:
 
         try:
             translated = await self._run_with_caller(strategy, meta, caller)
-        except ET.ParseError:
-            logger.warning("Broken XML on attempt 1, retrying with standard model...")
+        except (ET.ParseError, PlaceholderVerificationError):
+            logger.warning("Invalid XML on attempt 1, retrying with standard model...")
             try:
                 translated = await self._run_with_caller(strategy, meta, caller)
-            except ET.ParseError:
+            except (ET.ParseError, PlaceholderVerificationError):
                 reasoning_caller = self._reasoning_caller if self._reasoning_caller is not None else caller
-                logger.warning("Broken XML on attempt 2, retrying with reasoning model...")
+                logger.warning("Invalid XML on attempt 2, retrying with reasoning model...")
                 try:
                     translated = await self._run_with_caller(strategy, meta, reasoning_caller)
                 except Exception as exc:
@@ -470,7 +482,7 @@ class ChunkTranslator:
                         f"Chunk translation failed after 3 attempts due to {exc.__class__.__name__}: {exc}",
                     )
                     raise ChunkTranslationFailed(chunk, exc) from exc
-            except Exception as exc:  # noqa: BLE001 - non-ParseError on attempt 2
+            except Exception as exc:  # noqa: BLE001 - non-ParseError/PlaceholderVerificationError on attempt 2
                 logger.error(
                     f"Chunk translation failed on attempt 2 due to {exc.__class__.__name__}: {exc}",
                 )
