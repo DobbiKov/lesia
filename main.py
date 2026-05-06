@@ -1,5 +1,5 @@
 def main():
-    print("Hello from translate-dir-lib!")
+    print("Hello from lesia!")
 
 
 if __name__ == "__main__":

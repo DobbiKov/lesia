@@ -1,2 +1,2 @@
-uv tool uninstall translate-dir-lib
+uv tool uninstall lesia
 uv tool install .

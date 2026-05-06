@@ -50,13 +50,13 @@ The profound explanation of the logic and algorithms of the tool can be found [h
 ## Installation
 
 ### For CLI usage
-1. Clone the repo: `git clone https://github.com/DobbiKov/translate-dir-lib`
-2. Enter to the directory: `cd translate-dir-lib`
+1. Clone the repo: `git clone https://github.com/DobbiKov/lesia`
+2. Enter to the directory: `cd lesia`
 3. Install the CLI: `uv tool install -e .`
 4. Use it: `translate-dir`
 ### For in-project library usage
 
-1. Clone the repo: `git clone https://github.com/DobbiKov/translate-dir-lib`
+1. Clone the repo: `git clone https://github.com/DobbiKov/lesia`
 2. Enter to your project where you want to use this library (`cd <your_project_path>`)
 3. Install the library as a dependency using `pip`: `pip install <path_to_the_library_directory>`
 4. Enjoy!
@@ -65,8 +65,8 @@ The profound explanation of the logic and algorithms of the tool can be found [h
 
 1. Ensure you have [uv](https://docs.astral.sh/uv/#__tabbed_1_1) tool installed
    (visit their site for the installation guide)
-2. Clone the repo: `git clone https://github.com/DobbiKov/translate-dir-lib`
-3. Enter `cd translate-dir-lib`
+2. Clone the repo: `git clone https://github.com/DobbiKov/lesia`
+3. Enter `cd lesia`
 4. Install dependencies `uv sync`
 5. Enjoy
 

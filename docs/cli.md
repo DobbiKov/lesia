@@ -7,7 +7,7 @@ This is a CLI tool that aims to automate the translation of large documents writ
 - MyST
 - Typst
 
-This CLI tool is an implementation of [this library](https://github.com/DobbiKov/translate-dir-lib).
+This CLI tool is an implementation of [this library](https://github.com/DobbiKov/lesia).
 
 Learn more about the project: [main repository](https://github.com/DobbiKov/sci-trans-git).
 
@@ -106,7 +106,7 @@ Requirements:
 ### First steps
 
 This section is a guide to start using this tool as quickly as possible. The profound
-explanation can be found [here](https://github.com/DobbiKov/translate-dir-lib/blob/master/docs/tool-profound-explanation.md).
+explanation can be found [here](https://github.com/DobbiKov/lesia/blob/master/docs/tool-profound-explanation.md).
 It is strongly recommended to read it to understand how the tool manages files and what
 the overall project structure looks like.
 
@@ -248,7 +248,7 @@ See the [Translation Cache section](./tool-profound-explanation.md#the-translati
 ## Getting started for developers
 
 1. Ensure you have [uv](https://docs.astral.sh/uv/#__tabbed_1_1) installed.
-2. Clone the library first; the installation guide is [here](https://github.com/DobbiKov/translate-dir-lib?tab=readme-ov-file#installation).
+2. Clone the library first; the installation guide is [here](https://github.com/DobbiKov/lesia?tab=readme-ov-file#installation).
 3. Get the path to the library directory on your local machine (e.g. `realpath <your_dir>` on macOS).
 4. Clone this repo:
     ```sh
@@ -260,7 +260,7 @@ See the [Translation Cache section](./tool-profound-explanation.md#the-translati
     ```
 6. Remove the current library dependency:
     ```sh
-    uv remove translate-dir-lib
+    uv remove lesia
     ```
 7. Add the local one:
     ```sh
