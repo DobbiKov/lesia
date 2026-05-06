@@ -1,6 +1,6 @@
 # Library API Reference
 
-`translate-dir-lib` is a Python library for managing and automating the
+`lesia` is a Python library for managing and automating the
 translation of markup document projects (LaTeX, Markdown, Jupyter, MyST,
 Typst). It preserves file structure and formatting, uses LLM services for
 translation, and maintains a persistent translation cache.
@@ -34,20 +34,20 @@ For a conceptual overview of how the tool works, see the [profound explanation](
 ### As a dependency
 
 ```sh
-pip install <path_to_translate_dir_lib>
+pip install <path_to_lesia>
 ```
 
 Or with `uv`:
 
 ```sh
-uv add <path_to_translate_dir_lib>
+uv add <path_to_lesia>
 ```
 
 ### For development
 
 ```sh
-git clone https://github.com/DobbiKov/translate-dir-lib
-cd translate-dir-lib
+git clone https://github.com/DobbiKov/lesia
+cd lesia
 uv sync
 ```
 

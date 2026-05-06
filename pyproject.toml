@@ -1,5 +1,5 @@
 [project]
-name = "translate-dir-lib"
+name = "lesia"
 version = "0.1.2"
 description = "A library for automated directory translation"
 readme = "README.md"
