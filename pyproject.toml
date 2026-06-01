@@ -34,7 +34,7 @@ dev = [
 ]
 
 [project.scripts]
-translate-dir = "cli:app"
+lesia = "cli:app"
 
 [tool.setuptools] 
 py-modules = ["trans_lib", "cli"]
