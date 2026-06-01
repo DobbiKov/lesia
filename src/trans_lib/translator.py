@@ -22,8 +22,8 @@ import requests
 # Configure the API key
 try:
     LLM_API_KEY = os.getenv("LLM_API_KEY")
-    if not LLM_API_KEY:
-        logger.warning("LLM_API_KEY environment variable not set. Translation will fail.")
+    # if not LLM_API_KEY:
+    #     logger.warning("LLM_API_KEY environment variable not set. Translation will fail.")
     LLM_REASONING_API_KEY = os.getenv("LLM_REASONING_API_KEY") or LLM_API_KEY
 except Exception as e:
     logger.error(f"Error configuring LLM api key: {e}")
