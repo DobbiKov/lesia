@@ -1,0 +1,922 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lesia — Translate your scientific documents</title>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d2e;
+      --surface2: #252840;
+      --accent: #6c63ff;
+      --accent2: #a78bfa;
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+      --border: #2d3154;
+      --green: #34d399;
+      --orange: #fb923c;
+      --blue: #60a5fa;
+      --pink: #f472b6;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      line-height: 1.6;
+    }
+
+    /* NAV */
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(15, 17, 23, 0.85);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      padding: 0 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 60px;
+    }
+
+    .nav-logo {
+      font-size: 1.4rem;
+      font-weight: 700;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 2rem;
+      list-style: none;
+    }
+
+    .nav-links a {
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 0.9rem;
+      transition: color 0.2s;
+    }
+
+    .nav-links a:hover { color: var(--text); }
+
+    .nav-cta {
+      background: var(--accent);
+      color: white !important;
+      padding: 0.4rem 1rem;
+      border-radius: 6px;
+      transition: background 0.2s !important;
+    }
+
+    .nav-cta:hover { background: #5b52ee !important; color: white !important; }
+
+    /* HERO */
+    .hero {
+      padding: 6rem 2rem 5rem;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse 80% 60% at 50% 0%, rgba(108, 99, 255, 0.15), transparent);
+      pointer-events: none;
+    }
+
+    .hero-badge {
+      display: inline-block;
+      background: rgba(108, 99, 255, 0.15);
+      border: 1px solid rgba(108, 99, 255, 0.4);
+      color: var(--accent2);
+      font-size: 0.8rem;
+      padding: 0.3rem 0.8rem;
+      border-radius: 999px;
+      margin-bottom: 1.5rem;
+    }
+
+    h1 {
+      font-size: clamp(2.5rem, 6vw, 4.5rem);
+      font-weight: 800;
+      line-height: 1.1;
+      margin-bottom: 1.5rem;
+    }
+
+    h1 span {
+      background: linear-gradient(135deg, var(--accent), var(--accent2), var(--pink));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .hero p {
+      font-size: 1.2rem;
+      color: var(--muted);
+      max-width: 600px;
+      margin: 0 auto 2.5rem;
+    }
+
+    .hero-buttons {
+      display: flex;
+      gap: 1rem;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.75rem 1.75rem;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: 600;
+      text-decoration: none;
+      transition: all 0.2s;
+      cursor: pointer;
+      border: none;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: #5b52ee;
+      transform: translateY(-1px);
+      box-shadow: 0 8px 24px rgba(108, 99, 255, 0.35);
+    }
+
+    .btn-secondary {
+      background: var(--surface);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+
+    .btn-secondary:hover {
+      background: var(--surface2);
+      border-color: var(--accent);
+    }
+
+    /* TERMINAL */
+    .terminal-wrapper {
+      max-width: 560px;
+      margin: 4rem auto 0;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    }
+
+    .terminal-bar {
+      background: var(--surface2);
+      padding: 0.65rem 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .dot { width: 12px; height: 12px; border-radius: 50%; }
+    .dot-red { background: #ff5f57; }
+    .dot-yellow { background: #ffbd2e; }
+    .dot-green { background: #28c840; }
+
+    .terminal-body {
+      padding: 1.25rem 1.5rem;
+      font-family: 'Fira Code', 'Cascadia Code', 'Courier New', monospace;
+      font-size: 0.88rem;
+      line-height: 1.8;
+    }
+
+    .terminal-body .prompt { color: var(--green); }
+    .terminal-body .cmd { color: var(--text); }
+    .terminal-body .comment { color: var(--muted); }
+    .terminal-body .output { color: var(--accent2); }
+
+    /* SECTION COMMON */
+    section { padding: 5rem 2rem; }
+
+    .section-label {
+      text-align: center;
+      color: var(--accent2);
+      font-size: 0.8rem;
+      font-weight: 700;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      margin-bottom: 0.75rem;
+    }
+
+    h2 {
+      text-align: center;
+      font-size: clamp(1.8rem, 4vw, 2.8rem);
+      font-weight: 700;
+      margin-bottom: 1rem;
+    }
+
+    .section-sub {
+      text-align: center;
+      color: var(--muted);
+      max-width: 540px;
+      margin: 0 auto 3.5rem;
+    }
+
+    /* FEATURES */
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1.5rem;
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    .feature-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.75rem;
+      transition: border-color 0.2s, transform 0.2s;
+    }
+
+    .feature-card:hover {
+      border-color: var(--accent);
+      transform: translateY(-3px);
+    }
+
+    .feature-icon {
+      font-size: 2rem;
+      margin-bottom: 1rem;
+    }
+
+    .feature-card h3 {
+      font-size: 1.05rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+    }
+
+    .feature-card p {
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    /* FORMATS */
+    .formats-section { background: var(--surface); }
+
+    .formats-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      justify-content: center;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+
+    .format-pill {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.7rem 1.2rem;
+      font-size: 0.95rem;
+      font-weight: 600;
+      transition: border-color 0.2s;
+    }
+
+    .format-pill:hover { border-color: var(--accent2); }
+    .format-pill .dot-fmt { width: 8px; height: 8px; border-radius: 50%; }
+
+    /* HOW IT WORKS */
+    .steps {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 0;
+      max-width: 1000px;
+      margin: 0 auto;
+      position: relative;
+    }
+
+    .step {
+      text-align: center;
+      padding: 2rem 1.5rem;
+      position: relative;
+    }
+
+    .step-num {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color: white;
+      font-weight: 800;
+      font-size: 1.1rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 1rem;
+    }
+
+    .step h3 { font-size: 1rem; margin-bottom: 0.5rem; }
+    .step p { color: var(--muted); font-size: 0.875rem; }
+
+    /* LLM PROVIDERS */
+    .providers-section { background: var(--surface); }
+
+    .providers-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      justify-content: center;
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    .provider-card {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1rem 1.5rem;
+      text-align: center;
+      min-width: 140px;
+      transition: border-color 0.2s, transform 0.2s;
+    }
+
+    .provider-card:hover {
+      border-color: var(--accent2);
+      transform: translateY(-2px);
+    }
+
+    .provider-card .provider-icon { font-size: 1.5rem; margin-bottom: 0.4rem; }
+    .provider-card .provider-name { font-weight: 600; font-size: 0.9rem; }
+    .provider-card .provider-tag {
+      display: inline-block;
+      background: rgba(52, 211, 153, 0.15);
+      color: var(--green);
+      font-size: 0.7rem;
+      padding: 0.1rem 0.4rem;
+      border-radius: 4px;
+      margin-top: 0.25rem;
+    }
+
+    .provider-card .provider-tag.default {
+      background: rgba(108, 99, 255, 0.2);
+      color: var(--accent2);
+    }
+
+    /* INSTALL */
+    .install-section {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+
+    .install-tabs {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 0;
+    }
+
+    .tab-btn {
+      background: none;
+      border: none;
+      color: var(--muted);
+      font-size: 0.9rem;
+      padding: 0.6rem 1rem;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -1px;
+      transition: color 0.2s, border-color 0.2s;
+    }
+
+    .tab-btn.active {
+      color: var(--accent2);
+      border-bottom-color: var(--accent2);
+    }
+
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    .code-block {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    .code-block-header {
+      background: var(--surface2);
+      padding: 0.6rem 1rem;
+      font-size: 0.78rem;
+      color: var(--muted);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .copy-btn {
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 0.75rem;
+      padding: 0.2rem 0.6rem;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .copy-btn:hover { color: var(--text); border-color: var(--accent); }
+
+    pre {
+      padding: 1.25rem 1.5rem;
+      font-family: 'Fira Code', 'Cascadia Code', monospace;
+      font-size: 0.875rem;
+      line-height: 1.8;
+      overflow-x: auto;
+      color: var(--text);
+    }
+
+    pre .kw { color: var(--pink); }
+    pre .fn { color: var(--blue); }
+    pre .str { color: var(--green); }
+    pre .cm { color: var(--muted); }
+    pre .num { color: var(--orange); }
+
+    /* LANGUAGES */
+    .languages-section { background: var(--surface); }
+
+    .lang-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      justify-content: center;
+      max-width: 700px;
+      margin: 0 auto;
+    }
+
+    .lang-chip {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0.5rem 1rem;
+      font-size: 0.9rem;
+      font-weight: 500;
+      transition: border-color 0.2s;
+    }
+
+    .lang-chip:hover { border-color: var(--accent2); }
+
+    /* CITE */
+    .cite-section {
+      max-width: 700px;
+      margin: 0 auto;
+      text-align: center;
+    }
+
+    .cite-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1.25rem 1.5rem;
+      text-align: left;
+      font-family: 'Fira Code', monospace;
+      font-size: 0.82rem;
+      color: var(--muted);
+      line-height: 1.7;
+      margin-top: 2rem;
+    }
+
+    .cite-key { color: var(--blue); }
+    .cite-val { color: var(--green); }
+
+    /* FOOTER */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 2.5rem 2rem;
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+
+    footer a { color: var(--accent2); text-decoration: none; }
+    footer a:hover { text-decoration: underline; }
+
+    .footer-credits {
+      display: flex;
+      justify-content: center;
+      gap: 2rem;
+      flex-wrap: wrap;
+      margin-top: 1rem;
+    }
+
+    /* RESPONSIVE */
+    @media (max-width: 640px) {
+      .nav-links { display: none; }
+      .steps { grid-template-columns: 1fr; }
+    }
+
+    /* DIVIDER */
+    .divider {
+      width: 60px;
+      height: 3px;
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+      border-radius: 2px;
+      margin: 0 auto 3rem;
+    }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-logo">lesia</div>
+  <ul class="nav-links">
+    <li><a href="#features">Features</a></li>
+    <li><a href="#how-it-works">How it works</a></li>
+    <li><a href="#install">Install</a></li>
+    <li><a href="#providers">LLM Providers</a></li>
+    <li><a href="https://github.com/DobbiKov/lesia" target="_blank" rel="noopener" class="nav-cta">GitHub</a></li>
+  </ul>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-badge">v0.1.5 &mdash; Early Beta</div>
+  <h1>Translate scientific<br /><span>documents</span> with AI</h1>
+  <p>
+    Lesia is an open-source Python library and CLI that automates the translation of
+    LaTeX, Markdown, Typst, MyST, and Jupyter documents &mdash; preserving
+    structure, formatting, and syntax while you stay in control.
+  </p>
+  <div class="hero-buttons">
+    <a href="#install" class="btn btn-primary">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2v13M5 9l7 7 7-7"/><path d="M3 20h18"/></svg>
+      Get started
+    </a>
+    <a href="https://github.com/DobbiKov/lesia" target="_blank" rel="noopener" class="btn btn-secondary">
+      <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.92.359.31.678.921.678 1.856 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/></svg>
+      View on GitHub
+    </a>
+  </div>
+
+  <!-- TERMINAL -->
+  <div class="terminal-wrapper">
+    <div class="terminal-bar">
+      <div class="dot dot-red"></div>
+      <div class="dot dot-yellow"></div>
+      <div class="dot dot-green"></div>
+    </div>
+    <div class="terminal-body">
+      <div><span class="comment"># Install the CLI</span></div>
+      <div><span class="prompt">$</span> <span class="cmd">uv tool install lesia</span></div>
+      <div style="margin-top:0.5rem"><span class="comment"># Initialize a new project</span></div>
+      <div><span class="prompt">$</span> <span class="cmd">lesia init my-project</span></div>
+      <div><span class="prompt">$</span> <span class="cmd">cd my-project</span></div>
+      <div><span class="output">✓ Project "my-project" initialized</span></div>
+      <div style="margin-top:0.5rem"><span class="comment"># Set source/target languages and translate</span></div>
+      <div><span class="prompt">$</span> <span class="cmd">mkdir src tgt</span></div>
+      <div><span class="prompt">$</span> <span class="cmd">lesia set-source src french</span></div>
+      <div><span class="prompt">$</span> <span class="cmd">lesia set-target tgt english</span></div>
+      <div><span class="prompt">$</span> <span class="cmd">lesia translate src/main.tex english</span></div>
+      <div><span class="output">✓ Translation complete → docs/en/main.tex</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section id="features">
+  <div class="section-label">Features</div>
+  <h2>Everything you need for<br />document translation</h2>
+  <p class="section-sub">Built for researchers, scientists, and technical writers who need accurate, structure-preserving translations at scale.</p>
+  <div class="divider"></div>
+
+  <div class="features-grid">
+    <div class="feature-card">
+      <div class="feature-icon">🗂️</div>
+      <h3>Project Management</h3>
+      <p>Initialize and manage translation projects with a <code>.translate_dir</code> config file. Track source and target directories per language.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">⚡</div>
+      <h3>Smart Translation Cache</h3>
+      <p>Persistent on-disk cache with checksum-based deduplication. Never pay for the same translation twice — only changed chunks are re-translated.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🔒</div>
+      <h3>Format Preservation</h3>
+      <p>XML-tagging system protects LaTeX commands, Typst syntax, Markdown fences, and code blocks from being altered during translation.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">✏️</div>
+      <h3>Manual Corrections</h3>
+      <p>Cache-aware correction system lets you override specific translations. Your corrections survive subsequent retranslations.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">📖</div>
+      <h3>Custom Vocabulary</h3>
+      <p>Define domain-specific glossaries to ensure consistent translation of technical terms across your entire project.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🔄</div>
+      <h3>File Syncing</h3>
+      <p>Automatically sync non-translatable assets (images, bibliography, fonts) between language directories. Only text changes where it should.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🤖</div>
+      <h3>Multiple LLM Backends</h3>
+      <p>Switch between Google Gemini, OpenAI, Anthropic, xAI, and others. Use a secondary reasoning model for complex passages.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🇫🇷</div>
+      <h3>French University Support</h3>
+      <p>Free access to open-source models via MyDocker (Université Paris-Saclay) and iLaaS — no API key required for Paris-Saclay members.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🧪</div>
+      <h3>Python Library API</h3>
+      <p>Embed Lesia into your own scripts and pipelines. Full async support for concurrent translation of multiple files.</p>
+    </div>
+  </div>
+</section>
+
+<!-- FORMATS -->
+<section id="formats" class="formats-section">
+  <div class="section-label">Supported Formats</div>
+  <h2>Works with your documents</h2>
+  <p class="section-sub">From academic papers to data science notebooks, Lesia handles the most popular scientific markup languages.</p>
+  <div class="divider"></div>
+
+  <div class="formats-grid">
+    <div class="format-pill">
+      <div class="dot-fmt" style="background: #fb923c;"></div> LaTeX
+    </div>
+    <div class="format-pill">
+      <div class="dot-fmt" style="background: #60a5fa;"></div> Markdown
+    </div>
+    <div class="format-pill">
+      <div class="dot-fmt" style="background: #f472b6;"></div> Jupyter Notebooks
+    </div>
+    <div class="format-pill">
+      <div class="dot-fmt" style="background: #34d399;"></div> MyST
+    </div>
+    <div class="format-pill">
+      <div class="dot-fmt" style="background: #a78bfa;"></div> Typst
+    </div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section id="how-it-works">
+  <div class="section-label">How it works</div>
+  <h2>Translation in 5 steps</h2>
+  <p class="section-sub">Lesia breaks the complex translation problem into a reliable, repeatable pipeline.</p>
+  <div class="divider"></div>
+
+  <div class="steps">
+    <div class="step">
+      <div class="step-num">1</div>
+      <h3>Chunk Documents</h3>
+      <p>Documents are split into translatable chunks while preserving document hierarchy.</p>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <h3>XML Tag Syntax</h3>
+      <p>Commands, code blocks, and special syntax are wrapped in XML tags to protect them from modification.</p>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <h3>LLM Translation</h3>
+      <p>Each chunk is sent to your configured LLM service with carefully crafted prompts.</p>
+    </div>
+    <div class="step">
+      <div class="step-num">4</div>
+      <h3>Cache Storage</h3>
+      <p>Translations are stored with checksums. Identical chunks across files share the same cached result.</p>
+    </div>
+    <div class="step">
+      <div class="step-num">5</div>
+      <h3>Reconstruct</h3>
+      <p>Translated chunks are reassembled into complete, valid target documents ready to compile.</p>
+    </div>
+  </div>
+</section>
+
+<!-- PROVIDERS -->
+<section id="providers" class="providers-section">
+  <div class="section-label">LLM Providers</div>
+  <h2>Your choice of AI model</h2>
+  <p class="section-sub">Lesia supports major commercial providers as well as self-hosted and institutional deployments.</p>
+  <div class="divider"></div>
+
+  <div class="providers-grid">
+    <div class="provider-card">
+      <div class="provider-icon">♊</div>
+      <div class="provider-name">Google Gemini</div>
+      <div class="provider-tag default">Default</div>
+    </div>
+    <div class="provider-card">
+      <div class="provider-icon">🤖</div>
+      <div class="provider-name">OpenAI</div>
+      <div class="provider-tag">Supported</div>
+    </div>
+    <div class="provider-card">
+      <div class="provider-icon">🔬</div>
+      <div class="provider-name">Anthropic</div>
+      <div class="provider-tag">Supported</div>
+    </div>
+    <div class="provider-card">
+      <div class="provider-icon">✖️</div>
+      <div class="provider-name">xAI (Grok)</div>
+      <div class="provider-tag">Supported</div>
+    </div>
+    <div class="provider-card">
+      <div class="provider-icon">🏛️</div>
+      <div class="provider-name">Aristote</div>
+      <div class="provider-tag">Supported</div>
+    </div>
+    <div class="provider-card">
+      <div class="provider-icon">🇫🇷</div>
+      <div class="provider-name">iLaaS</div>
+      <div class="provider-tag">Supported</div>
+    </div>
+    <div class="provider-card">
+      <div class="provider-icon">🐳</div>
+      <div class="provider-name">MyDocker</div>
+      <div class="provider-tag">Paris-Saclay</div>
+    </div>
+  </div>
+</section>
+
+<!-- INSTALL -->
+<section id="install">
+  <div class="section-label">Installation</div>
+  <h2>Get up and running</h2>
+  <p class="section-sub">Install as a standalone CLI tool or embed the library in your own Python project.</p>
+  <div class="divider"></div>
+
+  <div class="install-section">
+    <div class="install-tabs">
+      <button class="tab-btn active" onclick="switchTab(this, 'tab-cli')">CLI Tool</button>
+      <button class="tab-btn" onclick="switchTab(this, 'tab-lib')">Python Library</button>
+      <button class="tab-btn" onclick="switchTab(this, 'tab-dev')">Development</button>
+      <button class="tab-btn" onclick="switchTab(this, 'tab-quickstart')">Quick Start</button>
+    </div>
+
+    <div id="tab-cli" class="tab-panel active">
+      <div class="code-block">
+        <div class="code-block-header">
+          <span>bash</span>
+          <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+        </div>
+        <pre># Requires uv (https://docs.astral.sh/uv/)
+uv tool install lesia
+
+# Verify installation
+lesia --help</pre>
+      </div>
+    </div>
+
+    <div id="tab-lib" class="tab-panel">
+      <div class="code-block">
+        <div class="code-block-header">
+          <span>bash</span>
+          <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+        </div>
+        <pre># pip
+pip install lesia
+
+# uv
+uv add lesia</pre>
+      </div>
+    </div>
+
+    <div id="tab-dev" class="tab-panel">
+      <div class="code-block">
+        <div class="code-block-header">
+          <span>bash</span>
+          <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+        </div>
+        <pre>git clone https://github.com/DobbiKov/lesia
+cd lesia
+uv sync
+
+# Run tests
+uv run pytest</pre>
+      </div>
+    </div>
+
+    <div id="tab-quickstart" class="tab-panel">
+      <div class="code-block">
+        <div class="code-block-header">
+          <span>python</span>
+          <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+        </div>
+        <pre><span class="kw">import</span> asyncio
+<span class="kw">from</span> trans_lib.project_manager <span class="kw">import</span> init_project
+<span class="kw">from</span> trans_lib.enums <span class="kw">import</span> Language
+
+<span class="cm"># Initialize project</span>
+project = <span class="fn">init_project</span>(<span class="str">"my_project"</span>, <span class="str">"/path/to/root"</span>)
+
+<span class="cm"># Configure source</span>
+project.<span class="fn">set_source_directory</span>(<span class="str">"docs_fr"</span>, Language.FRENCH)
+project.<span class="fn">add_target_language</span>(Language.ENGLISH)
+project.<span class="fn">set_file_translatability</span>(<span class="str">"docs_fr/main.tex"</span>, <span class="kw">True</span>)
+
+<span class="cm"># Sync static assets and translate</span>
+project.<span class="fn">sync_untranslatable_files</span>()
+asyncio.<span class="fn">run</span>(project.<span class="fn">translate_single_file</span>(
+    <span class="str">"docs_fr/main.tex"</span>, Language.ENGLISH, <span class="kw">None</span>
+))</pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- LANGUAGES -->
+<section class="languages-section">
+  <div class="section-label">Languages</div>
+  <h2>Supported languages</h2>
+  <p class="section-sub">Translate between any combination of the supported natural languages.</p>
+  <div class="divider"></div>
+
+  <div class="lang-grid">
+    <div class="lang-chip">🇬🇧 English</div>
+    <div class="lang-chip">🇫🇷 French</div>
+    <div class="lang-chip">🇩🇪 German</div>
+    <div class="lang-chip">🇪🇸 Spanish</div>
+    <div class="lang-chip">🇺🇦 Ukrainian</div>
+    <div class="lang-chip">🇦🇲 Armenian</div>
+  </div>
+</section>
+
+<!-- CITE -->
+<section id="cite">
+  <div class="cite-section">
+    <div class="section-label">Citation</div>
+    <h2>Cite Lesia</h2>
+    <p class="section-sub">Using Lesia in your research? Please cite it as follows.</p>
+    <div class="divider"></div>
+
+    <div class="cite-box">
+      @software{<span class="cite-val">korotenko-sci-trans-git</span>,<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="cite-key">author</span>    = {<span class="cite-val">Yehor Korotenko</span>},<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="cite-key">title</span>     = {<span class="cite-val">sci-trans-git</span>},<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="cite-key">year</span>      = {<span class="cite-val">2025</span>},<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="cite-key">publisher</span> = {<span class="cite-val">GitHub</span>},<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="cite-key">version</span>   = {<span class="cite-val">0.2.0-alpha</span>},<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="cite-key">url</span>       = {<span class="cite-val">https://github.com/DobbiKov/sci-trans-git</span>},<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="cite-key">doi</span>       = {<span class="cite-val">10.5281/zenodo.15775111</span>}<br/>
+      }
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div>
+    <strong>Lesia</strong> &mdash; Translate scientific documents with AI &mdash;
+    <a href="https://github.com/DobbiKov/lesia" target="_blank" rel="noopener">GitHub</a>
+  </div>
+  <div class="footer-credits">
+    <span>By <a href="https://github.com/DobbiKov" target="_blank" rel="noopener">Yehor Korotenko</a></span>
+    <span>Supervised by Nicolas M. Thiéry</span>
+    <span>Supported by <a href="https://www.lisn.upsaclay.fr/" target="_blank" rel="noopener">LISN</a> &amp; CentraleSupélec</span>
+  </div>
+</footer>
+
+<script>
+  function switchTab(btn, tabId) {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById(tabId).classList.add('active');
+  }
+
+  function copyCode(btn) {
+    const pre = btn.closest('.code-block').querySelector('pre');
+    const text = pre.innerText;
+    navigator.clipboard.writeText(text).then(() => {
+      const orig = btn.textContent;
+      btn.textContent = 'Copied!';
+      setTimeout(() => btn.textContent = orig, 1500);
+    });
+  }
+</script>
+
+</body>
+</html>
