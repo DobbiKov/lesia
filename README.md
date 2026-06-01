@@ -50,16 +50,14 @@ The profound explanation of the logic and algorithms of the tool can be found [h
 ## Installation
 
 ### For CLI usage
-1. Clone the repo: `git clone https://github.com/DobbiKov/lesia`
-2. Enter to the directory: `cd lesia`
-3. Install the CLI: `uv tool install -e .`
-4. Use it: `lesia`
+1. Install it with `uv tool install lesia`
+2. Use it: `lesia`
+
 ### For in-project library usage
 
-1. Clone the repo: `git clone https://github.com/DobbiKov/lesia`
-2. Enter to your project where you want to use this library (`cd <your_project_path>`)
-3. Install the library as a dependency using `pip`: `pip install <path_to_the_library_directory>`
-4. Enjoy!
+1. Enter to your project where you want to use this library (`cd <your_project_path>`)
+2. Install the library as a dependency using `pip`: `pip install lesia`
+3. Enjoy!
 
 ### For the library development and contribution uses
 
