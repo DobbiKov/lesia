@@ -24,7 +24,7 @@ docs](https://mydocker.gitlab.dsi.universite-paris-saclay.fr/) and create
 browser. Then, open terminal (important: in the jupyter tab in web) – you will be able
 to install CLI and translate your document.
 
-For using open-source llms on jupyter: run `translate-dir set-llm
+For using open-source llms on jupyter: run `lesia set-llm
 aristoteonmydocker <model>` command.
 As of April 24, the next models are availible:
 - gemma-4-31b
@@ -53,7 +53,7 @@ The profound explanation of the logic and algorithms of the tool can be found [h
 1. Clone the repo: `git clone https://github.com/DobbiKov/lesia`
 2. Enter to the directory: `cd lesia`
 3. Install the CLI: `uv tool install -e .`
-4. Use it: `translate-dir`
+4. Use it: `lesia`
 ### For in-project library usage
 
 1. Clone the repo: `git clone https://github.com/DobbiKov/lesia`

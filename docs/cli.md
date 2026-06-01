@@ -17,7 +17,7 @@ Extended abstract about the project: [link](https://dobbikov.github.io/sci-trans
 
 ## Table of Contents
 
-- [Why translate-dir?](#why-translate-dir)
+- [Why lesia?](#why-lesia)
 - [Features](#features)
 - [Citation](#citation)
 - [Getting started](#getting-started)
@@ -40,7 +40,7 @@ Extended abstract about the project: [link](https://dobbikov.github.io/sci-trans
 - [Documentation](#documentation)
 - [Contributing](#contributing)
 
-## Why translate-dir?
+## Why lesia?
 
 Manually translating large projects with scientific notation, Markdown, or
 LaTeX is slow and error-prone. This library automates this process while
@@ -87,8 +87,8 @@ Requirements:
 1. Ensure you have [uv](https://docs.astral.sh/uv/#__tabbed_1_1) installed.
 2. Clone the repository:
     ```sh
-    git clone https://github.com/DobbiKov/translate-dir-cli
-    cd translate-dir-cli
+    git clone https://github.com/DobbiKov/lesia
+    cd lesia
     ```
 3. Install dependencies:
     ```sh
@@ -100,7 +100,7 @@ Requirements:
     ```
 5. Run the CLI:
     ```
-    translate-dir --help
+    lesia --help
     ```
 
 ### First steps
@@ -116,46 +116,46 @@ the overall project structure looks like.
 
 2. Initialize the translation project:
     ```
-    translate-dir init [--name <my_project>]
+    lesia init [--name <my_project>]
     ```
 
 3. Set the source directory and its language:
     ```
-    translate-dir set-source <dir_name> <language>
+    lesia set-source <dir_name> <language>
     ```
 
     Example:
     ```
-    translate-dir set-source analysis_notes french
+    lesia set-source analysis_notes french
     ```
 
 4. Add target language(s):
     ```
-    translate-dir set-target <dir_name> <language>
+    lesia set-target <dir_name> <language>
     ```
 
     Example:
     ```
-    translate-dir set-target tgt/en english
+    lesia set-target tgt/en english
     ```
 
 #### Sync & Translate
 
 5. Mark files for translation:
     ```
-    translate-dir add <path_to_file>
+    lesia add <path_to_file>
     ```
 
     Example:
     ```
-    translate-dir add analysis_notes/main.tex
+    lesia add analysis_notes/main.tex
     ```
 
-    To see all translatable files: `translate-dir list`
+    To see all translatable files: `lesia list`
 
 6. Sync files between source and target directories:
     ```
-    translate-dir sync
+    lesia sync
     ```
 
 For translation, the `LLM_API_KEY` of the service you use is required for
@@ -190,22 +190,22 @@ Set the key as an environment variable:
 
 7. Translate one file:
     ```
-    translate-dir translate file <file_path> <target_language>
+    lesia translate file <file_path> <target_language>
     ```
 
     Example:
     ```
-    translate-dir translate file analysis_notes/main.tex english
+    lesia translate file analysis_notes/main.tex english
     ```
 
 8. Translate all files:
     ```
-    translate-dir translate all <target_language>
+    lesia translate all <target_language>
     ```
 
     Example:
     ```
-    translate-dir translate all english
+    lesia translate all english
     ```
 
 ##### Vocabulary
@@ -225,7 +225,7 @@ computer,   ordinateur, Computer
 ```
 
 ```sh
-translate-dir translate all english --vocabulary vocab.csv
+lesia translate all english --vocabulary vocab.csv
 ```
 
 This helps the translation tool choose more accurate terms and maintain consistency across your project.
@@ -236,7 +236,7 @@ After automated translation, you will typically review the output and make manua
 
 9. Rebuild the translation cache from the files on disk:
     ```
-    translate-dir cache sync
+    lesia cache sync
     ```
 
     Run this after manually editing translated files. The tool reads all source and target files, computes their checksums, and updates the correspondence cache accordingly.
@@ -252,11 +252,11 @@ See the [Translation Cache section](./tool-profound-explanation.md#the-translati
 3. Get the path to the library directory on your local machine (e.g. `realpath <your_dir>` on macOS).
 4. Clone this repo:
     ```sh
-    git clone https://github.com/DobbiKov/translate-dir-cli
+    git clone https://github.com/DobbiKov/lesia
     ```
 5. Enter the directory:
     ```sh
-    cd translate-dir-cli
+    cd lesia
     ```
 6. Remove the current library dependency:
     ```sh
@@ -279,7 +279,7 @@ See the [Translation Cache section](./tool-profound-explanation.md#the-translati
 
 ## Command reference
 
-All commands are run as `translate-dir <command> [options]`. Commands that operate on a project search upward from the current directory for a `.translate_dir/` folder (like `git` searches for `.git/`).
+All commands are run as `lesia <command> [options]`. Commands that operate on a project search upward from the current directory for a `.translate_dir/` folder (like `git` searches for `.git/`).
 
 ### Global options
 
@@ -293,7 +293,7 @@ All commands are run as `translate-dir <command> [options]`. Commands that opera
 #### `init`
 
 ```
-translate-dir init [--name <name>] [--path <path>]
+lesia init [--name <name>] [--path <path>]
 ```
 
 Initializes a new translation project in the given directory (default: current directory). Creates a `.translate_dir/config.json` file.
@@ -306,43 +306,43 @@ Initializes a new translation project in the given directory (default: current d
 #### `set-source`
 
 ```
-translate-dir set-source <dir_name> <language>
+lesia set-source <dir_name> <language>
 ```
 
 Sets (or changes) the source directory and its language. `dir_name` is relative to the project root.
 
 ```
-translate-dir set-source analysis_notes_fr french
+lesia set-source analysis_notes_fr french
 ```
 
 #### `set-target`
 
 ```
-translate-dir set-target <dir_name> <language>
+lesia set-target <dir_name> <language>
 ```
 
 Registers an existing directory as the target for a language.
 
 ```
-translate-dir set-target analysis_notes_en english
+lesia set-target analysis_notes_en english
 ```
 
 #### `remove-target`
 
 ```
-translate-dir remove-target <language>
+lesia remove-target <language>
 ```
 
 Removes a target language from the project configuration and deletes its directory from disk.
 
 ```
-translate-dir remove-target english
+lesia remove-target english
 ```
 
 #### `info`
 
 ```
-translate-dir info
+lesia info
 ```
 
 Displays a summary of the current project: name, root path, source language and directory, configured LLM, reasoning model, Typst function arg settings, and all target languages with their directories.
@@ -350,7 +350,7 @@ Displays a summary of the current project: name, root path, source language and 
 #### `sync`
 
 ```
-translate-dir sync
+lesia sync
 ```
 
 Copies all untranslatable files from the source directory to every target directory, mirroring the subdirectory structure. Run this before building the translated project (e.g. with LaTeX) to ensure all assets are present.
@@ -362,31 +362,31 @@ Copies all untranslatable files from the source directory to every target direct
 #### `add`
 
 ```
-translate-dir add <file_path> [<file_path> ...]
+lesia add <file_path> [<file_path> ...]
 ```
 
 Marks one or more files in the source directory as translatable. Translatable files are processed by translation commands and skipped by `sync`.
 
 ```
-translate-dir add analysis_notes_fr/main.tex analysis_notes_fr/lec1.tex
+lesia add analysis_notes_fr/main.tex analysis_notes_fr/lec1.tex
 ```
 
 #### `remove`
 
 ```
-translate-dir remove <file_path> [<file_path> ...]
+lesia remove <file_path> [<file_path> ...]
 ```
 
 Marks one or more files as untranslatable (the reverse of `add`). Untranslatable files are copied as-is by `sync` and ignored by translation commands.
 
 ```
-translate-dir remove analysis_notes_fr/figures/logo.pdf
+lesia remove analysis_notes_fr/figures/logo.pdf
 ```
 
 #### `list`
 
 ```
-translate-dir list
+lesia list
 ```
 
 Lists all files currently marked as translatable in the source directory, with paths relative to the project root.
@@ -400,29 +400,29 @@ Translation commands require `LLM_API_KEY` to be set in the environment.
 #### `translate file`
 
 ```
-translate-dir translate file <file_path> <language> [--vocabulary <csv_path>] [--use-reasoning-model]
+lesia translate file <file_path> <language> [--vocabulary <csv_path>] [--use-reasoning-model]
 ```
 
 Translates a single file to the specified target language. The file must be marked as translatable.
 
 ```
-translate-dir translate file analysis_notes_fr/main.tex english
-translate-dir translate file analysis_notes_fr/main.tex english --vocabulary vocab.csv
-translate-dir translate file analysis_notes_fr/main.tex english --use-reasoning-model
+lesia translate file analysis_notes_fr/main.tex english
+lesia translate file analysis_notes_fr/main.tex english --vocabulary vocab.csv
+lesia translate file analysis_notes_fr/main.tex english --use-reasoning-model
 ```
 
 #### `translate all`
 
 ```
-translate-dir translate all <language> [--vocabulary <csv_path>] [--use-reasoning-model]
+lesia translate all <language> [--vocabulary <csv_path>] [--use-reasoning-model]
 ```
 
 Translates all translatable files to the specified language.
 
 ```
-translate-dir translate all english
-translate-dir translate all german --vocabulary vocab.csv
-translate-dir translate all english --use-reasoning-model
+lesia translate all english
+lesia translate all german --vocabulary vocab.csv
+lesia translate all english --use-reasoning-model
 ```
 
 #### `--use-reasoning-model`
@@ -434,8 +434,8 @@ This requires `LLM_REASONING_API_KEY` to be set (falls back to `LLM_API_KEY` if 
 If no reasoning model has been configured, the flag falls back to the regular model.
 
 ```
-translate-dir translate all english --use-reasoning-model
-translate-dir translate file analysis_notes_fr/main.tex english --use-reasoning-model
+lesia translate all english --use-reasoning-model
+lesia translate file analysis_notes_fr/main.tex english --use-reasoning-model
 ```
 
 ---
@@ -447,7 +447,7 @@ The translation cache stores source-to-translated-text pairs on disk to avoid re
 #### `cache sync`
 
 ```
-translate-dir cache sync
+lesia cache sync
 ```
 
 Rebuilds the translation cache from on-disk source and target files. Run this after manually editing translated files to ensure the cache matches the current contents.
@@ -455,8 +455,8 @@ Rebuilds the translation cache from on-disk source and target files. Run this af
 #### `cache clear`
 
 ```
-translate-dir cache clear --missing-chunks
-translate-dir cache clear --all [--lang <language>] [--file <path>] [--keyword <string>]
+lesia cache clear --missing-chunks
+lesia cache clear --all [--lang <language>] [--file <path>] [--keyword <string>]
 ```
 
 Cleans up cache entries. Exactly one action flag is required: `--missing-chunks` or `--all`.
@@ -488,13 +488,13 @@ Cleans up cache entries. Exactly one action flag is required: `--missing-chunks`
 
 **Examples:**
 ```
-translate-dir cache clear --missing-chunks
-translate-dir cache clear --all --lang English
-translate-dir cache clear --all --file analysis_notes_fr/doc.md
-translate-dir cache clear --all --lang French --file analysis_notes_fr/doc.md
-translate-dir cache clear --all
-translate-dir cache clear --all --keyword glossary
-translate-dir cache clear --all --file analysis_notes_fr/doc.md --keyword glossary
+lesia cache clear --missing-chunks
+lesia cache clear --all --lang English
+lesia cache clear --all --file analysis_notes_fr/doc.md
+lesia cache clear --all --lang French --file analysis_notes_fr/doc.md
+lesia cache clear --all
+lesia cache clear --all --keyword glossary
+lesia cache clear --all --file analysis_notes_fr/doc.md --keyword glossary
 ```
 
 ---
@@ -506,27 +506,27 @@ The default LLM is `google` / `gemini-2.0-flash`. Use `list-llms` to see all ava
 #### `set-llm`
 
 ```
-translate-dir set-llm <service> <model>
+lesia set-llm <service> <model>
 ```
 
 Sets the primary LLM service and model used for translation. The setting is saved to the project config.
 
 ```
-translate-dir set-llm google gemini-2.0-flash
-translate-dir set-llm openai gpt-4o
-translate-dir set-llm anthropic claude-sonnet-4-5-20251001
+lesia set-llm google gemini-2.0-flash
+lesia set-llm openai gpt-4o
+lesia set-llm anthropic claude-sonnet-4-5-20251001
 ```
 
 #### `set-reasoning-model`
 
 ```
-translate-dir set-reasoning-model <service> <model>
+lesia set-reasoning-model <service> <model>
 ```
 
 Sets an optional reasoning model. By default it is used alongside the regular model for more challenging translation decisions. Pass `--use-reasoning-model` to `translate file` or `translate all` to use it as the sole model instead.
 
 ```
-translate-dir set-reasoning-model google gemini-2.0-flash-thinking-exp
+lesia set-reasoning-model google gemini-2.0-flash-thinking-exp
 ```
 
 Reasoning models require the `LLM_REASONING_API_KEY` environment variable (falls back to `LLM_API_KEY` if not set separately).
@@ -534,7 +534,7 @@ Reasoning models require the `LLM_REASONING_API_KEY` environment variable (falls
 #### `list-llms`
 
 ```
-translate-dir list-llms
+lesia list-llms
 ```
 
 Lists all available LLM service names (built-in and custom) that can be used with `set-llm` and `set-reasoning-model`.
@@ -545,7 +545,7 @@ Lists all available LLM service names (built-in and custom) that can be used wit
 
 You can add your own LLM service by placing a Python file in `.translate_dir/services/`. Every `.py` file in that directory (except the template) is loaded automatically whenever a project command runs.
 
-After `translate-dir init`, a ready-to-copy template is placed at:
+After `lesia init`, a ready-to-copy template is placed at:
 
 ```
 .translate_dir/services/custom_service_example.py
@@ -576,26 +576,26 @@ class MyService(BaseService):
         raise NotImplementedError
 ```
 
-Once the file is saved, run `translate-dir list-llms` to confirm the service appears, then use it like any built-in service:
+Once the file is saved, run `lesia list-llms` to confirm the service appears, then use it like any built-in service:
 
 ```
-translate-dir set-llm my-service my-model-name
+lesia set-llm my-service my-model-name
 ```
 
 The services directory is part of the project (inside `.translate_dir/`), so committing it makes the custom service available to everyone who clones the repository.
 
 #### External dependencies
 
-If your custom service requires a third-party package (e.g. `boto3`, `mistralai`), you need to inject it into the `translate-dir` tool environment:
+If your custom service requires a third-party package (e.g. `boto3`, `mistralai`), you need to inject it into the `lesia` tool environment:
 
 ```sh
-uv tool inject translate-dir <package-name>
+uv tool inject lesia <package-name>
 ```
 
 Example:
 
 ```sh
-uv tool inject translate-dir boto3
+uv tool inject lesia boto3
 ```
 
 If the package is not installed, the service file will fail to load and a warning will be printed — no other commands are affected.
@@ -611,26 +611,26 @@ See the [Current Implementation section](./typst_parsing_analysis.md#current-imp
 #### `set-typst-func-args`
 
 ```
-translate-dir set-typst-func-args <function_name> <arg_name> [<arg_name> ...]
+lesia set-typst-func-args <function_name> <arg_name> [<arg_name> ...]
 ```
 
 Registers the listed argument names of a Typst function as translatable. Calling this again for the same function name replaces the previous setting.
 
 ```
-translate-dir set-typst-func-args figure caption
-translate-dir set-typst-func-args ex info caption
+lesia set-typst-func-args figure caption
+lesia set-typst-func-args ex info caption
 ```
 
 #### `unset-typst-func-args`
 
 ```
-translate-dir unset-typst-func-args <function_name>
+lesia unset-typst-func-args <function_name>
 ```
 
 Removes the translatable-arg configuration for a function.
 
 ```
-translate-dir unset-typst-func-args ex
+lesia unset-typst-func-args ex
 ```
 
 ---

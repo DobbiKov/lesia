@@ -250,8 +250,8 @@ The project configuration allows registering specific argument names of specific
 functions as translatable:
 
 ```
-translate-dir set-typst-func-args figure caption
-translate-dir set-typst-func-args ex info caption
+lesia set-typst-func-args figure caption
+lesia set-typst-func-args ex info caption
 ```
 
 This maps onto `parse_typst` behaviour: when the parser encounters a call to a
