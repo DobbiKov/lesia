@@ -2,9 +2,9 @@
 
 ## Overview
 This change adds cache clear behaviors:
-- `translate-dir cache clear --missing-chunks` cleans the cache by removing or fixing correspondence entries that point to missing chunk files. It also removes orphaned source chunks that have no correspondence rows.
-- `translate-dir cache clear --all --lang <language>` and/or `--file <path>` deletes cached data scoped to a specific language and/or file.
-- `translate-dir cache clear --all --keyword <string>` deletes cached chunks whose contents include the keyword, with optional `--lang`/`--file` scoping.
+- `lesia cache clear --missing-chunks` cleans the cache by removing or fixing correspondence entries that point to missing chunk files. It also removes orphaned source chunks that have no correspondence rows.
+- `lesia cache clear --all --lang <language>` and/or `--file <path>` deletes cached data scoped to a specific language and/or file.
+- `lesia cache clear --all --keyword <string>` deletes cached chunks whose contents include the keyword, with optional `--lang`/`--file` scoping.
 
 ## Files and Components
 - `src/trans_lib/translation_cache/cache_cleaner.py`
@@ -15,7 +15,7 @@ This change adds cache clear behaviors:
 - `src/trans_lib/project_manager.py`
   - Adds convenience methods for cache clear actions.
 - `src/cli.py`
-  - Adds `translate-dir cache clear --missing-chunks` and `--all` CLI entry points.
+  - Adds `lesia cache clear --missing-chunks` and `--all` CLI entry points.
 - `src/trans_lib/errors.py`
   - Adds `TranslationCacheClearError`.
 - `tests/test_cache_clear.py`
@@ -57,15 +57,15 @@ Steps:
 
 ## CLI Usage
 ```
-translate-dir cache clear --missing-chunks
+lesia cache clear --missing-chunks
 ```
 ```
-translate-dir cache clear --all --lang English
-translate-dir cache clear --all --file src_en/doc.md
-translate-dir cache clear --all --lang French --file src_en/doc.md
-translate-dir cache clear --all
-translate-dir cache clear --all --keyword glossary
-translate-dir cache clear --all --file src_en/doc.md --keyword glossary
+lesia cache clear --all --lang English
+lesia cache clear --all --file src_en/doc.md
+lesia cache clear --all --lang French --file src_en/doc.md
+lesia cache clear --all
+lesia cache clear --all --keyword glossary
+lesia cache clear --all --file src_en/doc.md --keyword glossary
 ```
 The command requires at least one action flag. `--lang` and `--file` only work with `--all`. `--all` without scopes clears all cache and correspondence rows. It reports:
 - removed rows
