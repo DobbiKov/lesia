@@ -85,18 +85,9 @@ Requirements:
 - [uv](https://docs.astral.sh/uv/#__tabbed_1_1) (dependency manager)
 
 1. Ensure you have [uv](https://docs.astral.sh/uv/#__tabbed_1_1) installed.
-2. Clone the repository:
+4. Install CLI
     ```sh
-    git clone https://github.com/DobbiKov/lesia
-    cd lesia
-    ```
-3. Install dependencies:
-    ```sh
-    uv sync
-    ```
-4. Install CLI globally:
-    ```sh
-    uv tool install .
+    uv tool install lesia
     ```
 5. Run the CLI:
     ```
@@ -272,7 +263,7 @@ See the [Translation Cache section](./tool-profound-explanation.md#the-translati
     ```
 9. Install the CLI globally in editable mode:
     ```sh
-    uv pip install -e .
+    uv tool install -e .
     ```
 
 ---
