@@ -4,6 +4,8 @@ A library and a CLI to manage the translation text writing projects (e.g: LaTeX,
 Markdown, Jupyter, MyST, Typst). The library is aimed to simplify and automate
 the translation process and compiling of the translated version of the documents.
 
+Read the documentation here: [CLI documentation](./docs/cli.md)
+
 ## Credits
 - **Nicolas M. Thiéry** - for supervising this project.
 - **LISN (Université Paris-Saclay)** - for financing the internship and
