@@ -182,7 +182,7 @@ class Project:
             except Exception as e:
                  raise AddLanguageError(f"Unexpected error adding language {lang}: {e}", e)
 
-    def remove_target_language(self, lang: Language) -> None:
+    def remove_target_language(self, lang: Language | CustomLanguage) -> None:
         """Removes a target language and its directory."""
         target_dir_path = self.config.get_target_dir_path_by_lang(lang)
         if not target_dir_path:
@@ -345,7 +345,7 @@ class Project:
                 return file
         return None
 
-    def correct_translation_for_lang(self, target_lang: Language) -> None:
+    def correct_translation_for_lang(self, target_lang: Language | CustomLanguage) -> None:
         """
         Corrects translation (updates the translation cache) for the given language
         """
@@ -361,7 +361,7 @@ class Project:
 
         _project_runtime.correct_translation_single_file(self, file_path_str)
 
-    def sync_translation_cache(self, target_lang: Language | None = None) -> None:
+    def sync_translation_cache(self, target_lang: Language | CustomLanguage | None = None) -> None:
         """Synchronizes the translation cache by scanning on-disk source/target files."""
         from . import project_runtime as _project_runtime
 
@@ -375,7 +375,7 @@ class Project:
 
     def clear_translation_cache_all(
         self,
-        lang: Language | None,
+        lang: Language | CustomLanguage | None,
         file_path_str: str | None,
         keyword: str | None,
     ):
@@ -411,7 +411,7 @@ class Project:
 
 # TODO: remove this, as it is diff, it must be implemented in the translation, after XML tagging
 # DEBUG!
-    def diff(self, txt: str, lang: Language) -> tuple[str, float]:
+    def diff(self, txt: str, lang: Language | CustomLanguage) -> tuple[str, float]:
         from . import project_runtime as _project_runtime
 
         return _project_runtime.diff(self, txt, lang)

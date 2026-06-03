@@ -143,13 +143,18 @@ def add_language(
 @app.command("remove-target")
 def remove_language(
     ctx: typer.Context,
-    lang: Annotated[Language, typer.Argument(help="Target language to remove.", case_sensitive=False)]
+    lang: Annotated[str, typer.Argument(help="Target language to remove (predefined or custom).", case_sensitive=False)],
 ):
     """Removes a target language and its directory from the project."""
     project = get_project_from_context(ctx)
     try:
-        project.remove_target_language(lang)
-        typer.secho(f"Target language {lang.value} and its directory removed.", fg=typer.colors.GREEN)
+        resolved_lang = project.config.resolve_language(lang)
+    except ValueError as e:
+        typer.secho(f"Error removing language: {e}", fg=typer.colors.RED, err=True)
+        raise typer.Exit(code=1)
+    try:
+        project.remove_target_language(resolved_lang)
+        typer.secho(f"Target language {resolved_lang} and its directory removed.", fg=typer.colors.GREEN)
     except errors.RemoveLanguageError as e:
         typer.secho(f"Error removing language: {e}", fg=typer.colors.RED, err=True)
         raise typer.Exit(code=1)
@@ -467,10 +472,10 @@ def clear_cache_cli(
         ),
     ] = False,
     lang: Annotated[
-        Language | None,
+        str | None,
         typer.Option(
             "--lang",
-            help="Limit cache deletion to a specific language.",
+            help="Limit cache deletion to a specific language (predefined or custom).",
             case_sensitive=False,
         ),
     ] = None,
@@ -519,6 +524,13 @@ def clear_cache_cli(
         )
         raise typer.Exit(code=1)
     project = get_project_from_context(ctx)
+    resolved_lang = None
+    if lang is not None:
+        try:
+            resolved_lang = project.config.resolve_language(lang)
+        except ValueError as e:
+            typer.secho(f"Error: {e}", fg=typer.colors.RED, err=True)
+            raise typer.Exit(code=1)
     try:
         if missing_chunks:
             stats = project.clear_translation_cache_missing_chunks()
@@ -534,7 +546,7 @@ def clear_cache_cli(
             )
         else:
             stats = project.clear_translation_cache_all(
-                lang,
+                resolved_lang,
                 str(file_path) if file_path else None,
                 keyword,
             )

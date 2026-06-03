@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Iterable
 
 from trans_lib.constants import CACHE_DIR_NAME
-from trans_lib.enums import Language
+from trans_lib.enums import Language, CustomLanguage
 from trans_lib.helpers import calculate_path_checksum, get_config_dir_from_root, normalize_relative_path
 from trans_lib.translation_cache.cache_backend import (
     PATH_CHECKSUM_COLUMN,
@@ -100,7 +100,7 @@ def _chunk_contains_keyword(file_path: Path, keyword: str) -> bool:
     return keyword in contents
 
 
-def clear_missing_chunks(root_path: Path, source_lang: Language) -> CacheClearStats:
+def clear_missing_chunks(root_path: Path, source_lang: Language | CustomLanguage) -> CacheClearStats:
     stats = CacheClearStats()
     cache_dir = get_config_dir_from_root(root_path) / CACHE_DIR_NAME
     if not cache_dir.exists():
@@ -190,7 +190,7 @@ def clear_missing_chunks(root_path: Path, source_lang: Language) -> CacheClearSt
 
 def clear_all(
     root_path: Path,
-    lang: Language | None,
+    lang: Language | CustomLanguage | None,
     relative_path: str | None,
     keyword: str | None = None,
 ) -> CacheDeleteStats:

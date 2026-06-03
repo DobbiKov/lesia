@@ -47,14 +47,14 @@ def _apply_typst_translation_settings(project: Project) -> None:
     )
 
 
-def _get_target_dir_config(project: Project, target_lang: Language):
+def _get_target_dir_config(project: Project, target_lang: Language | CustomLanguage):
     for lang_dir in project.config.lang_dirs:
         if lang_dir.language == target_lang:
             return lang_dir
     return None
 
 
-def _correct_translation_file(project: Project, target_path: Path, target_lang: Language) -> None:
+def _correct_translation_file(project: Project, target_path: Path, target_lang: Language | CustomLanguage) -> None:
     print(f"Verifying {target_path.name} for the corrected translations ...")
     source_language = _require_source_language(project)
 
@@ -81,7 +81,7 @@ def _correct_translation_file(project: Project, target_path: Path, target_lang: 
         raise CorrectTranslationError(f"IO error during correction of {target_path.name}: {e}", e)
 
 
-def correct_translation_for_lang(project: Project, target_lang: Language) -> None:
+def correct_translation_for_lang(project: Project, target_lang: Language | CustomLanguage) -> None:
     if target_lang not in project._get_target_languages():
         raise CorrectTranslationError(
             TargetLanguageNotInProjectError(f"Cannot correct translation: Target language {target_lang} not in project."))
@@ -149,7 +149,7 @@ def correct_translation_single_file(project: Project, file_path_str: str) -> Non
     _correct_translation_file(project, file_path, target_lang)
 
 
-def sync_translation_cache(project: Project, target_lang: Language | None = None) -> None:
+def sync_translation_cache(project: Project, target_lang: Language | CustomLanguage | None = None) -> None:
     source_language = project._get_source_language()
     if source_language is None:
         raise TranslationCacheSyncError("Cannot sync translation cache: Source language is not set.")
@@ -291,7 +291,7 @@ def _resolve_relative_cache_path(project: Project, file_path_str: str) -> str:
 
 def clear_translation_cache_all(
     project: Project,
-    lang: Language | None,
+    lang: Language | CustomLanguage | None,
     file_path_str: str | None,
     keyword: str | None,
 ) -> CacheDeleteStats:
@@ -414,5 +414,5 @@ async def translate_all_for_language(
     print(f"Finished translation to {target_lang.value}.")
 
 
-def diff(project: Project, txt: str, lang: Language) -> tuple[str, float]:
+def diff(project: Project, txt: str, lang: Language | CustomLanguage) -> tuple[str, float]:
     return TranslationCacheCsv(project.root_path).get_best_match_from_cache(lang, txt)
