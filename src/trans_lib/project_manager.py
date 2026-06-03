@@ -8,7 +8,7 @@ from typing import List, Optional, TYPE_CHECKING
 from loguru import logger
 from unified_model_caller import LLMCaller
 
-from .enums import Language
+from .enums import Language, CustomLanguage
 from .project_config_models import ProjectConfig, LangDir
 from .project_config_io import (
     load_project_config,
@@ -78,7 +78,7 @@ class Project:
     def paths_normalized_on_load(self) -> bool:
         return self._normalized_paths_on_load
 
-    def _get_source_language(self) -> Optional[Language]:
+    def _get_source_language(self) -> Optional[str]:
         if self.config.src_dir:
             return self.config.src_dir.language
         return None
@@ -86,7 +86,7 @@ class Project:
     def _get_target_language_dirs(self) -> List[LangDir]:
         return self.config.get_lang_dirs()
 
-    def _get_target_languages(self) -> List[Language]:
+    def _get_target_languages(self) -> List[str]:
         return [ld.language for ld in self.config.lang_dirs]
     
     def get_source_langugage(self) -> Language:
@@ -123,7 +123,7 @@ class Project:
              raise SetSourceDirError(AnalyzeDirError(f"Unexpected error setting source directory: {e}", e))
 
 
-    def add_target_language(self, lang: Language, tgt_dir: Path | None = None) -> Path:
+    def add_target_language(self, lang: Language | CustomLanguage, tgt_dir: Path | None = None) -> Path:
         """
         Adds a target language to the project.
 
