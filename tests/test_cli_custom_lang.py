@@ -1,0 +1,87 @@
+import pytest
+from pathlib import Path
+from typer.testing import CliRunner
+
+from cli import app
+from trans_lib.project_manager import init_project
+from trans_lib.enums import Language
+
+runner = CliRunner()
+
+
+@pytest.fixture
+def project(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    return init_project("proj", str(tmp_path))
+
+
+# --- add-lang ---
+
+def test_cli_add_lang_success(project, tmp_path):
+    result = runner.invoke(app, ["add-lang", "Catalan", "_ca"])
+    assert result.exit_code == 0
+    assert "Catalan" in result.output
+
+    from trans_lib.project_manager import load_project
+    reloaded = load_project(str(tmp_path))
+    assert "Catalan" in reloaded.config.custom_languages
+
+
+def test_cli_add_lang_duplicate_errors(project):
+    runner.invoke(app, ["add-lang", "Catalan", "_ca"])
+    result = runner.invoke(app, ["add-lang", "Catalan", "_ca"])
+    assert result.exit_code == 1
+    assert "already exists" in result.output
+
+
+def test_cli_add_lang_predefined_errors(project):
+    result = runner.invoke(app, ["add-lang", "French", "_fr"])
+    assert result.exit_code == 1
+    assert "predefined" in result.output
+
+
+# --- remove-lang ---
+
+def test_cli_remove_lang_success(project, tmp_path):
+    runner.invoke(app, ["add-lang", "Catalan", "_ca"])
+    result = runner.invoke(app, ["remove-lang", "Catalan"])
+    assert result.exit_code == 0
+    assert "Catalan" in result.output
+
+    from trans_lib.project_manager import load_project
+    reloaded = load_project(str(tmp_path))
+    assert "Catalan" not in reloaded.config.custom_languages
+
+
+def test_cli_remove_lang_not_in_config_errors(project):
+    result = runner.invoke(app, ["remove-lang", "Klingon"])
+    assert result.exit_code == 1
+    assert "not in the config" in result.output
+
+
+def test_cli_remove_lang_predefined_errors(project):
+    result = runner.invoke(app, ["remove-lang", "French"])
+    assert result.exit_code == 1
+    assert "predefined" in result.output
+
+
+def test_cli_remove_lang_with_associated_target_dir_errors(project, tmp_path):
+    from trans_lib.project_manager import load_project
+
+    runner.invoke(app, ["add-lang", "Catalan", "_ca"])
+
+    src_dir = tmp_path / "src_en"
+    tgt_dir = tmp_path / "tgt_ca"
+    src_dir.mkdir()
+    tgt_dir.mkdir()
+
+    # Set up source and target dirs via the reloaded project (so custom_languages is populated)
+    reloaded = load_project(str(tmp_path))
+    catalan = reloaded.config.resolve_language("Catalan")
+    reloaded.config.set_src_dir_config(src_dir, Language.ENGLISH)
+    reloaded.config.add_lang_dir_config(tgt_dir, catalan)
+    reloaded.save_config()
+
+    result = runner.invoke(app, ["remove-lang", "Catalan"])
+    assert result.exit_code == 1
+    assert "associated target directory" in result.output
