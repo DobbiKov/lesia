@@ -76,3 +76,13 @@ class CustomLanguage:
 
     def __str__(self) -> str:
         return self.lang 
+
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, CustomLanguage):
+            return self.lang.lower() == other.lang.lower()
+        if isinstance(other, str):
+            return self.lang.lower() == other.lower()
+        return NotImplemented
+
+    def __hash__(self) -> int:
+        return hash(self.lang.lower())

@@ -88,6 +88,14 @@ class LangDirExistsError(AddLanguageError):
     """The directory for the language already exists."""
     pass
 
+class AddCustomLanguageError(ProjectError):
+    """Errors when adding a custom language to the project."""
+    pass
+
+class RemoveCustomLanguageError(ProjectError):
+    """Errors when removing a custom language from the project."""
+    pass
+
 class RemoveLanguageError(ProjectError):
     """Errors when removing a language."""
     pass

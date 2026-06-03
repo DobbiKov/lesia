@@ -12,6 +12,7 @@ from unified_model_caller import LLMCaller
 from trans_lib.enums import Language
 from trans_lib.project_manager import Project, init_project, load_project
 from trans_lib import errors
+from trans_lib.errors import AddCustomLanguageError, RemoveCustomLanguageError
 from trans_lib.vocab_list import vocab_list_from_vocab_db # Import the errors module
 
 # Create the Typer app
@@ -65,6 +66,37 @@ def init(
         typer.secho(f"Project '{project.config.name}' initialized successfully at {project.root_path}", fg=typer.colors.GREEN)
     except errors.InitProjectError as e:
         typer.secho(f"Error initializing project: {e}", fg=typer.colors.RED, err=True)
+        raise typer.Exit(code=1)
+
+
+@app.command("add-lang")
+def add_custom_language(
+    ctx: typer.Context,
+    name: Annotated[str, typer.Argument(help="Custom language name, e.g. 'Catalan'.")],
+    suffix: Annotated[str, typer.Argument(help="Directory suffix for the language, e.g. '_ca'.")],
+):
+    """Registers a new custom language in the project."""
+    project = get_project_from_context(ctx)
+    try:
+        project.add_custom_language(name, suffix)
+        typer.secho(f"Custom language '{name}' with suffix '{suffix}' added.", fg=typer.colors.GREEN)
+    except AddCustomLanguageError as e:
+        typer.secho(f"Error adding custom language: {e}", fg=typer.colors.RED, err=True)
+        raise typer.Exit(code=1)
+
+
+@app.command("remove-lang")
+def remove_custom_language(
+    ctx: typer.Context,
+    name: Annotated[str, typer.Argument(help="Custom language name to remove, e.g. 'Catalan'.")],
+):
+    """Removes a custom language from the project config."""
+    project = get_project_from_context(ctx)
+    try:
+        project.remove_custom_language(name)
+        typer.secho(f"Custom language '{name}' removed.", fg=typer.colors.GREEN)
+    except RemoveCustomLanguageError as e:
+        typer.secho(f"Error removing custom language: {e}", fg=typer.colors.RED, err=True)
         raise typer.Exit(code=1)
 
 

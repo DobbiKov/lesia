@@ -25,7 +25,8 @@ from .errors import (
     AddLanguageError, NoSourceLanguageError, LangDirExistsError,
     RemoveLanguageError, TargetLanguageNotInProjectError,
     SyncFilesError, NoTargetLanguagesError, CopyFileDirError, AddTranslatableFileError,
-    FileDoesNotExistError, GetTranslatableFilesError
+    FileDoesNotExistError, GetTranslatableFilesError,
+    AddCustomLanguageError, RemoveCustomLanguageError
 )
 
 if TYPE_CHECKING:
@@ -274,6 +275,37 @@ class Project:
             self.save_config()
         except Exception as e:
             raise SetLLMServiceError(f"Error while setting reasoning llm service: {e}")
+
+    def add_custom_language(self, name: str, suffix: str) -> None:
+        """Registers a new custom language in the project config."""
+        try:
+            self.config.add_custom_language(name, suffix)
+            self.save_config()
+        except ValueError as e:
+            raise AddCustomLanguageError(str(e))
+
+    def remove_custom_language(self, name: str) -> None:
+        """Removes a custom language from the project config."""
+        normalized = name.strip()
+        try:
+            Language.from_str(normalized)
+            raise RemoveCustomLanguageError(f"'{normalized}' is a predefined language and cannot be removed.")
+        except ValueError as e:
+            if "predefined" in str(e):
+                raise RemoveCustomLanguageError(str(e))
+        if normalized not in self.config.custom_languages:
+            raise RemoveCustomLanguageError(f"Custom language '{normalized}' is not in the config.")
+        target_dir = self.config.get_target_dir_path_by_lang(normalized)
+        if target_dir is not None:
+            raise RemoveCustomLanguageError(
+                f"Cannot remove '{normalized}': it has an associated target directory '{target_dir}'. "
+                "Remove the target language first with 'remove-target'."
+            )
+        try:
+            self.config.remove_custom_language(normalized)
+            self.save_config()
+        except ValueError as e:
+            raise RemoveCustomLanguageError(str(e))
 
     def set_typst_translatable_string_args_for_function(
         self,
