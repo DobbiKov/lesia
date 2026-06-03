@@ -98,7 +98,7 @@ class Project:
             raise NoSourceLanguageError
         return res
 
-    def set_source_directory(self, dir_name: str, lang: Language) -> None:
+    def set_source_directory(self, dir_name: str, lang: Language | CustomLanguage) -> None:
         """Sets the source directory for translations."""
         source_dir_path = self.root_path / dir_name
         if not source_dir_path.exists():

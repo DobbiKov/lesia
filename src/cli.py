@@ -102,15 +102,20 @@ def remove_custom_language(
 
 @app.command("set-source")
 def set_source_dir(
-    ctx: typer.Context, # For getting loaded project
+    ctx: typer.Context,
     dir_name: Annotated[str, typer.Argument(help="Name of the source directory (relative to project root).")],
-    lang: Annotated[Language, typer.Argument(help="Source language.", case_sensitive=False)] # Typer handles Enum conversion
+    lang: Annotated[str, typer.Argument(help="Source language (predefined or custom).", case_sensitive=False)],
 ):
     """Sets or changes the source directory and its language."""
     project = get_project_from_context(ctx)
     try:
-        project.set_source_directory(dir_name, lang)
-        typer.secho(f"Source directory set to '{dir_name}' with language {lang.value}", fg=typer.colors.GREEN)
+        resolved_lang = project.config.resolve_language(lang)
+    except ValueError as e:
+        typer.secho(f"Error setting source directory: {e}", fg=typer.colors.RED, err=True)
+        raise typer.Exit(code=1)
+    try:
+        project.set_source_directory(dir_name, resolved_lang)
+        typer.secho(f"Source directory set to '{dir_name}' with language {resolved_lang}", fg=typer.colors.GREEN)
     except errors.SetSourceDirError as e:
         typer.secho(f"Error setting source directory: {e}", fg=typer.colors.RED, err=True)
         raise typer.Exit(code=1)
