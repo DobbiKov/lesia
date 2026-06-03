@@ -236,6 +236,24 @@ def test_cli_cache_clear_custom_language_resolves(project, tmp_path):
     assert "Unknown language" not in (result.output or "")
 
 
+def test_cli_remove_lang_with_associated_source_dir_errors(project, tmp_path):
+    from trans_lib.project_manager import load_project
+
+    runner.invoke(app, ["add-lang", "Catalan", "_ca"])
+
+    src_dir = tmp_path / "src_ca"
+    src_dir.mkdir()
+
+    reloaded = load_project(str(tmp_path))
+    catalan = reloaded.config.resolve_language("Catalan")
+    reloaded.config.set_src_dir_config(src_dir, catalan)
+    reloaded.save_config()
+
+    result = runner.invoke(app, ["remove-lang", "Catalan"])
+    assert result.exit_code == 1
+    assert "source directory" in result.output
+
+
 def test_cli_remove_lang_with_associated_target_dir_errors(project, tmp_path):
     from trans_lib.project_manager import load_project
 
