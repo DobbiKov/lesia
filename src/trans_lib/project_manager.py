@@ -295,6 +295,14 @@ class Project:
                 raise RemoveCustomLanguageError(str(e))
         if normalized not in self.config.custom_languages:
             raise RemoveCustomLanguageError(f"Custom language '{normalized}' is not in the config.")
+        if (
+            self.config.src_dir is not None
+            and self.config.src_dir.language.lower() == normalized.lower()
+        ):
+            raise RemoveCustomLanguageError(
+                f"Cannot remove '{normalized}': it is configured as the source directory language. "
+                "Change or unset the source directory first."
+            )
         target_dir = self.config.get_target_dir_path_by_lang(normalized)
         if target_dir is not None:
             raise RemoveCustomLanguageError(
