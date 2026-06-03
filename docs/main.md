@@ -14,12 +14,14 @@ For a conceptual overview of how the tool works, see the [profound explanation](
 - [Installation](#installation)
 - [Quick start](#quick-start)
 - [Language](#language)
+- [CustomLanguage](#customlanguage)
 - [VocabList](#vocablist)
 - [Module-level functions](#module-level-functions)
   - [init_project](#init_project)
   - [load_project](#load_project)
 - [Project class](#project-class)
   - [Project setup](#project-setup)
+  - [Custom language management](#custom-language-management)
   - [File management](#file-management)
   - [Translation](#translation)
   - [Cache management](#cache-management)
@@ -79,6 +81,20 @@ project.sync_untranslatable_files()
 asyncio.run(project.translate_single_file("analysis_notes_fr/main.tex", Language.ENGLISH, None))
 ```
 
+To use a custom language not in the predefined list:
+
+```python
+# Register the custom language
+project.add_custom_language("Catalan", "_ca")
+
+# Resolve it to a CustomLanguage object for use in other calls
+catalan = project.config.resolve_language("Catalan")
+
+# Use it just like a predefined language
+project.add_target_language(catalan)
+asyncio.run(project.translate_all_for_language(catalan, None))
+```
+
 To work with an existing project, load it from the current directory (searched upward, like `git`):
 
 ```python
@@ -115,6 +131,67 @@ lang = Language.from_str("french")  # Language.FRENCH
 lang = Language.from_str("ENGLISH") # Language.ENGLISH
 ```
 
+> **Note:** All `Project` methods accept both `Language` and `CustomLanguage`. For new code, prefer obtaining languages via `project.config.resolve_language(name)` which returns a `CustomLanguage` and works for both predefined and custom languages uniformly.
+
+---
+
+## CustomLanguage
+
+```python
+from trans_lib.enums import CustomLanguage
+```
+
+`CustomLanguage` is the runtime representation of a language — both predefined and custom. All `Project` methods that accept a language argument accept either a `Language` enum member or a `CustomLanguage` instance.
+
+### Constructor
+
+```python
+CustomLanguage(lang: str, suffix: str)
+```
+
+| Parameter | Description |
+|---|---|
+| `lang` | Display name, e.g. `"Catalan"`. Used as the language identifier in cache files and config. |
+| `suffix` | Directory suffix, e.g. `"_ca"`. Used when auto-creating target directories. |
+
+### Class method
+
+**`CustomLanguage.from_language(lang: Language) -> CustomLanguage`**
+
+Converts a predefined `Language` enum member to a `CustomLanguage` instance.
+
+```python
+cl = CustomLanguage.from_language(Language.FRENCH)
+# cl.get_lang()       == "French"
+# cl.get_dir_suffix() == "_fr"
+```
+
+### Instance methods
+
+```python
+cl.get_lang() -> str         # Returns the display name
+cl.get_dir_suffix() -> str   # Returns the directory suffix
+str(cl)                      # Same as get_lang()
+```
+
+### Equality and hashing
+
+Two `CustomLanguage` instances are equal if their names match case-insensitively. `CustomLanguage` is also equal to a plain `str` with the same name (case-insensitive). It is hashable and safe to use as a dict key.
+
+```python
+CustomLanguage("Catalan", "_ca") == CustomLanguage("catalan", "_ca")  # True
+CustomLanguage("Catalan", "_ca") == "catalan"                          # True
+```
+
+### Obtaining a `CustomLanguage` from the project
+
+The recommended way to get a `CustomLanguage` for a registered language (predefined or custom) is via `ProjectConfig.resolve_language`:
+
+```python
+catalan = project.config.resolve_language("Catalan")
+english = project.config.resolve_language("English")
+```
+
 ---
 
 ## VocabList
@@ -145,8 +222,8 @@ vocab = VocabList(
 ```python
 vocab_list_from_vocab_db(
     db: list[dict],
-    source_lang: Language,
-    target_lang: Language,
+    source_lang: Language | CustomLanguage,
+    target_lang: Language | CustomLanguage,
 ) -> VocabList
 ```
 
@@ -220,7 +297,7 @@ project.config     # ProjectConfig — the loaded configuration model
 #### `set_source_directory`
 
 ```python
-project.set_source_directory(dir_name: str, lang: Language) -> None
+project.set_source_directory(dir_name: str, lang: Language | CustomLanguage) -> None
 ```
 
 Sets (or changes) the source directory and its language. `dir_name` is relative to `project.root_path`. The directory must already exist. Calling this again with a different directory replaces the previous source.
@@ -230,7 +307,7 @@ Sets (or changes) the source directory and its language. `dir_name` is relative 
 #### `add_target_language`
 
 ```python
-project.add_target_language(lang: Language, tgt_dir: Path | None = None) -> Path
+project.add_target_language(lang: Language | CustomLanguage, tgt_dir: Path | None = None) -> Path
 ```
 
 Adds a target language. Returns the absolute path of the target directory.
@@ -243,7 +320,7 @@ Adds a target language. Returns the absolute path of the target directory.
 #### `remove_target_language`
 
 ```python
-project.remove_target_language(lang: Language) -> None
+project.remove_target_language(lang: Language | CustomLanguage) -> None
 ```
 
 Removes a target language from the configuration and deletes its directory from disk.
@@ -253,12 +330,65 @@ Removes a target language from the configuration and deletes its directory from 
 #### `get_source_langugage`
 
 ```python
-project.get_source_langugage() -> Language
+project.get_source_langugage() -> CustomLanguage
 ```
 
-Returns the source language.
+Returns the source language as a `CustomLanguage` instance (works for both predefined and custom languages).
 
 **Raises:** `NoSourceLanguageError` — if no source language is set.
+
+---
+
+### Custom language management
+
+Custom languages extend the fixed predefined set. Once registered, they are stored in the project config and can be used everywhere a language is accepted.
+
+#### `add_custom_language`
+
+```python
+project.add_custom_language(name: str, suffix: str) -> None
+```
+
+Registers a new custom language. `name` is the display name (e.g. `"Catalan"`); `suffix` is the directory suffix (e.g. `"_ca"`).
+
+```python
+project.add_custom_language("Catalan", "_ca")
+```
+
+**Raises:** `AddCustomLanguageError` — if the name matches a predefined language or is already registered.
+
+#### `remove_custom_language`
+
+```python
+project.remove_custom_language(name: str) -> None
+```
+
+Removes a custom language from the project config.
+
+**Raises:** `RemoveCustomLanguageError` — if the name matches a predefined language, is not registered, or still has an associated target directory (remove the target first with `remove_target_language`).
+
+#### `ProjectConfig.resolve_language`
+
+```python
+project.config.resolve_language(name: str) -> CustomLanguage
+```
+
+Resolves a language name to a `CustomLanguage` instance. Tries predefined languages first, then the custom registry.
+
+```python
+french  = project.config.resolve_language("French")   # predefined
+catalan = project.config.resolve_language("Catalan")  # custom
+```
+
+**Raises:** `ValueError` — if the name is not found in either the predefined list or the custom registry.
+
+#### `ProjectConfig.custom_languages`
+
+```python
+project.config.custom_languages  # dict[str, str]  — name → suffix
+```
+
+Read-only dict of all registered custom languages. Persisted to `config.json` under the `custom_languages` key.
 
 ---
 
@@ -312,7 +442,7 @@ export LLM_API_KEY=<your_api_key>
 ```python
 await project.translate_single_file(
     file_path_str: str,
-    target_lang: Language,
+    target_lang: Language | CustomLanguage,
     vocab_list: VocabList | None,
 ) -> None
 ```
@@ -322,6 +452,10 @@ Translates one file into `target_lang`. The file must be marked as translatable.
 ```python
 import asyncio
 asyncio.run(project.translate_single_file("notes_fr/main.tex", Language.ENGLISH, None))
+
+# With a custom language:
+catalan = project.config.resolve_language("Catalan")
+asyncio.run(project.translate_single_file("notes_fr/main.tex", catalan, None))
 ```
 
 **Raises:** `TranslateFileError` — if the file is not marked as translatable, the language is not configured, or translation fails unrecoverably.
@@ -330,7 +464,7 @@ asyncio.run(project.translate_single_file("notes_fr/main.tex", Language.ENGLISH,
 
 ```python
 await project.translate_all_for_language(
-    target_lang: Language,
+    target_lang: Language | CustomLanguage,
     vocab_list: VocabList | None,
 ) -> None
 ```
@@ -348,7 +482,7 @@ The translation cache stores source-to-translation pairs on disk to avoid redund
 #### `sync_translation_cache`
 
 ```python
-project.sync_translation_cache(target_lang: Language | None = None) -> None
+project.sync_translation_cache(target_lang: Language | CustomLanguage | None = None) -> None
 ```
 
 Rebuilds the translation cache by scanning on-disk source and target file pairs. Run this after manually editing translated files so that future translations reuse your corrected text instead of regenerating from the LLM.
@@ -360,7 +494,7 @@ If `target_lang` is `None`, all configured target languages are synced.
 #### `correct_translation_for_lang`
 
 ```python
-project.correct_translation_for_lang(target_lang: Language) -> None
+project.correct_translation_for_lang(target_lang: Language | CustomLanguage) -> None
 ```
 
 Reads translated files on disk for the given language and updates the cache to reflect any manual corrections.
@@ -389,7 +523,7 @@ Removes cache entries that reference chunk files no longer present on disk. Also
 
 ```python
 project.clear_translation_cache_all(
-    lang: Language | None,
+    lang: Language | CustomLanguage | None,
     file_path_str: str | None,
     keyword: str | None,
 )
@@ -509,6 +643,8 @@ DirectoryTranslationError
     ├── LangAlreadyInProjectError
     ├── AddLanguageError
     │   └── LangDirExistsError
+    ├── AddCustomLanguageError
+    ├── RemoveCustomLanguageError
     ├── NoSourceLanguageError
     ├── RemoveLanguageError
     │   └── TargetLanguageNotInProjectError

@@ -30,6 +30,7 @@ Extended abstract about the project: [link](https://dobbikov.github.io/sci-trans
 - [Command reference](#command-reference)
     - [Global options](#global-options)
     - [Project management](#project-management)
+    - [Custom languages](#custom-languages)
     - [File management](#file-management)
     - [Translation](#translation)
         - [--use-reasoning-model](#--use-reasoning-model)
@@ -300,10 +301,11 @@ Initializes a new translation project in the given directory (default: current d
 lesia set-source <dir_name> <language>
 ```
 
-Sets (or changes) the source directory and its language. `dir_name` is relative to the project root.
+Sets (or changes) the source directory and its language. `dir_name` is relative to the project root. `language` can be a predefined language name (e.g. `French`) or any custom language previously registered with `add-lang`.
 
 ```
 lesia set-source analysis_notes_fr french
+lesia set-source analysis_notes_ca catalan
 ```
 
 #### `set-target`
@@ -312,10 +314,11 @@ lesia set-source analysis_notes_fr french
 lesia set-target <dir_name> <language>
 ```
 
-Registers an existing directory as the target for a language.
+Registers an existing directory as the target for a language. `language` can be a predefined language name or any custom language previously registered with `add-lang`.
 
 ```
 lesia set-target analysis_notes_en english
+lesia set-target analysis_notes_ca catalan
 ```
 
 #### `remove-target`
@@ -324,10 +327,11 @@ lesia set-target analysis_notes_en english
 lesia remove-target <language>
 ```
 
-Removes a target language from the project configuration and deletes its directory from disk.
+Removes a target language from the project configuration and deletes its directory from disk. Accepts predefined or custom language names.
 
 ```
 lesia remove-target english
+lesia remove-target catalan
 ```
 
 #### `info`
@@ -345,6 +349,48 @@ lesia sync
 ```
 
 Copies all untranslatable files from the source directory to every target directory, mirroring the subdirectory structure. Run this before building the translated project (e.g. with LaTeX) to ensure all assets are present.
+
+---
+
+### Custom languages
+
+By default, lesia supports a fixed set of predefined languages (`French`, `English`, `German`, `Spanish`, `Ukrainian`, `Armenian`). Custom languages let you work with any language not in this list — you register them in the project config with a name and a directory suffix, and then use them everywhere a language name is accepted (`set-source`, `set-target`, `remove-target`, `translate file`, `translate all`, `cache clear --lang`).
+
+Custom languages are stored in the project config and are therefore shared with anyone who clones the repository.
+
+#### `add-lang`
+
+```
+lesia add-lang <name> <suffix>
+```
+
+Registers a new custom language in the project. `name` is the display name used in all other commands; `suffix` is the directory suffix used when creating target directories automatically (e.g. `_ca` produces `<project_name>_ca`).
+
+```
+lesia add-lang Catalan _ca
+lesia add-lang Basque _eu
+```
+
+**Errors:**
+- The name matches a predefined language → error.
+- The name is already registered as a custom language → error.
+
+#### `remove-lang`
+
+```
+lesia remove-lang <name>
+```
+
+Removes a custom language from the project config.
+
+```
+lesia remove-lang Catalan
+```
+
+**Errors:**
+- The name matches a predefined language → error (predefined languages cannot be removed).
+- The name is not in the config → error.
+- The language still has an associated target directory configured → error. Remove the target first with `remove-target <name>`.
 
 ---
 
@@ -394,11 +440,11 @@ Translation commands require `LLM_API_KEY` to be set in the environment.
 lesia translate file <file_path> <language> [--vocabulary <csv_path>] [--use-reasoning-model]
 ```
 
-Translates a single file to the specified target language. The file must be marked as translatable.
+Translates a single file to the specified target language. The file must be marked as translatable. `language` accepts predefined or custom language names.
 
 ```
 lesia translate file analysis_notes_fr/main.tex english
-lesia translate file analysis_notes_fr/main.tex english --vocabulary vocab.csv
+lesia translate file analysis_notes_fr/main.tex catalan --vocabulary vocab.csv
 lesia translate file analysis_notes_fr/main.tex english --use-reasoning-model
 ```
 
@@ -408,11 +454,11 @@ lesia translate file analysis_notes_fr/main.tex english --use-reasoning-model
 lesia translate all <language> [--vocabulary <csv_path>] [--use-reasoning-model]
 ```
 
-Translates all translatable files to the specified language.
+Translates all translatable files to the specified language. `language` accepts predefined or custom language names.
 
 ```
 lesia translate all english
-lesia translate all german --vocabulary vocab.csv
+lesia translate all catalan --vocabulary vocab.csv
 lesia translate all english --use-reasoning-model
 ```
 
@@ -455,7 +501,7 @@ Cleans up cache entries. Exactly one action flag is required: `--missing-chunks`
 **Rules and constraints:**
 - `--lang`, `--file`, and `--keyword` only work with `--all`.
 - `--keyword` cannot be combined with `--missing-chunks`.
-- Language names are case-insensitive.
+- Language names are case-insensitive and accept predefined or custom language names.
 - `--file` expects a project file path (the same path used with `translate file`).
 
 **What `--missing-chunks` does:**
