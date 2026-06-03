@@ -3,7 +3,7 @@ from pathlib import Path
 from typer.testing import CliRunner
 
 from cli import app
-from trans_lib.project_manager import init_project
+from trans_lib.project_manager import init_project, load_project
 from trans_lib.enums import Language
 
 runner = CliRunner()
@@ -63,6 +63,52 @@ def test_cli_remove_lang_predefined_errors(project):
     result = runner.invoke(app, ["remove-lang", "French"])
     assert result.exit_code == 1
     assert "predefined" in result.output
+
+
+# --- set-target with custom languages ---
+
+def test_cli_set_target_with_predefined_language(project, tmp_path):
+    src_dir = tmp_path / "src_en"
+    tgt_dir = tmp_path / "tgt_fr"
+    src_dir.mkdir()
+    tgt_dir.mkdir()
+    runner.invoke(app, ["set-source", "src_en", "English"])
+
+    result = runner.invoke(app, ["set-target", "tgt_fr", "French"])
+    assert result.exit_code == 0
+    assert "French" in result.output
+
+    reloaded = load_project(str(tmp_path))
+    assert reloaded.config.get_target_dir_path_by_lang(Language.FRENCH) == tgt_dir.resolve()
+
+
+def test_cli_set_target_with_custom_language(project, tmp_path):
+    src_dir = tmp_path / "src_en"
+    tgt_dir = tmp_path / "tgt_ca"
+    src_dir.mkdir()
+    tgt_dir.mkdir()
+    runner.invoke(app, ["set-source", "src_en", "English"])
+    runner.invoke(app, ["add-lang", "Catalan", "_ca"])
+
+    result = runner.invoke(app, ["set-target", "tgt_ca", "Catalan"])
+    assert result.exit_code == 0
+    assert "Catalan" in result.output
+
+    reloaded = load_project(str(tmp_path))
+    catalan = reloaded.config.resolve_language("Catalan")
+    assert reloaded.config.get_target_dir_path_by_lang(catalan) == tgt_dir.resolve()
+
+
+def test_cli_set_target_unknown_language_errors(project, tmp_path):
+    src_dir = tmp_path / "src_en"
+    tgt_dir = tmp_path / "tgt_kl"
+    src_dir.mkdir()
+    tgt_dir.mkdir()
+    runner.invoke(app, ["set-source", "src_en", "English"])
+
+    result = runner.invoke(app, ["set-target", "tgt_kl", "Klingon"])
+    assert result.exit_code == 1
+    assert "Unknown language" in result.output
 
 
 def test_cli_remove_lang_with_associated_target_dir_errors(project, tmp_path):
