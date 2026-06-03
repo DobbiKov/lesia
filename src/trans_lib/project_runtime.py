@@ -355,7 +355,7 @@ async def translate_single_file(
     target_file_path = target_dir_root_path / relative_path
     relative_path_str = relative_path.as_posix()
 
-    print(f"Translating {file_path.name} to {target_lang.value} -> {target_file_path}...")
+    print(f"Translating {file_path.name} to {target_lang} -> {target_file_path}...")
     if use_reasoning_model:
         llm_service = project.get_llm_reasoning_service() or project.get_llm_service()
         llm_model = project.get_llm_reasoning_model() or project.get_llm_model()
@@ -401,17 +401,17 @@ async def translate_all_for_language(
 ) -> None:
     translatable_files = project.get_translatable_files()
     if not translatable_files:
-        print(f"No translatable files found for language {target_lang.value}.")
+        print(f"No translatable files found for language {target_lang}.")
         return
 
-    print(f"Starting translation of {len(translatable_files)} files to {target_lang.value}...")
+    print(f"Starting translation of {len(translatable_files)} files to {target_lang}...")
     for i, file_path in enumerate(translatable_files):
         print(f"--- File {i+1}/{len(translatable_files)} ---")
         try:
             await translate_single_file(project, str(file_path), target_lang, vocab_list, use_reasoning_model=use_reasoning_model)
         except TranslateFileError as e:
             print(f"ERROR translating {file_path.name}: {e}. Skipping this file.")
-    print(f"Finished translation to {target_lang.value}.")
+    print(f"Finished translation to {target_lang}.")
 
 
 def diff(project: Project, txt: str, lang: Language | CustomLanguage) -> tuple[str, float]:
