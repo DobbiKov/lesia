@@ -89,14 +89,14 @@ class Project:
     def _get_target_languages(self) -> List[str]:
         return [ld.language for ld in self.config.lang_dirs]
     
-    def get_source_langugage(self) -> Language:
+    def get_source_langugage(self) -> CustomLanguage:
         """
         Returns a source language of the project if such is set, otherwise raises an exception.
         """
         res = self._get_source_language()
         if res is None:
             raise NoSourceLanguageError
-        return res
+        return self.config.resolve_language(res)
 
     def set_source_directory(self, dir_name: str, lang: Language | CustomLanguage) -> None:
         """Sets the source directory for translations."""
@@ -396,14 +396,14 @@ class Project:
     def get_llm_reasoning_model(self) -> Optional[str]:
         return self.config.get_llm_reasoning_model()
 
-    async def translate_single_file(self, file_path_str: str, target_lang: Language, vocab_list: VocabList | None, use_reasoning_model: bool = False) -> None:
+    async def translate_single_file(self, file_path_str: str, target_lang: Language | CustomLanguage, vocab_list: VocabList | None, use_reasoning_model: bool = False) -> None:
         """Translates a single specified file to the target language."""
         from . import project_runtime as _project_runtime
 
         await _project_runtime.translate_single_file(self, file_path_str, target_lang, vocab_list, use_reasoning_model=use_reasoning_model)
 
 
-    async def translate_all_for_language(self, target_lang: Language, vocab_list: VocabList | None, use_reasoning_model: bool = False) -> None:
+    async def translate_all_for_language(self, target_lang: Language | CustomLanguage, vocab_list: VocabList | None, use_reasoning_model: bool = False) -> None:
         """Translates all translatable files to the specified target language."""
         from . import project_runtime as _project_runtime
 

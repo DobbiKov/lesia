@@ -25,18 +25,18 @@ from .errors import (
     TranslationProcessError,
     UntranslatableFileError,
 )
-from .enums import Language
+from .enums import Language, CustomLanguage
 
 if TYPE_CHECKING:
     from .project_manager import Project
     from trans_lib.vocab_list import VocabList
 
 
-def _require_source_language(project: Project) -> Language:
+def _require_source_language(project: Project) -> CustomLanguage:
     source_language = project._get_source_language()
     if source_language is None:
         raise NoSourceLanguageError("No source language set")
-    return source_language
+    return project.config.resolve_language(source_language)
 
 
 def _apply_typst_translation_settings(project: Project) -> None:
@@ -308,7 +308,7 @@ def clear_translation_cache_all(
 async def translate_single_file(
     project: Project,
     file_path_str: str,
-    target_lang: Language,
+    target_lang: Language | CustomLanguage,
     vocab_list: VocabList | None,
     use_reasoning_model: bool = False,
 ) -> None:
@@ -395,7 +395,7 @@ async def translate_single_file(
 
 async def translate_all_for_language(
     project: Project,
-    target_lang: Language,
+    target_lang: Language | CustomLanguage,
     vocab_list: VocabList | None,
     use_reasoning_model: bool = False,
 ) -> None:
