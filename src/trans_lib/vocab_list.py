@@ -1,5 +1,5 @@
 from loguru import logger
-from trans_lib.enums import Language
+from trans_lib.enums import Language, CustomLanguage
 
 
 class VocabList:
@@ -22,7 +22,7 @@ class VocabList:
 
         return res
 
-def vocab_list_from_vocab_db(db: list[dict], source_lang: Language, target_lang: Language) -> VocabList:
+def vocab_list_from_vocab_db(db: list[dict], source_lang: Language | CustomLanguage, target_lang: Language | CustomLanguage) -> VocabList:
     """
     Takes vocabulary list of several languages, extract only needed ones and returns VocabList.
     The db is taken in the next format:
