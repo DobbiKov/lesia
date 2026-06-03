@@ -10,6 +10,7 @@ from trans_lib.translation_cache.cache_backend import (
     read_correspondence_cache,
     write_correspondence_cache,
 )
+from trans_lib.translation_cache.translation_cache import TranslationCacheCsv
 
 
 def _write_chunk(cache_dir: Path, lang: Language, path_hash: str, checksum: str, contents: str) -> None:
@@ -533,3 +534,148 @@ def test_clear_all_keyword_with_file_scopes_deletion(tmp_path: Path) -> None:
     _, data_list = cache_data
     assert len(data_list) == 1
     assert data_list[0][PATH_CHECKSUM_COLUMN] == path_b
+
+
+# --- custom language tests ---
+
+def _make_project_with_custom_lang(tmp_path: Path):
+    """Returns (project, catalan_custom_language) with English source and Catalan target."""
+    project = _make_project(tmp_path)
+    tgt_dir = project.root_path / "tgt_ca"
+    tgt_dir.mkdir(parents=True, exist_ok=True)
+    project.add_custom_language("Catalan", "_ca")
+    catalan = project.config.resolve_language("Catalan")
+    project.config.add_lang_dir_config(tgt_dir, catalan)
+    return project, catalan
+
+
+def test_clear_all_custom_lang_deletes_chunks(tmp_path: Path) -> None:
+    project, catalan = _make_project_with_custom_lang(tmp_path)
+    cache_dir = project.root_path / CONF_DIR / CACHE_DIR_NAME
+    path_hash = calculate_path_checksum("doc.md")
+
+    src_text = "Hello"
+    ca_text = "Hola"
+    src_checksum = calculate_checksum(src_text)
+    ca_checksum = calculate_checksum(ca_text)
+
+    _write_chunk(cache_dir, Language.ENGLISH, path_hash, src_checksum, src_text)
+    _write_chunk(cache_dir, catalan, path_hash, ca_checksum, ca_text)
+
+    write_correspondence_cache(
+        project.root_path,
+        [{PATH_CHECKSUM_COLUMN: path_hash, "English": src_checksum, "Catalan": ca_checksum}],
+        [PATH_CHECKSUM_COLUMN, "English", "Catalan"],
+    )
+
+    stats = project.clear_translation_cache_all(catalan, None, None)
+    assert stats.removed_chunk_files == 1
+    assert not (cache_dir / "Catalan" / path_hash / ca_checksum).exists()
+    assert (cache_dir / "English" / path_hash / src_checksum).exists()
+
+    cache_data = read_correspondence_cache(project.root_path)
+    assert cache_data is not None
+    _, data_list = cache_data
+    assert data_list[0]["Catalan"] == ""
+    assert data_list[0]["English"] == src_checksum
+
+
+def test_clear_all_custom_lang_and_file_clears_intersection(tmp_path: Path) -> None:
+    project, catalan = _make_project_with_custom_lang(tmp_path)
+    cache_dir = project.root_path / CONF_DIR / CACHE_DIR_NAME
+    src_dir = project.config.get_src_dir_path()
+    assert src_dir is not None
+    file_a = src_dir / "a.md"
+    file_b = src_dir / "b.md"
+    file_a.write_text("Alpha", encoding="utf-8")
+    file_b.write_text("Beta", encoding="utf-8")
+
+    path_a = calculate_path_checksum("a.md")
+    path_b = calculate_path_checksum("b.md")
+
+    ca_a_checksum = calculate_checksum("Alfa")
+    ca_b_checksum = calculate_checksum("Bete")
+
+    _write_chunk(cache_dir, catalan, path_a, ca_a_checksum, "Alfa")
+    _write_chunk(cache_dir, catalan, path_b, ca_b_checksum, "Bete")
+
+    write_correspondence_cache(
+        project.root_path,
+        [
+            {PATH_CHECKSUM_COLUMN: path_a, "Catalan": ca_a_checksum},
+            {PATH_CHECKSUM_COLUMN: path_b, "Catalan": ca_b_checksum},
+        ],
+        [PATH_CHECKSUM_COLUMN, "Catalan"],
+    )
+
+    stats = project.clear_translation_cache_all(catalan, str(file_a), None)
+    assert stats.removed_chunk_files == 1
+    assert not (cache_dir / "Catalan" / path_a / ca_a_checksum).exists()
+    assert (cache_dir / "Catalan" / path_b / ca_b_checksum).exists()
+
+    # row for file_a is removed entirely (no other lang columns to preserve it)
+    cache_data = read_correspondence_cache(project.root_path)
+    assert cache_data is not None
+    _, data_list = cache_data
+    assert len(data_list) == 1
+    assert data_list[0][PATH_CHECKSUM_COLUMN] == path_b
+    assert data_list[0]["Catalan"] == ca_b_checksum
+
+
+def test_clear_all_custom_lang_keyword_scopes_deletion(tmp_path: Path) -> None:
+    project, catalan = _make_project_with_custom_lang(tmp_path)
+    cache_dir = project.root_path / CONF_DIR / CACHE_DIR_NAME
+    path_hash = calculate_path_checksum("doc.md")
+
+    ca_text = "Hola keyword"
+    ca_checksum = calculate_checksum(ca_text)
+    _write_chunk(cache_dir, catalan, path_hash, ca_checksum, ca_text)
+
+    write_correspondence_cache(
+        project.root_path,
+        [{PATH_CHECKSUM_COLUMN: path_hash, "Catalan": ca_checksum}],
+        [PATH_CHECKSUM_COLUMN, "Catalan"],
+    )
+
+    stats = project.clear_translation_cache_all(catalan, None, "keyword")
+    assert stats.removed_chunk_files == 1
+    assert stats.cleared_fields == 1
+    assert not (cache_dir / "Catalan" / path_hash / ca_checksum).exists()
+
+    # row is removed entirely — Catalan was the only language column
+    cache_data = read_correspondence_cache(project.root_path)
+    assert cache_data is not None
+    _, data_list = cache_data
+    assert data_list == []
+
+
+def test_diff_custom_language(tmp_path: Path) -> None:
+    """diff searches the given language's cache dir — exact match yields score 1.0."""
+    project, catalan = _make_project_with_custom_lang(tmp_path)
+    store = TranslationCacheCsv(project.root_path)
+
+    src_text = "Hello world"
+    ca_text = "Hola món"
+    src_checksum = calculate_checksum(src_text)
+    ca_checksum = calculate_checksum(ca_text)
+    store.persist_pair(src_checksum, ca_checksum, Language.ENGLISH, catalan, src_text, ca_text, "doc.md")
+
+    result_txt, score = project.diff(ca_text, catalan)
+    assert score == 1.0
+    assert result_txt == ca_text
+
+
+def test_diff_custom_language_partial_match(tmp_path: Path) -> None:
+    """diff returns a sub-1.0 score for a near-miss query against the cached Catalan chunk."""
+    project, catalan = _make_project_with_custom_lang(tmp_path)
+    store = TranslationCacheCsv(project.root_path)
+
+    src_text = "Hello world"
+    ca_text = "Hola món"
+    src_checksum = calculate_checksum(src_text)
+    ca_checksum = calculate_checksum(ca_text)
+    store.persist_pair(src_checksum, ca_checksum, Language.ENGLISH, catalan, src_text, ca_text, "doc.md")
+
+    result_txt, score = project.diff("Hola", catalan)
+    assert 0.0 < score < 1.0
+    assert result_txt == ca_text

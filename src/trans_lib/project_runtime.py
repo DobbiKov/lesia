@@ -25,18 +25,18 @@ from .errors import (
     TranslationProcessError,
     UntranslatableFileError,
 )
-from .enums import Language
+from .enums import Language, CustomLanguage
 
 if TYPE_CHECKING:
     from .project_manager import Project
     from trans_lib.vocab_list import VocabList
 
 
-def _require_source_language(project: Project) -> Language:
+def _require_source_language(project: Project) -> CustomLanguage:
     source_language = project._get_source_language()
     if source_language is None:
         raise NoSourceLanguageError("No source language set")
-    return source_language
+    return project.config.resolve_language(source_language)
 
 
 def _apply_typst_translation_settings(project: Project) -> None:
@@ -47,14 +47,14 @@ def _apply_typst_translation_settings(project: Project) -> None:
     )
 
 
-def _get_target_dir_config(project: Project, target_lang: Language):
+def _get_target_dir_config(project: Project, target_lang: Language | CustomLanguage):
     for lang_dir in project.config.lang_dirs:
         if lang_dir.language == target_lang:
             return lang_dir
     return None
 
 
-def _correct_translation_file(project: Project, target_path: Path, target_lang: Language) -> None:
+def _correct_translation_file(project: Project, target_path: Path, target_lang: Language | CustomLanguage) -> None:
     print(f"Verifying {target_path.name} for the corrected translations ...")
     source_language = _require_source_language(project)
 
@@ -81,7 +81,7 @@ def _correct_translation_file(project: Project, target_path: Path, target_lang: 
         raise CorrectTranslationError(f"IO error during correction of {target_path.name}: {e}", e)
 
 
-def correct_translation_for_lang(project: Project, target_lang: Language) -> None:
+def correct_translation_for_lang(project: Project, target_lang: Language | CustomLanguage) -> None:
     if target_lang not in project._get_target_languages():
         raise CorrectTranslationError(
             TargetLanguageNotInProjectError(f"Cannot correct translation: Target language {target_lang} not in project."))
@@ -149,7 +149,7 @@ def correct_translation_single_file(project: Project, file_path_str: str) -> Non
     _correct_translation_file(project, file_path, target_lang)
 
 
-def sync_translation_cache(project: Project, target_lang: Language | None = None) -> None:
+def sync_translation_cache(project: Project, target_lang: Language | CustomLanguage | None = None) -> None:
     source_language = project._get_source_language()
     if source_language is None:
         raise TranslationCacheSyncError("Cannot sync translation cache: Source language is not set.")
@@ -291,7 +291,7 @@ def _resolve_relative_cache_path(project: Project, file_path_str: str) -> str:
 
 def clear_translation_cache_all(
     project: Project,
-    lang: Language | None,
+    lang: Language | CustomLanguage | None,
     file_path_str: str | None,
     keyword: str | None,
 ) -> CacheDeleteStats:
@@ -308,7 +308,7 @@ def clear_translation_cache_all(
 async def translate_single_file(
     project: Project,
     file_path_str: str,
-    target_lang: Language,
+    target_lang: Language | CustomLanguage,
     vocab_list: VocabList | None,
     use_reasoning_model: bool = False,
 ) -> None:
@@ -355,7 +355,7 @@ async def translate_single_file(
     target_file_path = target_dir_root_path / relative_path
     relative_path_str = relative_path.as_posix()
 
-    print(f"Translating {file_path.name} to {target_lang.value} -> {target_file_path}...")
+    print(f"Translating {file_path.name} to {target_lang} -> {target_file_path}...")
     if use_reasoning_model:
         llm_service = project.get_llm_reasoning_service() or project.get_llm_service()
         llm_model = project.get_llm_reasoning_model() or project.get_llm_model()
@@ -395,24 +395,24 @@ async def translate_single_file(
 
 async def translate_all_for_language(
     project: Project,
-    target_lang: Language,
+    target_lang: Language | CustomLanguage,
     vocab_list: VocabList | None,
     use_reasoning_model: bool = False,
 ) -> None:
     translatable_files = project.get_translatable_files()
     if not translatable_files:
-        print(f"No translatable files found for language {target_lang.value}.")
+        print(f"No translatable files found for language {target_lang}.")
         return
 
-    print(f"Starting translation of {len(translatable_files)} files to {target_lang.value}...")
+    print(f"Starting translation of {len(translatable_files)} files to {target_lang}...")
     for i, file_path in enumerate(translatable_files):
         print(f"--- File {i+1}/{len(translatable_files)} ---")
         try:
             await translate_single_file(project, str(file_path), target_lang, vocab_list, use_reasoning_model=use_reasoning_model)
         except TranslateFileError as e:
             print(f"ERROR translating {file_path.name}: {e}. Skipping this file.")
-    print(f"Finished translation to {target_lang.value}.")
+    print(f"Finished translation to {target_lang}.")
 
 
-def diff(project: Project, txt: str, lang: Language) -> tuple[str, float]:
+def diff(project: Project, txt: str, lang: Language | CustomLanguage) -> tuple[str, float]:
     return TranslationCacheCsv(project.root_path).get_best_match_from_cache(lang, txt)

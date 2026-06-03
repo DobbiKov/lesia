@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from trans_lib.enums import Language
+from trans_lib.enums import CustomLanguage, Language
 from trans_lib.project_config_models import LangDir, ProjectConfig
 from trans_lib.project_config_io import write_project_config
 from trans_lib.project_manager import load_project
@@ -140,6 +140,192 @@ def test_load_project_rewrites_config_file(tmp_path):
 
     contents = json.loads(config_path.read_text(encoding="utf-8"))
     assert contents["src_dir"]["path"] == "src"
+
+
+def test_custom_language_equality():
+    a = CustomLanguage("Catalan", "_ca")
+    b = CustomLanguage("catalan", "_ca")
+    assert a == b
+    assert hash(a) == hash(b)
+    assert a == "Catalan"
+    assert a == "catalan"
+    assert a != CustomLanguage("Spanish", "_es")
+
+
+def test_add_and_resolve_custom_language():
+    config = ProjectConfig.new(project_name="proj")
+    config.add_custom_language("Catalan", "_ca")
+
+    lang = config.resolve_language("Catalan")
+    assert lang == CustomLanguage("Catalan", "_ca")
+    assert lang.get_dir_suffix() == "_ca"
+
+
+def test_resolve_predefined_language():
+    config = ProjectConfig.new(project_name="proj")
+    lang = config.resolve_language("French")
+    assert lang == CustomLanguage("French", "_fr")
+    assert lang.get_dir_suffix() == "_fr"
+
+
+def test_resolve_unknown_language_raises():
+    config = ProjectConfig.new(project_name="proj")
+    with pytest.raises(ValueError, match="Unknown language"):
+        config.resolve_language("Klingon")
+
+
+def test_add_predefined_language_as_custom_raises():
+    config = ProjectConfig.new(project_name="proj")
+    with pytest.raises(ValueError, match="already a predefined"):
+        config.add_custom_language("French", "_fr")
+
+
+def test_remove_custom_language():
+    config = ProjectConfig.new(project_name="proj")
+    config.add_custom_language("Catalan", "_ca")
+    config.remove_custom_language("Catalan")
+    assert "Catalan" not in config.custom_languages
+    with pytest.raises(ValueError, match="Unknown language"):
+        config.resolve_language("Catalan")
+
+
+def test_add_duplicate_custom_language_raises():
+    config = ProjectConfig.new(project_name="proj")
+    config.add_custom_language("Catalan", "_ca")
+    with pytest.raises(ValueError, match="already exists"):
+        config.add_custom_language("Catalan", "_ca")
+
+
+def test_add_predefined_language_as_custom_via_project_manager(tmp_path):
+    from trans_lib.project_manager import init_project
+    from trans_lib.errors import AddCustomLanguageError
+
+    project = init_project("proj", str(tmp_path))
+    with pytest.raises(AddCustomLanguageError, match="already a predefined"):
+        project.add_custom_language("French", "_fr")
+
+
+def test_add_duplicate_custom_language_via_project_manager(tmp_path):
+    from trans_lib.project_manager import init_project
+    from trans_lib.errors import AddCustomLanguageError
+
+    project = init_project("proj", str(tmp_path))
+    project.add_custom_language("Catalan", "_ca")
+    with pytest.raises(AddCustomLanguageError, match="already exists"):
+        project.add_custom_language("Catalan", "_ca")
+
+
+def test_remove_nonexistent_custom_language_raises():
+    config = ProjectConfig.new(project_name="proj")
+    with pytest.raises(ValueError, match="not found"):
+        config.remove_custom_language("Klingon")
+
+
+def test_remove_custom_language_success(tmp_path):
+    from trans_lib.project_manager import init_project
+    from trans_lib.errors import RemoveCustomLanguageError
+
+    project = init_project("proj", str(tmp_path))
+    project.add_custom_language("Catalan", "_ca")
+    project.remove_custom_language("Catalan")
+    assert "Catalan" not in project.config.custom_languages
+
+
+def test_remove_predefined_language_raises(tmp_path):
+    from trans_lib.project_manager import init_project
+    from trans_lib.errors import RemoveCustomLanguageError
+
+    project = init_project("proj", str(tmp_path))
+    with pytest.raises(RemoveCustomLanguageError, match="predefined"):
+        project.remove_custom_language("French")
+
+
+def test_remove_nonexistent_custom_language_via_project_raises(tmp_path):
+    from trans_lib.project_manager import init_project
+    from trans_lib.errors import RemoveCustomLanguageError
+
+    project = init_project("proj", str(tmp_path))
+    with pytest.raises(RemoveCustomLanguageError, match="not in the config"):
+        project.remove_custom_language("Klingon")
+
+
+def test_remove_custom_language_with_target_dir_raises(tmp_path):
+    from trans_lib.project_manager import init_project
+    from trans_lib.errors import RemoveCustomLanguageError
+
+    project = init_project("proj", str(tmp_path))
+    project.add_custom_language("Catalan", "_ca")
+
+    src_dir = tmp_path / "src_en"
+    tgt_dir = tmp_path / "tgt_ca"
+    src_dir.mkdir()
+    tgt_dir.mkdir()
+
+    catalan = project.config.resolve_language("Catalan")
+    project.config.set_src_dir_config(src_dir, Language.ENGLISH)
+    project.config.add_lang_dir_config(tgt_dir, catalan)
+
+    with pytest.raises(RemoveCustomLanguageError, match="associated target directory"):
+        project.remove_custom_language("Catalan")
+
+
+def test_custom_language_as_source_and_target(tmp_path):
+    root = tmp_path
+    src_dir = root / "src_ca"
+    tgt_dir = root / "tgt_en"
+    src_dir.mkdir()
+    tgt_dir.mkdir()
+
+    config = ProjectConfig.new(project_name="proj")
+    config.set_runtime_root_path(root)
+    config.add_custom_language("Catalan", "_ca")
+
+    catalan = config.resolve_language("Catalan")
+    config.set_src_dir_config(src_dir, catalan)
+    config.add_lang_dir_config(tgt_dir, Language.ENGLISH)
+
+    assert config.src_dir is not None
+    assert config.src_dir.language == "Catalan"
+    assert config.get_src_dir_path() == src_dir.resolve()
+    assert config.get_target_dir_path_by_lang(Language.ENGLISH) == tgt_dir.resolve()
+    assert config.get_target_dir_path_by_lang(catalan) is None
+
+
+def test_custom_language_config_round_trip(tmp_path):
+    root = tmp_path / "proj"
+    src_dir = root / "src_ca"
+    tgt_dir = root / "tgt_en"
+    conf_dir = root / CONF_DIR
+    root.mkdir()
+    src_dir.mkdir()
+    tgt_dir.mkdir()
+    conf_dir.mkdir()
+
+    config = ProjectConfig.new(project_name="proj")
+    config.set_runtime_root_path(root)
+    config.add_custom_language("Catalan", "_ca")
+
+    catalan = config.resolve_language("Catalan")
+    config.set_src_dir_config(src_dir, catalan)
+    config.add_lang_dir_config(tgt_dir, Language.ENGLISH)
+
+    config_path = conf_dir / CONFIG_FILENAME
+    write_project_config(config_path, config)
+
+    # Verify JSON structure
+    contents = json.loads(config_path.read_text(encoding="utf-8"))
+    assert contents["custom_languages"] == {"Catalan": "_ca"}
+    assert contents["src_dir"]["language"] == "Catalan"
+
+    # Reload and verify
+    loaded = load_project(str(root))
+    assert loaded.config.custom_languages == {"Catalan": "_ca"}
+    assert loaded.config.src_dir is not None
+    assert loaded.config.src_dir.language == "Catalan"
+
+    resolved = loaded.config.resolve_language("Catalan")
+    assert resolved.get_dir_suffix() == "_ca"
+    assert loaded.config.get_target_dir_path_by_lang(Language.ENGLISH) == tgt_dir.resolve()
 
 
 def test_typst_translatable_string_args_config_round_trip(tmp_path):

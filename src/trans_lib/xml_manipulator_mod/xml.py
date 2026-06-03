@@ -1,6 +1,31 @@
 import logging
 import xml.etree.ElementTree as ET
 
+
+def verify_placeholders(translated_xml: str, expected_phs: dict[str, str]) -> tuple[list[str], list[str]]:
+    """Check that the translated XML contains exactly the expected <PH> IDs.
+
+    Args:
+        translated_xml: The XML string returned by the LLM.
+        expected_phs: Placeholder map produced before translation (id -> original content).
+
+    Returns:
+        tuple[list[str], list[str]]: (missing_ids, extra_ids) — both empty means OK.
+    """
+    try:
+        root = ET.fromstring(translated_xml)
+    except ET.ParseError:
+        return [], []  # ParseError is handled separately; don't double-report here.
+
+    found_ids = {elem.get("id") for elem in root.iter("PH") if elem.get("id")}
+    expected_ids = set(expected_phs.keys())
+
+    missing = sorted(expected_ids - found_ids, key=lambda x: int(x) if x.isdigit() else x)
+    extra = sorted(found_ids - expected_ids, key=lambda x: int(x) if x.isdigit() else x)
+
+    return missing, extra
+
+
 def reconstruct_from_xml(translated_xml: str, phs: dict[str, str] | None = None) -> str:
     """
     Rebuilds the source document from a translated XML file that uses a

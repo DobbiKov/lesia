@@ -8,7 +8,7 @@ from typing import List, Optional, TYPE_CHECKING
 from loguru import logger
 from unified_model_caller import LLMCaller
 
-from .enums import Language
+from .enums import Language, CustomLanguage
 from .project_config_models import ProjectConfig, LangDir
 from .project_config_io import (
     load_project_config,
@@ -25,7 +25,8 @@ from .errors import (
     AddLanguageError, NoSourceLanguageError, LangDirExistsError,
     RemoveLanguageError, TargetLanguageNotInProjectError,
     SyncFilesError, NoTargetLanguagesError, CopyFileDirError, AddTranslatableFileError,
-    FileDoesNotExistError, GetTranslatableFilesError
+    FileDoesNotExistError, GetTranslatableFilesError,
+    AddCustomLanguageError, RemoveCustomLanguageError
 )
 
 if TYPE_CHECKING:
@@ -77,7 +78,7 @@ class Project:
     def paths_normalized_on_load(self) -> bool:
         return self._normalized_paths_on_load
 
-    def _get_source_language(self) -> Optional[Language]:
+    def _get_source_language(self) -> Optional[str]:
         if self.config.src_dir:
             return self.config.src_dir.language
         return None
@@ -85,19 +86,19 @@ class Project:
     def _get_target_language_dirs(self) -> List[LangDir]:
         return self.config.get_lang_dirs()
 
-    def _get_target_languages(self) -> List[Language]:
+    def _get_target_languages(self) -> List[str]:
         return [ld.language for ld in self.config.lang_dirs]
     
-    def get_source_langugage(self) -> Language:
+    def get_source_langugage(self) -> CustomLanguage:
         """
         Returns a source language of the project if such is set, otherwise raises an exception.
         """
         res = self._get_source_language()
         if res is None:
             raise NoSourceLanguageError
-        return res
+        return self.config.resolve_language(res)
 
-    def set_source_directory(self, dir_name: str, lang: Language) -> None:
+    def set_source_directory(self, dir_name: str, lang: Language | CustomLanguage) -> None:
         """Sets the source directory for translations."""
         source_dir_path = self.root_path / dir_name
         if not source_dir_path.exists():
@@ -122,7 +123,7 @@ class Project:
              raise SetSourceDirError(AnalyzeDirError(f"Unexpected error setting source directory: {e}", e))
 
 
-    def add_target_language(self, lang: Language, tgt_dir: Path | None = None) -> Path:
+    def add_target_language(self, lang: Language | CustomLanguage, tgt_dir: Path | None = None) -> Path:
         """
         Adds a target language to the project.
 
@@ -181,7 +182,7 @@ class Project:
             except Exception as e:
                  raise AddLanguageError(f"Unexpected error adding language {lang}: {e}", e)
 
-    def remove_target_language(self, lang: Language) -> None:
+    def remove_target_language(self, lang: Language | CustomLanguage) -> None:
         """Removes a target language and its directory."""
         target_dir_path = self.config.get_target_dir_path_by_lang(lang)
         if not target_dir_path:
@@ -275,6 +276,45 @@ class Project:
         except Exception as e:
             raise SetLLMServiceError(f"Error while setting reasoning llm service: {e}")
 
+    def add_custom_language(self, name: str, suffix: str) -> None:
+        """Registers a new custom language in the project config."""
+        try:
+            self.config.add_custom_language(name, suffix)
+            self.save_config()
+        except ValueError as e:
+            raise AddCustomLanguageError(str(e))
+
+    def remove_custom_language(self, name: str) -> None:
+        """Removes a custom language from the project config."""
+        normalized = name.strip()
+        try:
+            Language.from_str(normalized)
+            raise RemoveCustomLanguageError(f"'{normalized}' is a predefined language and cannot be removed.")
+        except ValueError as e:
+            if "predefined" in str(e):
+                raise RemoveCustomLanguageError(str(e))
+        if normalized not in self.config.custom_languages:
+            raise RemoveCustomLanguageError(f"Custom language '{normalized}' is not in the config.")
+        if (
+            self.config.src_dir is not None
+            and self.config.src_dir.language.lower() == normalized.lower()
+        ):
+            raise RemoveCustomLanguageError(
+                f"Cannot remove '{normalized}': it is configured as the source directory language. "
+                "Change or unset the source directory first."
+            )
+        target_dir = self.config.get_target_dir_path_by_lang(normalized)
+        if target_dir is not None:
+            raise RemoveCustomLanguageError(
+                f"Cannot remove '{normalized}': it has an associated target directory '{target_dir}'. "
+                "Remove the target language first with 'remove-target'."
+            )
+        try:
+            self.config.remove_custom_language(normalized)
+            self.save_config()
+        except ValueError as e:
+            raise RemoveCustomLanguageError(str(e))
+
     def set_typst_translatable_string_args_for_function(
         self,
         function_name: str,
@@ -313,7 +353,7 @@ class Project:
                 return file
         return None
 
-    def correct_translation_for_lang(self, target_lang: Language) -> None:
+    def correct_translation_for_lang(self, target_lang: Language | CustomLanguage) -> None:
         """
         Corrects translation (updates the translation cache) for the given language
         """
@@ -329,7 +369,7 @@ class Project:
 
         _project_runtime.correct_translation_single_file(self, file_path_str)
 
-    def sync_translation_cache(self, target_lang: Language | None = None) -> None:
+    def sync_translation_cache(self, target_lang: Language | CustomLanguage | None = None) -> None:
         """Synchronizes the translation cache by scanning on-disk source/target files."""
         from . import project_runtime as _project_runtime
 
@@ -343,7 +383,7 @@ class Project:
 
     def clear_translation_cache_all(
         self,
-        lang: Language | None,
+        lang: Language | CustomLanguage | None,
         file_path_str: str | None,
         keyword: str | None,
     ):
@@ -364,14 +404,14 @@ class Project:
     def get_llm_reasoning_model(self) -> Optional[str]:
         return self.config.get_llm_reasoning_model()
 
-    async def translate_single_file(self, file_path_str: str, target_lang: Language, vocab_list: VocabList | None, use_reasoning_model: bool = False) -> None:
+    async def translate_single_file(self, file_path_str: str, target_lang: Language | CustomLanguage, vocab_list: VocabList | None, use_reasoning_model: bool = False) -> None:
         """Translates a single specified file to the target language."""
         from . import project_runtime as _project_runtime
 
         await _project_runtime.translate_single_file(self, file_path_str, target_lang, vocab_list, use_reasoning_model=use_reasoning_model)
 
 
-    async def translate_all_for_language(self, target_lang: Language, vocab_list: VocabList | None, use_reasoning_model: bool = False) -> None:
+    async def translate_all_for_language(self, target_lang: Language | CustomLanguage, vocab_list: VocabList | None, use_reasoning_model: bool = False) -> None:
         """Translates all translatable files to the specified target language."""
         from . import project_runtime as _project_runtime
 
@@ -379,7 +419,7 @@ class Project:
 
 # TODO: remove this, as it is diff, it must be implemented in the translation, after XML tagging
 # DEBUG!
-    def diff(self, txt: str, lang: Language) -> tuple[str, float]:
+    def diff(self, txt: str, lang: Language | CustomLanguage) -> tuple[str, float]:
         from . import project_runtime as _project_runtime
 
         return _project_runtime.diff(self, txt, lang)

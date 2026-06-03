@@ -8,7 +8,7 @@ from unified_model_caller import LLMCaller
 from pydantic import BaseModel, Field, ConfigDict
 from loguru import logger
 
-from .enums import Language
+from .enums import Language, CustomLanguage
 from .errors import AddTranslatableFileError, NoSourceLanguageError, FileDoesNotExistError
 
 
@@ -58,13 +58,20 @@ class DirectoryModel(BaseModel):
         return list(self.dirs)
 
 
+def _lang_to_str(lang: Language | CustomLanguage) -> str:
+    """Extracts the display name string from a Language enum or CustomLanguage."""
+    if isinstance(lang, CustomLanguage):
+        return lang.get_lang()
+    return str(lang)
+
+
 class LangDir(BaseModel):
     """A master directory for a language."""
-    language: Language
+    language: str  # language display name, e.g. "French" or a custom "Catalan"
     path: Path
     root_path: Path | None = Field(default=None, exclude=True)
 
-    def get_lang(self) -> Language:
+    def get_lang(self) -> str:
         return self.language
 
     def attach_root_path(self, root_path: Path) -> None:
@@ -86,6 +93,8 @@ class ProjectConfig(BaseModel):
     src_dir: Optional[LangDir] = None
     translatable_files: List[Path] = Field(default_factory=list)
     runtime_root_path: Path | None = Field(default=None, exclude=True)
+
+    custom_languages: dict[str, str] = Field(default_factory=dict)
 
     llm_service: str = "google"
     llm_model: str = "gemini-2.0-flash"
@@ -136,37 +145,74 @@ class ProjectConfig(BaseModel):
             for function_name, arg_names in self.typst_translatable_string_args_by_function.items()
         }
 
-    def get_target_dir_path_by_lang(self, lang: Language) -> Optional[Path]:
+    def get_target_dir_path_by_lang(self, lang: Language | CustomLanguage) -> Optional[Path]:
+        lang_str = _lang_to_str(lang)
         for lang_dir_obj in self.lang_dirs:
-            if lang_dir_obj.get_lang() == lang:
+            if lang_dir_obj.get_lang().lower() == lang_str.lower():
                 self._attach_root_if_missing(lang_dir_obj)
                 return lang_dir_obj.get_path()
         return None
 
-
-    def set_src_dir_config(self, dir_path: Path, lang: Language) -> None:
+    def set_src_dir_config(self, dir_path: Path, lang: Language | CustomLanguage) -> None:
         """
         Sets the source directory in the config.
         """
         rel_path = self._relativize_to_runtime_root(dir_path)
-        lang_dir = LangDir(language=lang, path=rel_path)
+        lang_dir = LangDir(language=_lang_to_str(lang), path=rel_path)
         lang_dir.attach_root_path(self._get_runtime_root())
         self.src_dir = lang_dir
 
-    def add_lang_dir_config(self, dir_path: Path, lang: Language) -> None:
+    def add_lang_dir_config(self, dir_path: Path, lang: Language | CustomLanguage) -> None:
         """
         Adds a target language directory to the config.
         """
         rel_path = self._relativize_to_runtime_root(dir_path)
-        lang_dir = LangDir(language=lang, path=rel_path)
+        lang_dir = LangDir(language=_lang_to_str(lang), path=rel_path)
         lang_dir.attach_root_path(self._get_runtime_root())
         self.lang_dirs.append(lang_dir)
 
-    def remove_lang_config(self, lang: Language) -> bool:
+    def remove_lang_config(self, lang: Language | CustomLanguage) -> bool:
         """Removes a language directory from the config. Returns True if removed."""
+        lang_str = _lang_to_str(lang).lower()
         original_len = len(self.lang_dirs)
-        self.lang_dirs = [ld for ld in self.lang_dirs if ld.get_lang() != lang]
+        self.lang_dirs = [ld for ld in self.lang_dirs if ld.get_lang().lower() != lang_str]
         return len(self.lang_dirs) < original_len
+
+    def add_custom_language(self, name: str, suffix: str) -> None:
+        """Registers a custom language in the config."""
+        normalized_name = name.strip()
+        normalized_suffix = suffix.strip()
+        if not normalized_name:
+            raise ValueError("Language name cannot be empty.")
+        if not normalized_suffix:
+            raise ValueError("Language suffix cannot be empty.")
+        try:
+            Language.from_str(normalized_name)
+            raise ValueError(f"'{normalized_name}' is already a predefined language.")
+        except ValueError as e:
+            if "already a predefined" in str(e):
+                raise
+        if normalized_name in self.custom_languages:
+            raise ValueError(f"Custom language '{normalized_name}' already exists.")
+        self.custom_languages[normalized_name] = normalized_suffix
+
+    def remove_custom_language(self, name: str) -> None:
+        """Removes a custom language from the registry."""
+        normalized = name.strip()
+        if normalized not in self.custom_languages:
+            raise ValueError(f"Custom language '{normalized}' not found.")
+        del self.custom_languages[normalized]
+
+    def resolve_language(self, name: str) -> CustomLanguage:
+        """Resolves a language name to a CustomLanguage, checking predefined then custom registry."""
+        try:
+            predefined = Language.from_str(name)
+            return CustomLanguage.from_language(predefined)
+        except ValueError:
+            pass
+        if name in self.custom_languages:
+            return CustomLanguage(name, self.custom_languages[name])
+        raise ValueError(f"Unknown language: '{name}'. Add it via add_custom_language() first.")
             
     def _find_file_and_apply(self, dir_model: DirectoryModel, path: Path, func: Callable[[FileModel], None]) -> bool:
         """
