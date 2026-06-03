@@ -149,6 +149,93 @@ def test_cli_set_target_unknown_language_errors(project, tmp_path):
     assert "Unknown language" in result.output
 
 
+# --- remove-target with custom languages ---
+
+def test_cli_remove_target_with_custom_language(project, tmp_path):
+    src_dir = tmp_path / "src_en"
+    tgt_dir = tmp_path / "tgt_ca"
+    src_dir.mkdir()
+    tgt_dir.mkdir()
+    runner.invoke(app, ["add-lang", "Catalan", "_ca"])
+    runner.invoke(app, ["set-source", "src_en", "English"])
+    runner.invoke(app, ["set-target", "tgt_ca", "Catalan"])
+
+    result = runner.invoke(app, ["remove-target", "Catalan"])
+    assert result.exit_code == 0
+    assert "Catalan" in result.output
+
+    reloaded = load_project(str(tmp_path))
+    catalan = reloaded.config.resolve_language("Catalan")
+    assert reloaded.config.get_target_dir_path_by_lang(catalan) is None
+
+
+def test_cli_remove_target_unknown_language_errors(project, tmp_path):
+    result = runner.invoke(app, ["remove-target", "Klingon"])
+    assert result.exit_code == 1
+    assert "Unknown language" in result.output
+
+
+# --- translate file / translate all with custom languages ---
+
+def _setup_project_with_custom_target(tmp_path):
+    """Helper: project with English source, Catalan target, one translatable file."""
+    src_dir = tmp_path / "src_en"
+    tgt_dir = tmp_path / "tgt_ca"
+    src_dir.mkdir()
+    tgt_dir.mkdir()
+    trans_file = src_dir / "doc.txt"
+    trans_file.write_text("Hello world", encoding="utf-8")
+
+    runner.invoke(app, ["add-lang", "Catalan", "_ca"])
+    runner.invoke(app, ["set-source", "src_en", "English"])
+    runner.invoke(app, ["set-target", "tgt_ca", "Catalan"])
+    runner.invoke(app, ["add", "src_en/doc.txt"])
+    return trans_file
+
+
+def test_cli_translate_file_unknown_language_errors(project, tmp_path):
+    _setup_project_with_custom_target(tmp_path)
+    result = runner.invoke(app, ["translate", "file", "src_en/doc.txt", "Klingon"])
+    assert result.exit_code == 1
+    assert "Unknown language" in result.output
+
+
+def test_cli_translate_all_unknown_language_errors(project, tmp_path):
+    _setup_project_with_custom_target(tmp_path)
+    result = runner.invoke(app, ["translate", "all", "Klingon"])
+    assert result.exit_code == 1
+    assert "Unknown language" in result.output
+
+
+def test_cli_translate_file_custom_language_resolves(project, tmp_path):
+    """Language resolution succeeds — failure is at the LLM call, not 'Unknown language'."""
+    _setup_project_with_custom_target(tmp_path)
+    result = runner.invoke(app, ["translate", "file", "src_en/doc.txt", "Catalan"])
+    assert "Unknown language" not in (result.output or "")
+
+
+def test_cli_translate_all_custom_language_resolves(project, tmp_path):
+    """Language resolution succeeds — failure is at the LLM call, not 'Unknown language'."""
+    _setup_project_with_custom_target(tmp_path)
+    result = runner.invoke(app, ["translate", "all", "Catalan"])
+    assert "Unknown language" not in (result.output or "")
+
+
+# --- cache clear --lang with custom languages ---
+
+def test_cli_cache_clear_unknown_language_errors(project, tmp_path):
+    result = runner.invoke(app, ["cache", "clear", "--all", "--lang", "Klingon"])
+    assert result.exit_code == 1
+    assert "Unknown language" in result.output
+
+
+def test_cli_cache_clear_custom_language_resolves(project, tmp_path):
+    """Language resolution succeeds — clears nothing if cache is empty, no error."""
+    runner.invoke(app, ["add-lang", "Catalan", "_ca"])
+    result = runner.invoke(app, ["cache", "clear", "--all", "--lang", "Catalan"])
+    assert "Unknown language" not in (result.output or "")
+
+
 def test_cli_remove_lang_with_associated_target_dir_errors(project, tmp_path):
     from trans_lib.project_manager import load_project
 
