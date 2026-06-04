@@ -137,6 +137,17 @@ def test_cli_set_target_with_custom_language(project, tmp_path):
     assert reloaded.config.get_target_dir_path_by_lang(catalan) == tgt_dir.resolve()
 
 
+def test_cli_set_target_rejects_source_directory(project, tmp_path):
+    shared_dir = tmp_path / "doc"
+    shared_dir.mkdir()
+    runner.invoke(app, ["set-source", "doc", "French"])
+
+    result = runner.invoke(app, ["set-target", "doc", "English"])
+
+    assert result.exit_code == 1
+    assert "same as the source directory" in result.output
+
+
 def test_cli_set_target_unknown_language_errors(project, tmp_path):
     src_dir = tmp_path / "src_en"
     tgt_dir = tmp_path / "tgt_kl"

@@ -77,6 +77,32 @@ def test_rejects_paths_outside_root(tmp_path):
         config.set_src_dir_config(external, Language.ENGLISH)
 
 
+def test_rejects_target_directory_matching_source(tmp_path):
+    root = tmp_path
+    shared_dir = root / "shared"
+    shared_dir.mkdir()
+
+    config = ProjectConfig.new(project_name="proj")
+    config.set_runtime_root_path(root)
+    config.set_src_dir_config(shared_dir, Language.FRENCH)
+
+    with pytest.raises(ValueError, match="same as the source directory"):
+        config.add_lang_dir_config(shared_dir, Language.ENGLISH)
+
+
+def test_rejects_source_directory_matching_target(tmp_path):
+    root = tmp_path
+    shared_dir = root / "shared"
+    shared_dir.mkdir()
+
+    config = ProjectConfig.new(project_name="proj")
+    config.set_runtime_root_path(root)
+    config.add_lang_dir_config(shared_dir, Language.ENGLISH)
+
+    with pytest.raises(ValueError, match="same as a target directory"):
+        config.set_src_dir_config(shared_dir, Language.FRENCH)
+
+
 def test_normalizes_existing_absolute_entries(tmp_path):
     root = tmp_path / "root"
     root.mkdir()
