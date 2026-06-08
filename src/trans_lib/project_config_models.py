@@ -158,6 +158,7 @@ class ProjectConfig(BaseModel):
         Sets the source directory in the config.
         """
         rel_path = self._relativize_to_runtime_root(dir_path)
+        self._ensure_not_target_dir(rel_path)
         lang_dir = LangDir(language=_lang_to_str(lang), path=rel_path)
         lang_dir.attach_root_path(self._get_runtime_root())
         self.src_dir = lang_dir
@@ -167,6 +168,7 @@ class ProjectConfig(BaseModel):
         Adds a target language directory to the config.
         """
         rel_path = self._relativize_to_runtime_root(dir_path)
+        self._ensure_not_source_dir(rel_path)
         lang_dir = LangDir(language=_lang_to_str(lang), path=rel_path)
         lang_dir.attach_root_path(self._get_runtime_root())
         self.lang_dirs.append(lang_dir)
@@ -356,6 +358,24 @@ class ProjectConfig(BaseModel):
             return resolved_path.relative_to(root)
         except ValueError:
             raise ValueError(f"Path {resolved_path} is not under the project root {root}")
+
+    def _resolve_from_runtime_root(self, path: Path) -> Path:
+        if path.is_absolute():
+            return path.resolve()
+        return (self._get_runtime_root() / path).resolve()
+
+    def _ensure_not_source_dir(self, rel_path: Path) -> None:
+        if not self.src_dir:
+            return
+        if self._resolve_from_runtime_root(rel_path) == self.src_dir.get_path().resolve():
+            raise ValueError("Target directory cannot be the same as the source directory.")
+
+    def _ensure_not_target_dir(self, rel_path: Path) -> None:
+        resolved_path = self._resolve_from_runtime_root(rel_path)
+        for lang_dir in self.lang_dirs:
+            self._attach_root_if_missing(lang_dir)
+            if resolved_path == lang_dir.get_path().resolve():
+                raise ValueError("Source directory cannot be the same as a target directory.")
 
     def _ensure_relative_path(self, path: Path, reference_root: Path) -> Path:
         if not path.is_absolute():
