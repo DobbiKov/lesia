@@ -1,4 +1,4 @@
-# Translate directory library
+# Lesia
 
 A library and a CLI to manage the translation text writing projects (e.g: LaTeX,
 Markdown, Jupyter, MyST, Typst). The library is aimed to simplify and automate
