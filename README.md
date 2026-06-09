@@ -1,4 +1,5 @@
 # Lesia
+[![DOI](https://zenodo.org/badge/991174305.svg)](https://doi.org/10.5281/zenodo.20610934)
 
 A library and a CLI to manage the translation text writing projects (e.g: LaTeX,
 Markdown, Jupyter, MyST, Typst). The library is aimed to simplify and automate
