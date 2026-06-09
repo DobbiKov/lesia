@@ -89,14 +89,15 @@ The profound explanation of the logic and algorithms of the tool can be found [h
 If you use this software in your research or writing, please cite it as follows:
 
 ```bib
-@software{korotenko-sci-trans-git,
-    author = {Yehor Korotenko},
-    title = {sci-trans-git},
-    year = {2025},
-    publisher = {GitHub},
-    version = {0.2.0-alpha},
-    url = {https://github.com/DobbiKov/sci-trans-git},
-    doi = {10.5281/zenodo.15775111}
+@software{korotenko_lesia_2026,
+  author       = {Korotenko, Yehor},
+  title        = {lesia},
+  month        = jun,
+  year         = 2026,
+  publisher    = {Zenodo},
+  version      = {v0.1.7},
+  doi          = {10.5281/zenodo.20610935},
+  url          = {https://doi.org/10.5281/zenodo.20610935}
 }
 ```
 
