@@ -1,92 +1,70 @@
 # Lesia
-[![DOI](https://zenodo.org/badge/991174305.svg)](https://doi.org/10.5281/zenodo.20610934)
+![DOI](https://zenodo.org/badge/991174305.svg)
 
-A library and a CLI to manage the translation text writing projects (e.g: LaTeX,
-Markdown, Jupyter, MyST, Typst). The library is aimed to simplify and automate
-the translation process and compiling of the translated version of the documents.
-
-Read the documentation here: [CLI documentation](./docs/cli.md)
-
-## Credits
-- **Nicolas M. Thiéry** - for supervising this project.
-- **LISN (Université Paris-Saclay)** - for financing the internship and
-  providing workspace.
-- **CentraleSupélec** - for financing the project.
-
-## **Important**
-
-> The library is still in an early phase of development and may have bugs and unimplemented features
-
-## For French users and members of Université Paris-Saclay
-This CLI supports ilaas (French independent LLM service provider) and LLMs on
-MyDocker that any member of Paris-Saclay cluster can access for free.
-
-In order to translate documents on MyDocker open [MyDocker
-docs](https://mydocker.gitlab.dsi.universite-paris-saclay.fr/) and create
-`JupyterLab et Python` instance and you will be able to open jupyter in your
-browser. Then, open terminal (important: in the jupyter tab in web) – you will be able
-to install CLI and translate your document.
-
-For using open-source llms on jupyter: run `lesia set-llm
-aristoteonmydocker <model>` command.
-As of April 24, the next models are availible:
-- gemma-4-31b
-- gpt-oss-120b
-- llama-3.1-8b
-- llama-3.3-70b
-- mistral-medium-250523
-- mistral-small-3.2-24b
-- qwen-3.6-35b-instruct
+## About
+**Lesia** is a tool to help you maintain your multilingual documents that
+integrates easily into your workflow.
 
 ## Features
+- Translate documents easily
+- Preserves syntax (LaTeX/Markdown/MyST/Typst)
+- Learns from your post-edits
+- Preserves terminology (you may provide your vocabulary)
+- Good quality translation
+- Integrates easily in any workflow
+- Easy to use for collaborative use (e.g. git)
+- Supports any LLM of your choice
 
-- [x] Project creation
-- [x] Source language and the source folder to translate setting
-- [x] Target language addition
-- [x] Project files syncing (between languages)
-- [x] Translation cache
-- [x] File translation
-- [x] Translation correction
-
-The profound explanation of the logic and algorithms of the tool can be found [here](./docs/tool-profound-explanation.md)
+## Documentation
+- [Library API reference](./docs/main.md)
+- [CLI documentation](./docs/cli.md)
+- [Architecture and algorithms](./docs/tool-profound-explanation.md)
 
 ## Installation
+1. Make sure you have **uv** installed
+2. Install it via uv `uv tool install lesia`
+3. Verify that it works `lesia --help`
 
-### For CLI usage
-1. Install it with `uv tool install lesia`
-2. Use it: `lesia`
+## Usage
+1. Create a directory dedicated for the project: `mkdir my-dir`
+2. `cd my-dir`
+3. Initialize the project `lesia init`
+4. Create a directory for the documents you want to translate `mkdir -p src/fr`
+    - In this example our source language is French
+5. Move your files to the created source directory `src/fr`
+6. Create directories for target languages `mkdir -p tgt/en`, `mkdir -p tgt/ua`
+7. Associate source and target directories with desired languages
+    ```sh
+    lesia set-source srs/fr french
+    lesia set-target tgt/en english
+    lesia set-target tgt/ua ukrainian
+    ```
+8. Mark files that should be translated `lesia add src/fr/main.md`
+9. Synchronize directories `lesia sync`
+10. Set a model you want to use for translation `lesia set-llm google gemini-3.0-flash`
+11. Set a token (if needed) `export LLM_API_KEY=your-key`
+12. Translate 
+    ```sh
+    lesia translate all english
+    lesia translate all ukrainian
+    ```
+13. Learn more in [the docs](./docs/cli.md)
 
-### For in-project library usage
-
-1. Enter to your project where you want to use this library (`cd <your_project_path>`)
-2. Install the library as a dependency using `pip`: `pip install lesia`
-3. Enjoy!
-
-### For the library development and contribution uses
-
+## Development
 1. Ensure you have [uv](https://docs.astral.sh/uv/#__tabbed_1_1) tool installed
    (visit their site for the installation guide)
 2. Clone the repo: `git clone https://github.com/DobbiKov/lesia`
 3. Enter `cd lesia`
 4. Install dependencies `uv sync`
+5. Install tool from your directory and make it editable `uv tool install -e .`
 5. Enjoy
 
-## Testing 
-1. Install the dependencies using `uv sync`
-2. Run tests: `uv run pytest`
+## Contributing
+The suggestions and pull requests are welcome. 
 
-## Documentation
-
-- [Library API reference](./docs/main.md)
-- [CLI documentation](./docs/cli.md)
-- [Architecture and algorithms](./docs/tool-profound-explanation.md)
-- [Typst parsing and implementation](./docs/typst_parsing_analysis.md)
-
-## ToDo
-
-## 📚 Citation
-
-If you use this software in your research or writing, please cite it as follows:
+## Citation
+If you use this software in your research or writing, please cite it as
+follows:
 
 ```bib
 @software{korotenko_lesia_2026,
@@ -101,9 +79,13 @@ If you use this software in your research or writing, please cite it as follows:
 }
 ```
 
-## Contributing
+## French University Support
+Free access to open-source models via [ILaaS](https://www.ilaas.fr/); no API
+key required for [Paris-Saclay](https://www.universite-paris-saclay.fr/)
+members if running your translations from [MyDocker](https://mydocker.universite-paris-saclay.fr/login).
 
-The suggestions and pull requests are welcome. Visit the issues pages as well
-as the project's [main page](https://github.com/DobbiKov/sci-trans-git) and the
-[shared document](https://codimd.math.cnrs.fr/sUW9PQ1tTLWcR98UjLHLpw) in order
-to know the current direction and plans of the project.
+## Credits
+- **Nicolas M. Thiéry** - for supervising this project.
+- **LISN (Université Paris-Saclay)** - for financing the internship and
+  providing workspace.
+- **CMA SaclAI-School** - for financing the project.
