@@ -1,6 +1,7 @@
 # Lesia
 [![DOI](https://zenodo.org/badge/991174305.svg)](https://doi.org/10.5281/zenodo.20610934)
 [![Tests](https://github.com/DobbiKov/lesia/actions/workflows/tests.yml/badge.svg)](https://github.com/DobbiKov/lesia/actions/workflows/tests.yml)
+[![GitHub Release](https://img.shields.io/github/release/DobbiKov/lesia.svg?style=flat)]()  
 
 ## About
 **Lesia** is a tool to help you maintain your multilingual documents that
