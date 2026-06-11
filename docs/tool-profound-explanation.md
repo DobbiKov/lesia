@@ -79,7 +79,7 @@ analysis_notes/
 │   │   └── ...
 │   └── bib/
 │       └── bib.tex
-├── .translate_dir/
+├── .lesia/
     ├── config.json
     └── translate_cache/
         └── ...
@@ -105,7 +105,7 @@ analysis_notes/
 │   │   └── ...
 │   └── bib/
 │       └── bib.tex
-├── .translate_dir/
+├── .lesia/
     ├── config.json
     └── translate_cache/
         └── ...
@@ -113,7 +113,7 @@ analysis_notes/
 
 ## Project initialization and required settings
 
-When you initialize a project, a `.translate_dir` directory is created that
+When you initialize a project, a `.lesia` directory is created that
 stores a `config.json` configuration file. This file will store:
 
 - the project's name

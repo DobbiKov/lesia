@@ -271,7 +271,7 @@ See the [Translation Cache section](./tool-profound-explanation.md#the-translati
 
 ## Command reference
 
-All commands are run as `lesia <command> [options]`. Commands that operate on a project search upward from the current directory for a `.translate_dir/` folder (like `git` searches for `.git/`).
+All commands are run as `lesia <command> [options]`. Commands that operate on a project search upward from the current directory for a `.lesia/` folder (like `git` searches for `.git/`).
 
 ### Global options
 
@@ -288,7 +288,7 @@ All commands are run as `lesia <command> [options]`. Commands that operate on a 
 lesia init [--name <name>] [--path <path>]
 ```
 
-Initializes a new translation project in the given directory (default: current directory). Creates a `.translate_dir/config.json` file.
+Initializes a new translation project in the given directory (default: current directory). Creates a `.lesia/config.json` file.
 
 | Option | Default | Description |
 |---|---|---|
@@ -580,12 +580,12 @@ Lists all available LLM service names (built-in and custom) that can be used wit
 
 ### Custom LLM services
 
-You can add your own LLM service by placing a Python file in `.translate_dir/services/`. Every `.py` file in that directory (except the template) is loaded automatically whenever a project command runs.
+You can add your own LLM service by placing a Python file in `.lesia/services/`. Every `.py` file in that directory (except the template) is loaded automatically whenever a project command runs.
 
 After `lesia init`, a ready-to-copy template is placed at:
 
 ```
-.translate_dir/services/custom_service_example.py
+.lesia/services/custom_service_example.py
 ```
 
 You can also create a new file from scratch. The only requirement is that it contains a class that inherits from `BaseService` and implements four methods:
@@ -619,7 +619,7 @@ Once the file is saved, run `lesia list-llms` to confirm the service appears, th
 lesia set-llm my-service my-model-name
 ```
 
-The services directory is part of the project (inside `.translate_dir/`), so committing it makes the custom service available to everyone who clones the repository.
+The services directory is part of the project (inside `.lesia/`), so committing it makes the custom service available to everyone who clones the repository.
 
 #### External dependencies
 

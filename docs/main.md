@@ -261,7 +261,7 @@ from trans_lib.project_manager import init_project, load_project
 init_project(project_name: str, root_dir_str: str) -> Project
 ```
 
-Creates a new translation project by writing a `.translate_dir/config.json` file inside `root_dir_str`. The directory must already exist and must not already contain a `.translate_dir` directory.
+Creates a new translation project by writing a `.lesia/config.json` file inside `root_dir_str`. The directory must already exist and must not already contain a `.lesia` directory.
 
 **Raises:** `InitProjectError` — if the path is invalid, does not exist, is not a directory, or a project is already initialized there.
 
@@ -271,7 +271,7 @@ Creates a new translation project by writing a `.translate_dir/config.json` file
 load_project(path_str: str) -> Project
 ```
 
-Loads an existing project. Searches upward from `path_str` for a `.translate_dir` directory (the same strategy `git` uses to find `.git`). Can be called with `"."` from anywhere inside a project tree.
+Loads an existing project. Searches upward from `path_str` for a `.lesia` directory (the same strategy `git` uses to find `.git`). Can be called with `"."` from anywhere inside a project tree.
 
 **Raises:** `LoadProjectError` — if no project is found or the config file cannot be parsed.
 
