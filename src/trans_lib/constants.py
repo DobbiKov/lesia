@@ -6,7 +6,7 @@ CACHE_DIR_NAME = "translate_cache"
 CORRESPONDENCE_CACHE_FILENAME = "correspondence_cache.csv"
 PATH_MAP_FILENAME = "path_checksums.csv"
 
-APP_NAME = "translate_dir"
+APP_NAME = "lesia"
 CONF_DIR = f".{APP_NAME}"
 CUSTOM_SERVICES_DIR_NAME = "services"
 CUSTOM_SERVICES_TEMPLATE_FILENAME = "custom_service_example.py"

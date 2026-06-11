@@ -23,7 +23,7 @@ def test_sync_translation_cache_from_notebook(tmp_path):
     tgt_dir = project_root / "proj_fr"
     src_dir.mkdir(parents=True)
     tgt_dir.mkdir(parents=True)
-    (project_root / ".translate_dir").mkdir(parents=True)
+    (project_root / CONF_DIR).mkdir(parents=True)
 
     source_file = src_dir / "notebook.ipynb"
     target_file = tgt_dir / "notebook.ipynb"
@@ -67,7 +67,7 @@ def test_sync_translation_cache_from_typst(tmp_path):
     tgt_dir = project_root / "proj_fr"
     src_dir.mkdir(parents=True)
     tgt_dir.mkdir(parents=True)
-    (project_root / ".translate_dir").mkdir(parents=True)
+    (project_root / CONF_DIR).mkdir(parents=True)
 
     source_file = src_dir / "lesson.typ"
     target_file = tgt_dir / "lesson.typ"
