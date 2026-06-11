@@ -555,7 +555,7 @@
 
 <!-- HERO -->
 <section class="hero">
-  <div class="hero-badge">v0.1.5 &mdash; Early Beta</div>
+  <div class="hero-badge">v0.1.7 &mdash; Early Beta</div>
   <h1>Translate scientific<br /><span>documents</span> with AI</h1>
   <p>
     Lesia is an open-source Python library and CLI that automates the translation of
@@ -606,29 +606,34 @@
 
   <div class="features-grid">
     <div class="feature-card">
+      <div class="feature-icon">🔒</div>
+      <h3>Format Preservation</h3>
+      <p>The system protects LaTeX commands, Typst syntax, Markdown fences, and code blocks from being altered during translation.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">✏️</div>
+      <h3>Postedits</h3>
+      <p>Your postedits are precious. Cache-aware correction system lets you override specific translations. Your corrections survive subsequent retranslations.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🧑‍💻</div>
+      <h3>Ease of use</h3>
+      <p>Integrates easily into any workflow and allows to collaborate with anyone.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">📖</div>
+      <h3>Terminology preservation</h3>
+      <p>Define domain-specific glossaries to ensure consistent translation of technical terms across your entire project.</p>
+    </div>
+    <div class="feature-card">
       <div class="feature-icon">🗂️</div>
       <h3>Project Management</h3>
-      <p>Initialize and manage translation projects with a <code>.translate_dir</code> config file. Track source and target directories per language.</p>
+      <p>Initialize and manage translation projects with a <code>.lesia</code> config file. Track source and target directories per language.</p>
     </div>
     <div class="feature-card">
       <div class="feature-icon">⚡</div>
       <h3>Smart Translation Cache</h3>
       <p>Persistent on-disk cache with checksum-based deduplication. Never pay for the same translation twice — only changed chunks are re-translated.</p>
-    </div>
-    <div class="feature-card">
-      <div class="feature-icon">🔒</div>
-      <h3>Format Preservation</h3>
-      <p>XML-tagging system protects LaTeX commands, Typst syntax, Markdown fences, and code blocks from being altered during translation.</p>
-    </div>
-    <div class="feature-card">
-      <div class="feature-icon">✏️</div>
-      <h3>Manual Corrections</h3>
-      <p>Cache-aware correction system lets you override specific translations. Your corrections survive subsequent retranslations.</p>
-    </div>
-    <div class="feature-card">
-      <div class="feature-icon">📖</div>
-      <h3>Custom Vocabulary</h3>
-      <p>Define domain-specific glossaries to ensure consistent translation of technical terms across your entire project.</p>
     </div>
     <div class="feature-card">
       <div class="feature-icon">🔄</div>
@@ -643,7 +648,7 @@
     <div class="feature-card">
       <div class="feature-icon">🇫🇷</div>
       <h3>French University Support</h3>
-      <p>Free access to open-source models via MyDocker (Université Paris-Saclay) and iLaaS — no API key required for Paris-Saclay members.</p>
+      <p>Free access to open-source models via ILaaS; no API key required for Paris-Saclay members if running your translations from MyDocker.</p>
     </div>
     <div class="feature-card">
       <div class="feature-icon">🧪</div>
@@ -741,11 +746,6 @@
     <div class="provider-card">
       <div class="provider-icon">✖️</div>
       <div class="provider-name">xAI (Grok)</div>
-      <div class="provider-tag">Supported</div>
-    </div>
-    <div class="provider-card">
-      <div class="provider-icon">🏛️</div>
-      <div class="provider-name">Aristote</div>
       <div class="provider-tag">Supported</div>
     </div>
     <div class="provider-card">
@@ -861,6 +861,7 @@ asyncio.<span class="fn">run</span>(project.<span class="fn">translate_single_fi
     <div class="lang-chip">🇪🇸 Spanish</div>
     <div class="lang-chip">🇺🇦 Ukrainian</div>
     <div class="lang-chip">🇦🇲 Armenian</div>
+    <div class="lang-chip">🌐 Add your own</div>
   </div>
 </section>
 
@@ -873,14 +874,15 @@ asyncio.<span class="fn">run</span>(project.<span class="fn">translate_single_fi
     <div class="divider"></div>
 
     <div class="cite-box">
-      @software{<span class="cite-val">korotenko-sci-trans-git</span>,<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;<span class="cite-key">author</span>    = {<span class="cite-val">Yehor Korotenko</span>},<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;<span class="cite-key">title</span>     = {<span class="cite-val">sci-trans-git</span>},<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;<span class="cite-key">year</span>      = {<span class="cite-val">2025</span>},<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;<span class="cite-key">publisher</span> = {<span class="cite-val">GitHub</span>},<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;<span class="cite-key">version</span>   = {<span class="cite-val">0.2.0-alpha</span>},<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;<span class="cite-key">url</span>       = {<span class="cite-val">https://github.com/DobbiKov/sci-trans-git</span>},<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;<span class="cite-key">doi</span>       = {<span class="cite-val">10.5281/zenodo.15775111</span>}<br/>
+      @software{korotenko_lesia_2026,<br/>
+        &nbsp;&nbsp;&nbsp;&nbsp;<span class="cite-key">author</span>    = {<span class="cite-val">Korotenko, Yehor</span>},<br/>
+        &nbsp;&nbsp;&nbsp;&nbsp;<span class="cite-key">title</span>     = {<span class="cite-val">lesia</span>},<br/>
+        &nbsp;&nbsp;&nbsp;&nbsp;<span class="cite-key">month</span>     = {<span class="cite-val">jun</span>},<br/>
+        &nbsp;&nbsp;&nbsp;&nbsp;<span class="cite-key">year</span>      = {<span class="cite-val">2026</span>},<br/>
+        &nbsp;&nbsp;&nbsp;&nbsp;<span class="cite-key">publisher</span> = {<span class="cite-val">Zenodo</span>},<br/>
+        &nbsp;&nbsp;&nbsp;&nbsp;<span class="cite-key">version</span>   = {<span class="cite-val">v0.1.7</span>},<br/>
+        &nbsp;&nbsp;&nbsp;&nbsp;<span class="cite-key">doi</span>       = {<span class="cite-val">10.5281/zenodo.20610935</span>},<br/>
+        &nbsp;&nbsp;&nbsp;&nbsp;<span class="cite-key">url</span>       = {<span class="cite-val">https://doi.org/10.5281/zenodo.20610935</span>}<br/>
       }
     </div>
   </div>
@@ -895,7 +897,7 @@ asyncio.<span class="fn">run</span>(project.<span class="fn">translate_single_fi
   <div class="footer-credits">
     <span>By <a href="https://github.com/DobbiKov" target="_blank" rel="noopener">Yehor Korotenko</a></span>
     <span>Supervised by Nicolas M. Thiéry</span>
-    <span>Supported by <a href="https://www.lisn.upsaclay.fr/" target="_blank" rel="noopener">LISN</a> &amp; CentraleSupélec</span>
+    <span>Supported by <a href="https://www.lisn.upsaclay.fr/" target="_blank" rel="noopener">LISN</a> &amp; <a href="https://www.dataia.eu/formations/saclai-school" target="_blank" rel="noopener">CMA SaclAI-School</a></span>
   </div>
 </footer>
 
