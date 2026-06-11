@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -10,7 +11,7 @@ from .doc_translator import translate_file_to_file_async
 from .translation_cache.translation_cache import TranslationCacheCsv
 from .translation_cache.cache_cleaner import CacheClearStats, CacheDeleteStats, clear_all, clear_missing_chunks
 from .translation_cache.cache_rebuilder import collect_translation_pairs
-from .helpers import analyze_document_type, calculate_checksum
+from .helpers import analyze_document_type, calculate_checksum, calculate_path_checksum
 from .errors import (
     CorrectTranslationError,
     CorrectingTranslationError,
@@ -25,7 +26,37 @@ from .errors import (
     TranslationProcessError,
     UntranslatableFileError,
 )
-from .enums import Language, CustomLanguage
+from .enums import DocumentType, Language, CustomLanguage
+
+
+@dataclass
+class FileTranslationStatus:
+    relative_path: str
+    total_chunks: int
+    translated_chunks: int
+
+    @property
+    def untranslated_chunks(self) -> int:
+        return self.total_chunks - self.translated_chunks
+
+
+@dataclass
+class LangTranslationStatus:
+    lang: str
+    total_chunks: int
+    translated_chunks: int
+    files: list[FileTranslationStatus] = field(default_factory=list)
+
+    @property
+    def untranslated_chunks(self) -> int:
+        return self.total_chunks - self.translated_chunks
+
+
+@dataclass
+class TranslationStatus:
+    source_lang: str
+    target_langs: list[LangTranslationStatus]
+    never_processed_files: list[str]
 
 if TYPE_CHECKING:
     from .project_manager import Project
@@ -416,3 +447,130 @@ async def translate_all_for_language(
 
 def diff(project: Project, txt: str, lang: Language | CustomLanguage) -> tuple[str, float]:
     return TranslationCacheCsv(project.root_path).get_best_match_from_cache(lang, txt)
+
+
+def _get_source_chunk_texts(file_path: Path, doc_type: DocumentType) -> list[str]:
+    """Returns the text of each translatable chunk in a source file."""
+    try:
+        if doc_type == DocumentType.LaTeX:
+            from .doc_translator_mod.latex_file_translator import get_latex_cells
+            return [c["source"] for c in get_latex_cells(file_path)]
+        elif doc_type == DocumentType.Markdown:
+            from .doc_translator_mod.myst_file_translator import get_myst_cells
+            return [c["source"] for c in get_myst_cells(file_path)]
+        elif doc_type == DocumentType.Typst:
+            from .doc_translator_mod.typst_file_translator import get_typst_cells
+            return [c["source"] for c in get_typst_cells(file_path)]
+        elif doc_type == DocumentType.JupyterNotebook:
+            import jupytext
+            nb = jupytext.read(file_path)
+            return [cell["source"] for cell in nb.cells]
+        else:
+            return [file_path.read_text(encoding="utf-8")]
+    except Exception as e:
+        logger.warning("Could not chunk {}: {}", file_path, e)
+        return []
+
+
+def get_translation_status(project: Project, include_files: bool) -> TranslationStatus:
+    from .translation_cache.cache_backend import read_correspondence_cache, PATH_CHECKSUM_COLUMN
+
+    source_language = project._get_source_language()
+    if source_language is None:
+        raise NoSourceLanguageError("No source language set")
+
+    source_lang_name = str(project.config.resolve_language(source_language))
+    target_langs = [str(project.config.resolve_language(l)) for l in project._get_target_languages()]
+
+    # Build lookup: (src_checksum, path_hash) → {lang_name: tgt_checksum}
+    # This lets us check, for each live source chunk, whether a translation exists.
+    cache_lookup: dict[tuple[str, str], dict[str, str]] = {}
+    cache_data = read_correspondence_cache(project.root_path)
+    if cache_data is not None:
+        fields, data_list = cache_data
+        for row in data_list:
+            path_hash = row.get(PATH_CHECKSUM_COLUMN, "")
+            src_checksum = row.get(source_lang_name, "")
+            if not src_checksum:
+                continue
+            cache_lookup[(src_checksum, path_hash)] = {
+                lang: row.get(lang, "")
+                for lang in target_langs
+                if lang in fields
+            }
+
+    src_dir_path = project.config.get_src_dir_path()
+    if src_dir_path is None:
+        raise NoSourceLanguageError("Source directory is not set")
+
+    try:
+        translatable_files = project.get_translatable_files()
+    except GetTranslatableFilesError:
+        translatable_files = []
+
+    # Accumulators
+    lang_total: dict[str, int] = {lang: 0 for lang in target_langs}
+    lang_translated: dict[str, int] = {lang: 0 for lang in target_langs}
+    # lang → {rel_path → [total, translated]}
+    lang_file_stats: dict[str, dict[str, list[int]]] = {lang: {} for lang in target_langs}
+    never_processed_files: list[str] = []
+
+    for src_file in translatable_files:
+        try:
+            rel_path = src_file.relative_to(src_dir_path).as_posix()
+        except ValueError:
+            continue
+
+        path_hash = calculate_path_checksum(rel_path)
+        doc_type = analyze_document_type(src_file)
+        chunk_texts = _get_source_chunk_texts(src_file, doc_type)
+
+        file_any_cached = False
+
+        for chunk_text in chunk_texts:
+            src_checksum = calculate_checksum(chunk_text)
+            translations = cache_lookup.get((src_checksum, path_hash))
+
+            if translations is not None:
+                file_any_cached = True
+
+            for lang_name in target_langs:
+                lang_total[lang_name] += 1
+                if translations and translations.get(lang_name, ""):
+                    lang_translated[lang_name] += 1
+
+                if include_files:
+                    if rel_path not in lang_file_stats[lang_name]:
+                        lang_file_stats[lang_name][rel_path] = [0, 0]
+                    lang_file_stats[lang_name][rel_path][0] += 1
+                    if translations and translations.get(lang_name, ""):
+                        lang_file_stats[lang_name][rel_path][1] += 1
+
+        if not file_any_cached:
+            never_processed_files.append(rel_path)
+
+    # Build result objects
+    target_lang_statuses: list[LangTranslationStatus] = []
+    for lang_name in target_langs:
+        file_statuses: list[FileTranslationStatus] = []
+        if include_files:
+            for rel_path, (total, translated) in lang_file_stats[lang_name].items():
+                file_statuses.append(FileTranslationStatus(
+                    relative_path=rel_path,
+                    total_chunks=total,
+                    translated_chunks=translated,
+                ))
+            file_statuses.sort(key=lambda s: s.relative_path)
+        target_lang_statuses.append(LangTranslationStatus(
+            lang=lang_name,
+            total_chunks=lang_total[lang_name],
+            translated_chunks=lang_translated[lang_name],
+            files=file_statuses,
+        ))
+    target_lang_statuses.sort(key=lambda s: s.lang)
+
+    return TranslationStatus(
+        source_lang=source_lang_name,
+        target_langs=target_lang_statuses,
+        never_processed_files=sorted(never_processed_files),
+    )

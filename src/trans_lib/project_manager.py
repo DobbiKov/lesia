@@ -392,6 +392,12 @@ class Project:
 
         return _project_runtime.clear_translation_cache_all(self, lang, file_path_str, keyword)
 
+    def get_translation_status(self, include_files: bool = False):
+        """Returns translation status statistics across all target languages."""
+        from . import project_runtime as _project_runtime
+
+        return _project_runtime.get_translation_status(self, include_files)
+
     def get_llm_service(self) -> str:
         return self.config.get_llm_service()
 

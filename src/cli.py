@@ -342,6 +342,55 @@ def info_on_project(ctx: typer.Context):
             tgt_dir_name = None if tgt_dir is None else tgt_dir.name
             print("\tLanguage: {:<10} | Directory: {}".format(lang, tgt_dir_name))
 
+@app.command("status")
+def translation_status(
+    ctx: typer.Context,
+    files: Annotated[bool, typer.Option("--files", help="Show per-file chunk statistics.")] = False,
+):
+    """Shows translation progress: how many chunks are untranslated per language."""
+    project = get_project_from_context(ctx)
+    try:
+        status = project.get_translation_status(include_files=files)
+    except Exception as e:
+        typer.secho(f"Error getting translation status: {e}", fg=typer.colors.RED, err=True)
+        raise typer.Exit(code=1)
+
+    typer.secho(f"Source language: {status.source_lang}", fg=typer.colors.BLUE)
+
+    if not status.target_langs:
+        typer.secho("No target languages configured.", fg=typer.colors.YELLOW)
+        return
+
+    for lang_status in status.target_langs:
+        total = lang_status.total_chunks
+        translated = lang_status.translated_chunks
+        untranslated = lang_status.untranslated_chunks
+        if total == 0:
+            line = f"  {lang_status.lang}: no cached chunks"
+        else:
+            pct = int(translated / total * 100)
+            line = f"  {lang_status.lang}: {translated}/{total} chunks translated ({pct}%), {untranslated} untranslated"
+        color = typer.colors.GREEN if untranslated == 0 and total > 0 else typer.colors.YELLOW
+        typer.secho(line, fg=color)
+
+        if files and lang_status.files:
+            for file_status in lang_status.files:
+                f_total = file_status.total_chunks
+                f_translated = file_status.translated_chunks
+                f_untranslated = file_status.untranslated_chunks
+                f_pct = int(f_translated / f_total * 100) if f_total else 0
+                f_color = typer.colors.GREEN if f_untranslated == 0 else typer.colors.YELLOW
+                typer.secho(
+                    f"    {file_status.relative_path}: {f_translated}/{f_total} ({f_pct}%), {f_untranslated} untranslated",
+                    fg=f_color,
+                )
+
+    if status.never_processed_files:
+        typer.secho("\nFiles with no cached translations yet:", fg=typer.colors.YELLOW)
+        for rel_path in status.never_processed_files:
+            typer.echo(f"  {rel_path}")
+
+
 @app.command("list-llms")
 def list_llm_services(ctx: typer.Context):
     """Lists all available LLM services."""
