@@ -371,7 +371,17 @@ class ChunkTranslator:
         """Sets up the caller on the strategy and runs it with overload retry."""
         if caller is not None and strategy != CODE_STRATEGY:
             def f_call_model(t):
-                res = caller.call(t)
+                try:
+                    res = caller.call(t)
+                except TypeError as exc:
+                    raise TypeError(
+                        f"Model '{caller.model}' failed: {exc}"
+                    ) from exc
+                if res is None:
+                    raise TypeError(
+                        f"Model '{caller.model}' returned None — "
+                        "the API call may have failed or returned an empty response."
+                    )
                 caller.wait_cooldown()
                 return res
             strategy.set_call_model(f_call_model)
