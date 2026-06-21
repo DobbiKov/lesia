@@ -90,4 +90,4 @@ members if running your translations from [MyDocker](https://mydocker.universite
 - **Nicolas M. Thiéry** - for supervising this project.
 - **LISN (Université Paris-Saclay)** - for financing the internship and
   providing workspace.
-- **CMA SaclAI-School** - for financing the project.
+- **[CMA SaclAI-School](https://www.dataia.eu/formations)** - for financing the project.
