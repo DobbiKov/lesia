@@ -34,10 +34,15 @@ class FileTranslationStatus:
     relative_path: str
     total_chunks: int
     translated_chunks: int
+    needs_review_chunks: int = 0
 
     @property
     def untranslated_chunks(self) -> int:
         return self.total_chunks - self.translated_chunks
+
+    @property
+    def proofread_chunks(self) -> int:
+        return self.translated_chunks - self.needs_review_chunks
 
 
 @dataclass
@@ -45,11 +50,16 @@ class LangTranslationStatus:
     lang: str
     total_chunks: int
     translated_chunks: int
+    needs_review_chunks: int = 0
     files: list[FileTranslationStatus] = field(default_factory=list)
 
     @property
     def untranslated_chunks(self) -> int:
         return self.total_chunks - self.translated_chunks
+
+    @property
+    def proofread_chunks(self) -> int:
+        return self.translated_chunks - self.needs_review_chunks
 
 
 @dataclass
@@ -474,13 +484,15 @@ def _get_source_chunk_texts(file_path: Path, doc_type: DocumentType) -> list[str
 
 def get_translation_status(project: Project, include_files: bool) -> TranslationStatus:
     from .translation_cache.cache_backend import read_correspondence_cache, PATH_CHECKSUM_COLUMN
+    from .translation_cache.cache_rebuilder import read_existing_target_metadata
 
     source_language = project._get_source_language()
     if source_language is None:
         raise NoSourceLanguageError("No source language set")
 
     source_lang_name = str(project.config.resolve_language(source_language))
-    target_langs = [str(project.config.resolve_language(l)) for l in project._get_target_languages()]
+    target_lang_objs = project._get_target_languages()
+    target_langs = [str(project.config.resolve_language(l)) for l in target_lang_objs]
 
     # Build lookup: (src_checksum, path_hash) → {lang_name: tgt_checksum}
     # This lets us check, for each live source chunk, whether a translation exists.
@@ -499,6 +511,13 @@ def get_translation_status(project: Project, include_files: bool) -> Translation
                 if lang in fields
             }
 
+    # Build target directory lookup: lang_name → target_dir Path
+    lang_target_dirs: dict[str, Path | None] = {}
+    for l, lang_name in zip(target_lang_objs, target_langs):
+        lang_target_dirs[lang_name] = project.config.get_target_dir_path_by_lang(
+            project.config.resolve_language(l)
+        )
+
     src_dir_path = project.config.get_src_dir_path()
     if src_dir_path is None:
         raise NoSourceLanguageError("Source directory is not set")
@@ -511,7 +530,8 @@ def get_translation_status(project: Project, include_files: bool) -> Translation
     # Accumulators
     lang_total: dict[str, int] = {lang: 0 for lang in target_langs}
     lang_translated: dict[str, int] = {lang: 0 for lang in target_langs}
-    # lang → {rel_path → [total, translated]}
+    lang_needs_review: dict[str, int] = {lang: 0 for lang in target_langs}
+    # lang → {rel_path → [total, translated, needs_review]}
     lang_file_stats: dict[str, dict[str, list[int]]] = {lang: {} for lang in target_langs}
     never_processed_files: list[str] = []
 
@@ -525,6 +545,17 @@ def get_translation_status(project: Project, include_files: bool) -> Translation
         doc_type = analyze_document_type(src_file)
         chunk_texts = _get_source_chunk_texts(src_file, doc_type)
 
+        # Load needs_review metadata from each translated target file (once per lang per file)
+        lang_file_metadata: dict[str, dict[str, dict]] = {}
+        for lang_name in target_langs:
+            target_dir = lang_target_dirs.get(lang_name)
+            if target_dir is not None:
+                lang_file_metadata[lang_name] = read_existing_target_metadata(
+                    target_dir / rel_path, doc_type
+                )
+            else:
+                lang_file_metadata[lang_name] = {}
+
         file_any_cached = False
 
         for chunk_text in chunk_texts:
@@ -536,15 +567,22 @@ def get_translation_status(project: Project, include_files: bool) -> Translation
 
             for lang_name in target_langs:
                 lang_total[lang_name] += 1
-                if translations and translations.get(lang_name, ""):
+                is_translated = bool(translations and translations.get(lang_name, ""))
+                if is_translated:
                     lang_translated[lang_name] += 1
+                    chunk_meta = lang_file_metadata[lang_name].get(src_checksum, {})
+                    if chunk_meta.get("needs_review") == "True":
+                        lang_needs_review[lang_name] += 1
 
                 if include_files:
                     if rel_path not in lang_file_stats[lang_name]:
-                        lang_file_stats[lang_name][rel_path] = [0, 0]
+                        lang_file_stats[lang_name][rel_path] = [0, 0, 0]
                     lang_file_stats[lang_name][rel_path][0] += 1
-                    if translations and translations.get(lang_name, ""):
+                    if is_translated:
                         lang_file_stats[lang_name][rel_path][1] += 1
+                        chunk_meta = lang_file_metadata[lang_name].get(src_checksum, {})
+                        if chunk_meta.get("needs_review") == "True":
+                            lang_file_stats[lang_name][rel_path][2] += 1
 
         if not file_any_cached:
             never_processed_files.append(rel_path)
@@ -554,17 +592,19 @@ def get_translation_status(project: Project, include_files: bool) -> Translation
     for lang_name in target_langs:
         file_statuses: list[FileTranslationStatus] = []
         if include_files:
-            for rel_path, (total, translated) in lang_file_stats[lang_name].items():
+            for rel_path, (total, translated, needs_review) in lang_file_stats[lang_name].items():
                 file_statuses.append(FileTranslationStatus(
                     relative_path=rel_path,
                     total_chunks=total,
                     translated_chunks=translated,
+                    needs_review_chunks=needs_review,
                 ))
             file_statuses.sort(key=lambda s: s.relative_path)
         target_lang_statuses.append(LangTranslationStatus(
             lang=lang_name,
             total_chunks=lang_total[lang_name],
             translated_chunks=lang_translated[lang_name],
+            needs_review_chunks=lang_needs_review[lang_name],
             files=file_statuses,
         ))
     target_lang_statuses.sort(key=lambda s: s.lang)

@@ -365,12 +365,17 @@ def translation_status(
         total = lang_status.total_chunks
         translated = lang_status.translated_chunks
         untranslated = lang_status.untranslated_chunks
+        proofread = lang_status.proofread_chunks
+        needs_review = lang_status.needs_review_chunks
         if total == 0:
             line = f"  {lang_status.lang}: no cached chunks"
         else:
             pct = int(translated / total * 100)
             line = f"  {lang_status.lang}: {translated}/{total} chunks translated ({pct}%), {untranslated} untranslated"
-        color = typer.colors.GREEN if untranslated == 0 and total > 0 else typer.colors.YELLOW
+            if translated > 0:
+                pr_pct = int(proofread / translated * 100)
+                line += f" | {proofread}/{translated} proofread ({pr_pct}%), {needs_review} need review"
+        color = typer.colors.GREEN if untranslated == 0 and needs_review == 0 and total > 0 else typer.colors.YELLOW
         typer.secho(line, fg=color)
 
         if files and lang_status.files:
@@ -378,12 +383,15 @@ def translation_status(
                 f_total = file_status.total_chunks
                 f_translated = file_status.translated_chunks
                 f_untranslated = file_status.untranslated_chunks
+                f_proofread = file_status.proofread_chunks
+                f_needs_review = file_status.needs_review_chunks
                 f_pct = int(f_translated / f_total * 100) if f_total else 0
-                f_color = typer.colors.GREEN if f_untranslated == 0 else typer.colors.YELLOW
-                typer.secho(
-                    f"    {file_status.relative_path}: {f_translated}/{f_total} ({f_pct}%), {f_untranslated} untranslated",
-                    fg=f_color,
-                )
+                f_color = typer.colors.GREEN if f_untranslated == 0 and f_needs_review == 0 else typer.colors.YELLOW
+                f_line = f"    {file_status.relative_path}: {f_translated}/{f_total} ({f_pct}%), {f_untranslated} untranslated"
+                if f_translated > 0:
+                    f_pr_pct = int(f_proofread / f_translated * 100)
+                    f_line += f" | {f_proofread}/{f_translated} proofread ({f_pr_pct}%), {f_needs_review} need review"
+                typer.secho(f_line, fg=f_color)
 
     if status.never_processed_files:
         typer.secho("\nFiles with no cached translations yet:", fg=typer.colors.YELLOW)
