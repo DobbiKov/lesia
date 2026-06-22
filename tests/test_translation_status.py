@@ -399,3 +399,316 @@ def test_status_custom_language(tmp_path: Path) -> None:
     assert lang.lang == "Catalan"
     assert lang.translated_chunks == len(checksums)
     assert lang.untranslated_chunks == 0
+
+
+# ---------------------------------------------------------------------------
+# Helpers for needs_review / proofread tests
+# ---------------------------------------------------------------------------
+
+def _write_target_md_with_metadata(
+    directory: Path,
+    name: str,
+    chunks: list[dict],
+) -> Path:
+    """Write a translated MyST file with per-chunk metadata blocks.
+
+    Each entry in *chunks* should have:
+      - "src_checksum": str  – checksum of the original source chunk
+      - "source": str        – translated text
+      - "needs_review": bool (optional, defaults to False)
+    """
+    from trans_lib.doc_translator_mod.myst_file_translator import compile_myst_cells
+
+    cells = []
+    for chunk in chunks:
+        metadata: dict[str, str] = {"src_checksum": chunk["src_checksum"]}
+        if chunk.get("needs_review"):
+            metadata["needs_review"] = "True"
+        cells.append({"metadata": metadata, "source": chunk["source"]})
+
+    path = directory / name
+    path.write_text(compile_myst_cells(cells), encoding="utf-8")
+    return path
+
+
+# ---------------------------------------------------------------------------
+# Unit tests for proofread_chunks / needs_review_chunks properties
+# ---------------------------------------------------------------------------
+
+def test_lang_status_proofread_chunks_property() -> None:
+    from trans_lib.project_runtime import LangTranslationStatus
+
+    lang = LangTranslationStatus(
+        lang="French",
+        total_chunks=10,
+        translated_chunks=8,
+        needs_review_chunks=3,
+    )
+    assert lang.proofread_chunks == 5
+    assert lang.untranslated_chunks == 2
+
+
+def test_file_status_proofread_chunks_property() -> None:
+    from trans_lib.project_runtime import FileTranslationStatus
+
+    f = FileTranslationStatus(
+        relative_path="doc.md",
+        total_chunks=6,
+        translated_chunks=4,
+        needs_review_chunks=1,
+    )
+    assert f.proofread_chunks == 3
+    assert f.untranslated_chunks == 2
+
+
+def test_lang_status_all_proofread_when_no_needs_review() -> None:
+    from trans_lib.project_runtime import LangTranslationStatus
+
+    lang = LangTranslationStatus(lang="French", total_chunks=5, translated_chunks=5)
+    assert lang.needs_review_chunks == 0
+    assert lang.proofread_chunks == 5
+
+
+# ---------------------------------------------------------------------------
+# Integration tests: needs_review counting in get_translation_status
+# ---------------------------------------------------------------------------
+
+def test_status_needs_review_zero_when_no_target_file(tmp_path: Path) -> None:
+    """When the target file does not exist, needs_review_chunks must be 0."""
+    project = _make_project(tmp_path)
+    _add_french_target(project)
+    src_dir = project.config.get_src_dir_path()
+    assert src_dir is not None
+
+    src_file = _write_md(src_dir, "doc.md", "# Hello\n\nWorld.\n")
+    project.config.make_file_translatable(src_file, True)
+
+    path_hash = calculate_path_checksum("doc.md")
+    checksums = _chunk_checksums(src_file)
+    for cs in checksums:
+        _seed_row(project, path_hash, cs, {"French": calculate_checksum(f"fr_{cs}")})
+
+    # No target file written — metadata cannot be read
+    status = project.get_translation_status(include_files=False)
+
+    lang = status.target_langs[0]
+    assert lang.translated_chunks == len(checksums)
+    assert lang.needs_review_chunks == 0
+    assert lang.proofread_chunks == len(checksums)
+
+
+def test_status_all_proofread_when_target_has_no_needs_review_flag(tmp_path: Path) -> None:
+    """Translated chunks without the needs_review flag are counted as proofread."""
+    project = _make_project(tmp_path)
+    tgt_dir = _add_french_target(project)
+    src_dir = project.config.get_src_dir_path()
+    assert src_dir is not None
+
+    src_file = _write_md(src_dir, "doc.md", "# Hello\n\nWorld.\n")
+    project.config.make_file_translatable(src_file, True)
+
+    path_hash = calculate_path_checksum("doc.md")
+    checksums = _chunk_checksums(src_file)
+    for cs in checksums:
+        _seed_row(project, path_hash, cs, {"French": calculate_checksum(f"fr_{cs}")})
+
+    # Write target file without needs_review metadata
+    _write_target_md_with_metadata(
+        tgt_dir,
+        "doc.md",
+        [{"src_checksum": cs, "source": f"fr_{cs}", "needs_review": False} for cs in checksums],
+    )
+
+    status = project.get_translation_status(include_files=False)
+
+    lang = status.target_langs[0]
+    assert lang.translated_chunks == len(checksums)
+    assert lang.needs_review_chunks == 0
+    assert lang.proofread_chunks == len(checksums)
+
+
+def test_status_some_chunks_need_review(tmp_path: Path) -> None:
+    """Only chunks with needs_review=True in the target file are counted."""
+    project = _make_project(tmp_path)
+    tgt_dir = _add_french_target(project)
+    src_dir = project.config.get_src_dir_path()
+    assert src_dir is not None
+
+    src_file = _write_md(src_dir, "doc.md", "# Title\n\n## Section\n\nParagraph.\n")
+    project.config.make_file_translatable(src_file, True)
+
+    path_hash = calculate_path_checksum("doc.md")
+    checksums = _chunk_checksums(src_file)
+    assert len(checksums) >= 2
+
+    for cs in checksums:
+        _seed_row(project, path_hash, cs, {"French": calculate_checksum(f"fr_{cs}")})
+
+    # Mark only the first chunk as needing review
+    _write_target_md_with_metadata(
+        tgt_dir,
+        "doc.md",
+        [
+            {"src_checksum": checksums[0], "source": f"fr_{checksums[0]}", "needs_review": True},
+            *[
+                {"src_checksum": cs, "source": f"fr_{cs}", "needs_review": False}
+                for cs in checksums[1:]
+            ],
+        ],
+    )
+
+    status = project.get_translation_status(include_files=False)
+
+    lang = status.target_langs[0]
+    assert lang.translated_chunks == len(checksums)
+    assert lang.needs_review_chunks == 1
+    assert lang.proofread_chunks == len(checksums) - 1
+
+
+def test_status_all_chunks_need_review(tmp_path: Path) -> None:
+    """When every translated chunk needs review, proofread_chunks is 0."""
+    project = _make_project(tmp_path)
+    tgt_dir = _add_french_target(project)
+    src_dir = project.config.get_src_dir_path()
+    assert src_dir is not None
+
+    src_file = _write_md(src_dir, "doc.md", "# Hello\n\nWorld.\n")
+    project.config.make_file_translatable(src_file, True)
+
+    path_hash = calculate_path_checksum("doc.md")
+    checksums = _chunk_checksums(src_file)
+    for cs in checksums:
+        _seed_row(project, path_hash, cs, {"French": calculate_checksum(f"fr_{cs}")})
+
+    _write_target_md_with_metadata(
+        tgt_dir,
+        "doc.md",
+        [{"src_checksum": cs, "source": f"fr_{cs}", "needs_review": True} for cs in checksums],
+    )
+
+    status = project.get_translation_status(include_files=False)
+
+    lang = status.target_langs[0]
+    assert lang.translated_chunks == len(checksums)
+    assert lang.needs_review_chunks == len(checksums)
+    assert lang.proofread_chunks == 0
+
+
+def test_status_needs_review_independent_per_language(tmp_path: Path) -> None:
+    """needs_review counts are tracked independently for each target language."""
+    project = _make_project(tmp_path)
+    fr_dir = _add_french_target(project)
+    de_dir = _add_german_target(project)
+    src_dir = project.config.get_src_dir_path()
+    assert src_dir is not None
+
+    src_file = _write_md(src_dir, "doc.md", "# Hello\n\nWorld.\n")
+    project.config.make_file_translatable(src_file, True)
+
+    path_hash = calculate_path_checksum("doc.md")
+    checksums = _chunk_checksums(src_file)
+    for cs in checksums:
+        _seed_row(project, path_hash, cs, {
+            "French": calculate_checksum(f"fr_{cs}"),
+            "German": calculate_checksum(f"de_{cs}"),
+        })
+
+    # French: all proofread; German: all need review
+    _write_target_md_with_metadata(
+        fr_dir,
+        "doc.md",
+        [{"src_checksum": cs, "source": f"fr_{cs}", "needs_review": False} for cs in checksums],
+    )
+    _write_target_md_with_metadata(
+        de_dir,
+        "doc.md",
+        [{"src_checksum": cs, "source": f"de_{cs}", "needs_review": True} for cs in checksums],
+    )
+
+    status = project.get_translation_status(include_files=False)
+    by_lang = {s.lang: s for s in status.target_langs}
+
+    assert by_lang["French"].needs_review_chunks == 0
+    assert by_lang["French"].proofread_chunks == len(checksums)
+
+    assert by_lang["German"].needs_review_chunks == len(checksums)
+    assert by_lang["German"].proofread_chunks == 0
+
+
+def test_status_needs_review_per_file_with_include_files(tmp_path: Path) -> None:
+    """With include_files=True, needs_review and proofread counts appear per file."""
+    project = _make_project(tmp_path)
+    tgt_dir = _add_french_target(project)
+    src_dir = project.config.get_src_dir_path()
+    assert src_dir is not None
+
+    file_a = _write_md(src_dir, "a.md", "# A heading\n")
+    file_b = _write_md(src_dir, "b.md", "# B heading\n")
+    project.config.make_file_translatable(file_a, True)
+    project.config.make_file_translatable(file_b, True)
+
+    checksums_a = _chunk_checksums(file_a)
+    checksums_b = _chunk_checksums(file_b)
+    path_a = calculate_path_checksum("a.md")
+    path_b = calculate_path_checksum("b.md")
+
+    for cs in checksums_a:
+        _seed_row(project, path_a, cs, {"French": calculate_checksum(f"fr_a_{cs}")})
+    for cs in checksums_b:
+        _seed_row(project, path_b, cs, {"French": calculate_checksum(f"fr_b_{cs}")})
+
+    # file_a: proofread; file_b: needs review
+    _write_target_md_with_metadata(
+        tgt_dir,
+        "a.md",
+        [{"src_checksum": cs, "source": f"fr_a_{cs}", "needs_review": False} for cs in checksums_a],
+    )
+    _write_target_md_with_metadata(
+        tgt_dir,
+        "b.md",
+        [{"src_checksum": cs, "source": f"fr_b_{cs}", "needs_review": True} for cs in checksums_b],
+    )
+
+    status = project.get_translation_status(include_files=True)
+
+    lang = status.target_langs[0]
+    by_file = {f.relative_path: f for f in lang.files}
+
+    assert by_file["a.md"].needs_review_chunks == 0
+    assert by_file["a.md"].proofread_chunks == len(checksums_a)
+
+    assert by_file["b.md"].needs_review_chunks == len(checksums_b)
+    assert by_file["b.md"].proofread_chunks == 0
+
+
+def test_status_untranslated_chunks_not_counted_in_needs_review(tmp_path: Path) -> None:
+    """Untranslated chunks must never contribute to needs_review_chunks."""
+    project = _make_project(tmp_path)
+    tgt_dir = _add_french_target(project)
+    src_dir = project.config.get_src_dir_path()
+    assert src_dir is not None
+
+    src_file = _write_md(src_dir, "doc.md", "# Title\n\n## Section\n\nParagraph.\n")
+    project.config.make_file_translatable(src_file, True)
+
+    path_hash = calculate_path_checksum("doc.md")
+    checksums = _chunk_checksums(src_file)
+    assert len(checksums) >= 2
+
+    # Only seed the first chunk in the cache (second chunk is untranslated)
+    _seed_row(project, path_hash, checksums[0], {"French": calculate_checksum(f"fr_{checksums[0]}")})
+
+    # Target file contains only the translated chunk, marked needs_review
+    _write_target_md_with_metadata(
+        tgt_dir,
+        "doc.md",
+        [{"src_checksum": checksums[0], "source": f"fr_{checksums[0]}", "needs_review": True}],
+    )
+
+    status = project.get_translation_status(include_files=False)
+
+    lang = status.target_langs[0]
+    assert lang.translated_chunks == 1
+    assert lang.untranslated_chunks == len(checksums) - 1
+    assert lang.needs_review_chunks == 1
+    assert lang.proofread_chunks == 0
