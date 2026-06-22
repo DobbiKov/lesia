@@ -350,6 +350,41 @@ lesia sync
 
 Copies all untranslatable files from the source directory to every target directory, mirroring the subdirectory structure. Run this before building the translated project (e.g. with LaTeX) to ensure all assets are present.
 
+#### `status`
+
+```
+lesia status [--files]
+```
+
+Shows translation and proofreading progress for every configured target language.
+
+For each language the output includes:
+- how many chunks have been translated out of the total (`translated/total`)
+- how many of those translated chunks have been proofread (i.e. do **not** carry the `needs_review` tag) out of the total translated (`proofread/translated`)
+
+A chunk is marked `needs_review` automatically when it is translated by the LLM for the first time. The tag is cleared when you manually edit the chunk and run `lesia cache sync`, which rebuilds the cache from the corrected files on disk.
+
+| Option | Description |
+|---|---|
+| `--files` | Break down the statistics per source file in addition to the per-language totals |
+
+**Example output (no flag):**
+```
+Source language: French
+  English: 42/42 chunks translated (100%), 0 untranslated | 38/42 proofread (90%), 4 need review
+  German: 30/42 chunks translated (71%), 12 untranslated | 25/30 proofread (83%), 5 need review
+```
+
+**Example output (with `--files`):**
+```
+Source language: French
+  English: 42/42 chunks translated (100%), 0 untranslated | 38/42 proofread (90%), 4 need review
+    main.tex: 20/20 (100%), 0 untranslated | 18/20 proofread (90%), 2 need review
+    intro.tex: 22/22 (100%), 0 untranslated | 20/22 proofread (90%), 2 need review
+```
+
+Lines are printed in green when all chunks are translated **and** none need review, and yellow otherwise.
+
 ---
 
 ### Custom languages
