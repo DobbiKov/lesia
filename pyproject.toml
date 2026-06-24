@@ -20,25 +20,24 @@ dependencies = [
     "unified-model-caller==0.2.2",
 ]
 
-[tool.setuptools.packages.find]
-where = ["src"]
-
 [build-system]
-requires = ["setuptools", "setuptools-scm"]
-build-backend = "setuptools.build_meta"
+requires = ["maturin>=1.0,<2.0"]  # was: ["setuptools", "setuptools-scm"]
+build-backend = "maturin"          # was: "setuptools.build_meta"
 
 [dependency-groups]
 dev = [
     "build>=1.4.2",
     "pytest>=7.4.4",
+    "maturin>=1.14.1",
 ]
 
 [project.scripts]
 lesia = "cli:app"
 
-[tool.setuptools] 
-py-modules = ["trans_lib", "cli"]
-
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]
+
+[tool.maturin]
+features = ["pyo3/extension-module"]
+python-source = "src"
