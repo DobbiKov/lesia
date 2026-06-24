@@ -5,9 +5,6 @@ import shutil
 from pathlib import Path
 from typing import List, Optional, TYPE_CHECKING
 
-from loguru import logger
-from unified_model_caller import LLMCaller
-
 from .enums import Language, CustomLanguage
 from .project_config_models import ProjectConfig, LangDir
 from .project_config_io import (
@@ -464,6 +461,9 @@ def _write_custom_services_template(config_dir_path: Path) -> None:
 
 def load_custom_services(config_dir_path: Path) -> None:
     """Loads all .py files from the services subdirectory of the project config dir."""
+    from loguru import logger
+    from unified_model_caller import LLMCaller
+
     services_dir = config_dir_path / CUSTOM_SERVICES_DIR_NAME
     if not services_dir.is_dir():
         return
@@ -515,6 +515,8 @@ def load_project(path_str: str) -> Project:
     config_file_path = config_dir_path / CONFIG_FILENAME
     
     try:
+        from loguru import logger
+
         config_model = load_project_config(config_file_path)
         project = Project(project_root, config_model)
         if project.paths_normalized_on_load:
