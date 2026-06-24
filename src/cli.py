@@ -1,6 +1,7 @@
 import asyncio
 import csv
 import sys
+from importlib.metadata import version, PackageNotFoundError
 from pathlib import Path
 
 import typer
@@ -14,22 +15,34 @@ from trans_lib import errors
 from trans_lib.errors import AddCustomLanguageError, RemoveCustomLanguageError
 from trans_lib.vocab_list import vocab_list_from_vocab_db # Import the errors module
 
+try:
+    _version = version("lesia")
+except PackageNotFoundError:
+    _version = "unknown"
+
 # Create the Typer app
 app = typer.Typer(
-    name="dir-translator",
+    name="lesia",
     help="A tool for managing and translating directory structures.",
-    no_args_is_help=True
 )
 
-@app.callback()
+@app.callback(invoke_without_command=True)
 def main(
+    ctx: typer.Context,
     verbose: Annotated[bool, typer.Option("--verbose", "-v", help="Show diagnostic logs.")] = False,
+    ver: Annotated[bool, typer.Option("--version", help="Show the version and exit.", is_eager=True)] = False,
 ) -> None:
+    if ver:
+        typer.echo(f"lesia {_version}")
+        raise typer.Exit()
     logger.remove()
     if verbose:
         logger.add(sys.stderr, level="TRACE")
     else:
         logger.add(sys.stderr, level="WARNING")
+    if ctx.invoked_subcommand is None:
+        typer.echo(ctx.get_help())
+        raise typer.Exit()
 
 # Shared callback to load project (or handle not being in one)
 def get_project_from_context(ctx: typer.Context) -> Project:
