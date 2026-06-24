@@ -4,14 +4,6 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from loguru import logger
-
-from .doc_corrector import correct_file_translation
-from .doc_translator import translate_file_to_file_async
-from .translation_cache.translation_cache import TranslationCacheCsv
-from .translation_cache.cache_cleaner import CacheClearStats, CacheDeleteStats, clear_all, clear_missing_chunks
-from .translation_cache.cache_rebuilder import collect_translation_pairs
-from .helpers import analyze_document_type, calculate_checksum, calculate_path_checksum
 from .errors import (
     CorrectTranslationError,
     CorrectingTranslationError,
@@ -112,6 +104,7 @@ def _correct_translation_file(project: Project, target_path: Path, target_lang: 
             UntranslatableFileError(f"File {target_path} is not inside the target directory {target_root}")) from exc
 
     try:
+        from .doc_corrector import correct_file_translation
         if correct_file_translation(project.root_path, target_path, target_lang, source_language, relative_path):
             print(f"Successfully corrected the translation in {target_path.name}")
         else:
@@ -219,6 +212,11 @@ def sync_translation_cache(project: Project, target_lang: Language | CustomLangu
         raise TranslationCacheSyncError(
             "Cannot sync translation cache: No translatable files configured.")
 
+    from loguru import logger
+    from .translation_cache.translation_cache import TranslationCacheCsv
+    from .translation_cache.cache_rebuilder import collect_translation_pairs
+    from .helpers import analyze_document_type, calculate_checksum
+
     store = TranslationCacheCsv(project.root_path)
     synced_pairs = 0
     processed_files = 0
@@ -286,6 +284,7 @@ def clear_translation_cache_missing_chunks(project: Project) -> CacheClearStats:
     if source_language is None:
         raise TranslationCacheClearError("Cannot clear translation cache: Source language is not set.")
 
+    from .translation_cache.cache_cleaner import clear_missing_chunks
     try:
         return clear_missing_chunks(project.root_path, source_language)
     except Exception as exc:
@@ -340,6 +339,7 @@ def clear_translation_cache_all(
     if file_path_str is not None:
         relative_path = _resolve_relative_cache_path(project, file_path_str)
 
+    from .translation_cache.cache_cleaner import clear_all
     try:
         return clear_all(project.root_path, lang, relative_path, keyword)
     except Exception as exc:
@@ -413,6 +413,7 @@ async def translate_single_file(
             print(f"  |  Reasoning: {llm_reasoning_service}/{llm_reasoning_model}")
         else:
             print()
+    from .doc_translator import translate_file_to_file_async
     try:
         await translate_file_to_file_async(
             project.root_path,
@@ -456,11 +457,13 @@ async def translate_all_for_language(
 
 
 def diff(project: Project, txt: str, lang: Language | CustomLanguage) -> tuple[str, float]:
+    from .translation_cache.translation_cache import TranslationCacheCsv
     return TranslationCacheCsv(project.root_path).get_best_match_from_cache(lang, txt)
 
 
 def _get_source_chunk_texts(file_path: Path, doc_type: DocumentType) -> list[str]:
     """Returns the text of each translatable chunk in a source file."""
+    from loguru import logger
     try:
         if doc_type == DocumentType.LaTeX:
             from .doc_translator_mod.latex_file_translator import get_latex_cells
@@ -485,6 +488,7 @@ def _get_source_chunk_texts(file_path: Path, doc_type: DocumentType) -> list[str
 def get_translation_status(project: Project, include_files: bool) -> TranslationStatus:
     from .translation_cache.cache_backend import read_correspondence_cache, PATH_CHECKSUM_COLUMN
     from .translation_cache.cache_rebuilder import read_existing_target_metadata
+    from .helpers import analyze_document_type, calculate_checksum, calculate_path_checksum
 
     source_language = project._get_source_language()
     if source_language is None:
