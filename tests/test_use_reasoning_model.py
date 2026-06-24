@@ -62,7 +62,7 @@ def _run_translate_single_file(
     mock_fn = AsyncMock()
 
     with pytest.MonkeyPatch().context() as mp:
-        mp.setattr(project_runtime, "translate_file_to_file_async", mock_fn)
+        mp.setattr(doc_translator, "translate_file_to_file_async", mock_fn)
         asyncio.run(
             project_runtime.translate_single_file(
                 project, str(source_file), Language.FRENCH, None,
@@ -132,7 +132,7 @@ class TestProjectRuntimeTranslateAll:
         mock_fn = AsyncMock()
 
         with pytest.MonkeyPatch().context() as mp:
-            mp.setattr(project_runtime, "translate_file_to_file_async", mock_fn)
+            mp.setattr(doc_translator, "translate_file_to_file_async", mock_fn)
             asyncio.run(
                 project_runtime.translate_all_for_language(
                     project, Language.FRENCH, None, use_reasoning_model=True
@@ -151,7 +151,7 @@ class TestProjectRuntimeTranslateAll:
         mock_fn = AsyncMock()
 
         with pytest.MonkeyPatch().context() as mp:
-            mp.setattr(project_runtime, "translate_file_to_file_async", mock_fn)
+            mp.setattr(doc_translator, "translate_file_to_file_async", mock_fn)
             asyncio.run(
                 project_runtime.translate_all_for_language(
                     project, Language.FRENCH, None, use_reasoning_model=False
