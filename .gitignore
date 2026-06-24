@@ -6,3 +6,4 @@ uv.lock
 test-files/
 Cargo.lock
 target/
+src/_core/*.so
