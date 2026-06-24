@@ -2,9 +2,6 @@ import asyncio
 import os
 from pathlib import Path
 
-from google import genai
-from google.genai import types as g_types
-
 from loguru import logger
 
 from trans_lib.vocab_list import VocabList
@@ -15,7 +12,6 @@ from .prompts import prompt4
 from .enums import Language
 from .helpers import divide_into_chunks, extract_translated_from_response
 from .errors import TranslationProcessError
-import requests
 
 
 # TODO:
@@ -91,6 +87,8 @@ async def _ask_gemini_model(full_prompt_message: str, model_name: str = "gemini-
     if not LLM_API_KEY: # Re-check in case it wasn't set at module load
         raise EnvironmentError("LLM_API_KEY environment variable must be set for translation.")
 
+    from google import genai
+    from google.genai import types as g_types
     client = genai.Client(api_key=LLM_API_KEY)
 
     try:
@@ -117,6 +115,7 @@ async def _ask_gemini_model(full_prompt_message: str, model_name: str = "gemini-
         raise TranslationProcessError(f"Gemini API call failed: {e}", original_exception=e)
 
 async def _ask_aristote(full_prompt_message: str) -> str:
+    import requests
     aristote_API_ENDPOINT = "https://aristote-dispatcher.mydocker-run-vd.centralesupelec.fr/v1/chat/completions"
     model = "casperhansen/llama-3.3-70b-instruct-awq" # Nom du modèle à utiliser
     data = {

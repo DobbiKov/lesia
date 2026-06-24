@@ -1,5 +1,10 @@
+from __future__ import annotations
+
 import enum
-from typing import List
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from typing import List
 
 class Language(str, enum.Enum):
     """Enumeration for supported languages."""

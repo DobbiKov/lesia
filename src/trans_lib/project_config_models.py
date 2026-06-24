@@ -1,15 +1,17 @@
-from __future__ import annotations 
+from __future__ import annotations
 
 import os
 from pathlib import Path
-from typing import List, Optional, Callable
-from unified_model_caller import LLMCaller
+from typing import List, Optional, TYPE_CHECKING
 
 from pydantic import BaseModel, Field, ConfigDict
-from loguru import logger
 
 from .enums import Language, CustomLanguage
+
 from .errors import AddTranslatableFileError, NoSourceLanguageError, FileDoesNotExistError
+
+if TYPE_CHECKING:
+    from typing import Callable
 
 
 class FileModel(BaseModel):
@@ -383,6 +385,7 @@ class ProjectConfig(BaseModel):
         try:
             return path.relative_to(reference_root)
         except ValueError:
+            from loguru import logger
             logger.warning(
                 f"Path {path} is not within the project root {reference_root}. Keeping absolute path in config."
             )

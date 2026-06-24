@@ -1,9 +1,13 @@
-import os
-import yaml
-from pathlib import Path
-import shutil
-from typing import List, Optional, Iterable
+from __future__ import annotations
+
 import hashlib
+import os
+import shutil
+from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from typing import Iterable, List, Optional
 
 from trans_lib.constants import CONF_DIR
 from trans_lib.enums import DocumentType
@@ -241,8 +245,9 @@ def has_jupytext_header_in_file(file_path: Path) -> bool:
                 return False # No YAML header found or it was empty
 
             header_yaml_str = "".join(header_content)
-            
+
             try:
+                import yaml
                 metadata = yaml.safe_load(header_yaml_str)
                 if isinstance(metadata, dict) and \
                    'jupytext' in metadata and \
