@@ -2,21 +2,15 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, Iterable, Tuple
+from typing import TYPE_CHECKING
 
-import jupytext
 from loguru import logger
 
-from trans_lib.doc_translator_mod.latex_chunker import read_chunks_with_metadata_from_latex
-from trans_lib.doc_translator_mod.latex_file_translator import get_latex_cells
-from trans_lib.doc_translator_mod.myst_file_translator import (
-    get_myst_cells,
-    read_chunks_with_metadata_from_myst,
-)
-from trans_lib.doc_translator_mod.typst_chunker import read_chunks_with_metadata_from_typst
-from trans_lib.doc_translator_mod.typst_file_translator import get_typst_cells
 from trans_lib.enums import DocumentType
 from trans_lib.helpers import calculate_checksum
+
+if TYPE_CHECKING:
+    from typing import Dict, Iterable, Tuple
 
 
 @dataclass
@@ -75,6 +69,7 @@ def _build_source_chunk_map(source_path: Path, doc_type: DocumentType) -> Dict[s
 
 
 def _build_notebook_source_map(source_path: Path) -> Dict[str, str]:
+    import jupytext
     nb = jupytext.read(source_path)
     chunks: Dict[str, str] = {}
     for cell in nb.cells:
@@ -85,6 +80,7 @@ def _build_notebook_source_map(source_path: Path) -> Dict[str, str]:
 
 
 def _build_myst_source_map(source_path: Path) -> Dict[str, str]:
+    from trans_lib.doc_translator_mod.myst_file_translator import get_myst_cells
     chunks: Dict[str, str] = {}
     for cell in get_myst_cells(source_path):
         src_txt = cell.get("source", "")
@@ -94,6 +90,7 @@ def _build_myst_source_map(source_path: Path) -> Dict[str, str]:
 
 
 def _build_latex_source_map(source_path: Path) -> Dict[str, str]:
+    from trans_lib.doc_translator_mod.latex_file_translator import get_latex_cells
     chunks: Dict[str, str] = {}
     for cell in get_latex_cells(source_path):
         src_txt = cell.get("source", "")
@@ -103,6 +100,7 @@ def _build_latex_source_map(source_path: Path) -> Dict[str, str]:
 
 
 def _build_typst_source_map(source_path: Path) -> Dict[str, str]:
+    from trans_lib.doc_translator_mod.typst_file_translator import get_typst_cells
     chunks: Dict[str, str] = {}
     for cell in get_typst_cells(source_path):
         src_txt = cell.get("source", "")
@@ -140,6 +138,7 @@ def read_existing_target_metadata(
 
 
 def _read_notebook_target_metadata(target_path: Path) -> Dict[str, dict]:
+    import jupytext
     nb = jupytext.read(target_path)
     result: Dict[str, dict] = {}
     for cell in nb.cells:
@@ -161,6 +160,7 @@ def _read_myst_target_metadata(target_path: Path) -> Dict[str, dict]:
 
 
 def _read_latex_target_metadata(target_path: Path) -> Dict[str, dict]:
+    from trans_lib.doc_translator_mod.latex_chunker import read_chunks_with_metadata_from_latex
     result: Dict[str, dict] = {}
     for cell in read_chunks_with_metadata_from_latex(target_path):
         checksum = cell.get("src_checksum")
@@ -170,6 +170,7 @@ def _read_latex_target_metadata(target_path: Path) -> Dict[str, dict]:
 
 
 def _read_typst_target_metadata(target_path: Path) -> Dict[str, dict]:
+    from trans_lib.doc_translator_mod.typst_chunker import read_chunks_with_metadata_from_typst
     result: Dict[str, dict] = {}
     for cell in read_chunks_with_metadata_from_typst(target_path):
         checksum = cell.get("src_checksum")
@@ -192,6 +193,7 @@ def _iter_target_chunks(target_path: Path, doc_type: DocumentType) -> Iterable[T
 
 
 def _iter_notebook_target_chunks(target_path: Path) -> Iterable[Tuple[str, str]]:
+    import jupytext
     nb = jupytext.read(target_path)
     for cell in nb.cells:
         metadata = cell.get("metadata") or {}
@@ -202,6 +204,7 @@ def _iter_notebook_target_chunks(target_path: Path) -> Iterable[Tuple[str, str]]
 
 
 def _iter_myst_target_chunks(target_path: Path) -> Iterable[Tuple[str, str]]:
+    from trans_lib.doc_translator_mod.myst_file_translator import read_chunks_with_metadata_from_myst
     for cell in read_chunks_with_metadata_from_myst(target_path):
         checksum = cell.get("src_checksum")
         if not checksum:
@@ -210,6 +213,7 @@ def _iter_myst_target_chunks(target_path: Path) -> Iterable[Tuple[str, str]]:
 
 
 def _iter_latex_target_chunks(target_path: Path) -> Iterable[Tuple[str, str]]:
+    from trans_lib.doc_translator_mod.latex_chunker import read_chunks_with_metadata_from_latex
     for cell in read_chunks_with_metadata_from_latex(target_path):
         checksum = cell.get("src_checksum")
         if not checksum:
@@ -218,6 +222,7 @@ def _iter_latex_target_chunks(target_path: Path) -> Iterable[Tuple[str, str]]:
 
 
 def _iter_typst_target_chunks(target_path: Path) -> Iterable[Tuple[str, str]]:
+    from trans_lib.doc_translator_mod.typst_chunker import read_chunks_with_metadata_from_typst
     for cell in read_chunks_with_metadata_from_typst(target_path):
         checksum = cell.get("src_checksum")
         if not checksum:
