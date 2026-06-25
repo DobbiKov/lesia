@@ -3,10 +3,10 @@
 from pathlib import Path
 
 from loguru import logger
-from trans_lib.enums import Language
-from trans_lib.errors import ChecksumNotFoundError
-from trans_lib.helpers import calculate_checksum
-from trans_lib.translation_cache.translation_cache import TranslationCacheCsv
+from lesia.enums import Language
+from lesia.errors import ChecksumNotFoundError
+from lesia.helpers import calculate_checksum
+from lesia.translation_cache.translation_cache import TranslationCacheCsv
 
 
 

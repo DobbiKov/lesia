@@ -3,7 +3,7 @@ import os
 from pathlib import Path
 import shutil
 
-from trans_lib.helpers import copy_tree_contents
+from lesia.helpers import copy_tree_contents
 
 from .project_config_models import DirectoryModel, FileModel, ProjectConfig
 from .errors import LoadConfigError, WriteConfigError, CopyFileDirError

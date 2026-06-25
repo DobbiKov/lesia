@@ -25,8 +25,8 @@ SRC_PATH = REPO_ROOT / "src"
 if SRC_PATH.exists() and str(SRC_PATH) not in sys.path:
     sys.path.insert(0, str(SRC_PATH))
 
-from trans_lib.xml_manipulator_mod.mod import myst_to_xml  # noqa: E402
-from trans_lib.xml_manipulator_mod.xml import reconstruct_from_xml  # noqa: E402
+from lesia.xml_manipulator_mod.mod import myst_to_xml  # noqa: E402
+from lesia.xml_manipulator_mod.xml import reconstruct_from_xml  # noqa: E402
 
 
 def _read_input(

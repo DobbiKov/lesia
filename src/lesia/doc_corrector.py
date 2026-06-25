@@ -2,11 +2,11 @@ from pathlib import Path
 
 from loguru import logger
 
-from trans_lib.enums import DocumentType, Language
-from trans_lib.errors import CorrectingTranslationError
-from trans_lib.helpers import analyze_document_type
-from trans_lib.translation_cache.translation_cache import TranslationCacheCsv
-from trans_lib.translator_corrector import correct_chunk_translation
+from lesia.enums import DocumentType, Language
+from lesia.errors import CorrectingTranslationError
+from lesia.helpers import analyze_document_type
+from lesia.translation_cache.translation_cache import TranslationCacheCsv
+from lesia.translator_corrector import correct_chunk_translation
 
 def correct_jupyter_notebook_translation(root_path: Path, tgt_path: Path, tgt_lang: Language, src_lang: Language, relative_path: str) -> bool:
     import jupytext
@@ -55,7 +55,7 @@ def correct_myst_cell(root_path: Path, cell: dict, target_language: Language, so
     return True
 
 def correct_latex_document_translation(root_path: Path, tgt_path: Path, tgt_lang: Language, src_lang: Language, relative_path: str) -> bool:
-   from trans_lib.doc_translator_mod.latex_chunker import read_chunks_with_metadata_from_latex
+   from lesia.doc_translator_mod.latex_chunker import read_chunks_with_metadata_from_latex
    cells = read_chunks_with_metadata_from_latex(tgt_path)
    res = False
    for i in range(len(cells)):
@@ -63,7 +63,7 @@ def correct_latex_document_translation(root_path: Path, tgt_path: Path, tgt_lang
    return res
 
 def correct_myst_document_translation(root_path: Path, tgt_path: Path, tgt_lang: Language, src_lang: Language, relative_path: str) -> bool:
-   from trans_lib.doc_translator_mod.myst_file_translator import read_chunks_with_metadata_from_myst
+   from lesia.doc_translator_mod.myst_file_translator import read_chunks_with_metadata_from_myst
    cells = read_chunks_with_metadata_from_myst(tgt_path)
    res = False
    for i in range(len(cells)):

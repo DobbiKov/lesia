@@ -62,7 +62,7 @@ class TranslationStatus:
 
 if TYPE_CHECKING:
     from .project_manager import Project
-    from trans_lib.vocab_list import VocabList
+    from lesia.vocab_list import VocabList
 
 
 def _require_source_language(project: Project) -> CustomLanguage:

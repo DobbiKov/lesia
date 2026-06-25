@@ -4,8 +4,8 @@ from pathlib import Path
 from unified_model_caller import LLMCaller
 import unified_model_caller.core as _umc_core
 
-from trans_lib.constants import CONF_DIR, CUSTOM_SERVICES_DIR_NAME, CUSTOM_SERVICES_TEMPLATE_FILENAME
-from trans_lib.project_manager import load_custom_services, init_project
+from lesia.constants import CONF_DIR, CUSTOM_SERVICES_DIR_NAME, CUSTOM_SERVICES_TEMPLATE_FILENAME
+from lesia.project_manager import load_custom_services, init_project
 
 
 _VALID_SERVICE = """\
@@ -59,7 +59,7 @@ def test_load_custom_services_loads_valid_service(tmp_path: Path) -> None:
 def test_load_custom_services_skips_template(tmp_path: Path) -> None:
     conf_dir = _make_services_dir(tmp_path)
     # Write the template content (which registers "my-service") under the template filename
-    from trans_lib.project_manager import _CUSTOM_SERVICE_TEMPLATE
+    from lesia.project_manager import _CUSTOM_SERVICE_TEMPLATE
     (conf_dir / CUSTOM_SERVICES_DIR_NAME / CUSTOM_SERVICES_TEMPLATE_FILENAME).write_text(_CUSTOM_SERVICE_TEMPLATE)
 
     before = set(LLMCaller.get_services())

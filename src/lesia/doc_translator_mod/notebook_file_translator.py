@@ -2,9 +2,9 @@ from unified_model_caller import LLMCaller
 from ..prompts import prompt_jupyter_code, prompt_jupyter_md 
 from pathlib import Path
 
-from trans_lib.translator_retrieval import ChunkTranslator, CodeMeta, Meta, build_translator_with_model
-from trans_lib.errors import ChunkTranslationFailed
-from trans_lib.vocab_list import VocabList
+from lesia.translator_retrieval import ChunkTranslator, CodeMeta, Meta, build_translator_with_model
+from lesia.errors import ChunkTranslationFailed
+from lesia.vocab_list import VocabList
 from ..enums import ChunkType, DocumentType, Language
 from ..helpers import calculate_checksum
 import jupytext
@@ -20,8 +20,8 @@ async def translate_notebook_async(
     relative_path: str,
     reasoning_caller: LLMCaller | None = None,
 ) -> None:
-    from trans_lib.translation_cache.cache_rebuilder import read_existing_target_metadata
-    from trans_lib.enums import DocumentType as _DT
+    from lesia.translation_cache.cache_rebuilder import read_existing_target_metadata
+    from lesia.enums import DocumentType as _DT
     existing_meta = read_existing_target_metadata(target_file_path, _DT.JupyterNotebook)
     tr = build_translator_with_model(root_path, llm_caller, reasoning_caller)
 

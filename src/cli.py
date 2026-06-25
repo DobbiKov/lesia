@@ -5,15 +5,15 @@ from importlib.metadata import version, PackageNotFoundError
 from pathlib import Path
 
 import typer
-from trans_lib.project_manager import Project
+from lesia.project_manager import Project
 from loguru import logger
 from typing_extensions import Annotated # For Typer < 0.7 or for more complex annotations
 
 
-from trans_lib.enums import Language
-from trans_lib import errors
-from trans_lib.errors import AddCustomLanguageError, RemoveCustomLanguageError
-from trans_lib.vocab_list import vocab_list_from_vocab_db # Import the errors module
+from lesia.enums import Language
+from lesia import errors
+from lesia.errors import AddCustomLanguageError, RemoveCustomLanguageError
+from lesia.vocab_list import vocab_list_from_vocab_db # Import the errors module
 
 try:
     _version = version("lesia")
@@ -47,7 +47,7 @@ def main(
 # Shared callback to load project (or handle not being in one)
 def get_project_from_context(ctx: typer.Context) -> Project:
     """Loads project based on current directory or explicit path."""
-    from trans_lib.project_manager import load_project
+    from lesia.project_manager import load_project
     try:
         # Typer passes the command-specific options.
         # We need a way to get a global --project-path or use CWD.
@@ -74,7 +74,7 @@ def init(
     path: Annotated[Path, typer.Option(help="Directory to initialize the project in. Defaults to current directory.")] = Path(".")
 ):
     """Initializes a new translation project."""
-    from trans_lib.project_manager import init_project
+    from lesia.project_manager import init_project
     try:
         project = init_project(name, str(path.resolve()))
         typer.secho(f"Project '{project.config.name}' initialized successfully at {project.root_path}", fg=typer.colors.GREEN)
@@ -417,7 +417,7 @@ def translation_status(
 def list_llm_services(ctx: typer.Context):
     """Lists all available LLM services."""
     try:
-        from trans_lib.project_manager import load_project
+        from lesia.project_manager import load_project
         load_project(".")
     except errors.NoConfigFoundError:
         pass  # Not in a project — only built-in services will be listed

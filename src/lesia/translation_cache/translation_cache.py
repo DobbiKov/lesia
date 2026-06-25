@@ -1,9 +1,9 @@
 from abc import ABC, abstractmethod
 from pathlib import Path
 
-from trans_lib.diff import get_best_match_in_dir, get_checksum_for_best_match_in_dir
-from trans_lib.enums import Language
-from trans_lib.translation_cache.cache_backend import (
+from lesia.diff import get_best_match_in_dir, get_checksum_for_best_match_in_dir
+from lesia.enums import Language
+from lesia.translation_cache.cache_backend import (
     add_contents_to_cache,
     do_translation_correspond_to_source,
     ensure_cache_dir,

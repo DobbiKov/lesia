@@ -34,6 +34,8 @@ dev = [
 [project.scripts]
 lesia = "cli:app"
 
+[tool.setuptools] 
+py-modules = ["lesia", "cli"]
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]

@@ -1,5 +1,5 @@
 from typing import Any
-from trans_lib.xml_manipulator_mod.myst import _parser
+from lesia.xml_manipulator_mod.myst import _parser
 
 def _myst_to_simple_chunks(source_text: str) -> list[dict]:
     """

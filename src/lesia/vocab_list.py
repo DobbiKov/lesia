@@ -1,5 +1,5 @@
 from loguru import logger
-from trans_lib.enums import Language, CustomLanguage
+from lesia.enums import Language, CustomLanguage
 
 
 class VocabList:

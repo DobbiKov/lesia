@@ -1,12 +1,12 @@
 from pathlib import Path
 
-from trans_lib.constants import CONF_DIR
-from trans_lib.doc_translator_mod.myst_file_translator import get_myst_cells
-from trans_lib.enums import Language
-from trans_lib.helpers import calculate_checksum, calculate_path_checksum
-from trans_lib.project_config_models import ProjectConfig
-from trans_lib.project_manager import Project
-from trans_lib.translation_cache.cache_backend import (
+from lesia.constants import CONF_DIR
+from lesia.doc_translator_mod.myst_file_translator import get_myst_cells
+from lesia.enums import Language
+from lesia.helpers import calculate_checksum, calculate_path_checksum
+from lesia.project_config_models import ProjectConfig
+from lesia.project_manager import Project
+from lesia.translation_cache.cache_backend import (
     PATH_CHECKSUM_COLUMN,
     write_correspondence_cache,
 )
@@ -60,7 +60,7 @@ def _seed_row(
     translations: dict[str, str],  # lang_name → tgt_checksum (or "" for untranslated)
 ) -> None:
     """Insert one row into the correspondence cache."""
-    from trans_lib.translation_cache.cache_backend import read_correspondence_cache
+    from lesia.translation_cache.cache_backend import read_correspondence_cache
 
     cache_data = read_correspondence_cache(project.root_path)
     if cache_data is not None:
@@ -417,7 +417,7 @@ def _write_target_md_with_metadata(
       - "source": str        – translated text
       - "needs_review": bool (optional, defaults to False)
     """
-    from trans_lib.doc_translator_mod.myst_file_translator import compile_myst_cells
+    from lesia.doc_translator_mod.myst_file_translator import compile_myst_cells
 
     cells = []
     for chunk in chunks:
@@ -436,7 +436,7 @@ def _write_target_md_with_metadata(
 # ---------------------------------------------------------------------------
 
 def test_lang_status_proofread_chunks_property() -> None:
-    from trans_lib.project_runtime import LangTranslationStatus
+    from lesia.project_runtime import LangTranslationStatus
 
     lang = LangTranslationStatus(
         lang="French",
@@ -449,7 +449,7 @@ def test_lang_status_proofread_chunks_property() -> None:
 
 
 def test_file_status_proofread_chunks_property() -> None:
-    from trans_lib.project_runtime import FileTranslationStatus
+    from lesia.project_runtime import FileTranslationStatus
 
     f = FileTranslationStatus(
         relative_path="doc.md",
@@ -462,7 +462,7 @@ def test_file_status_proofread_chunks_property() -> None:
 
 
 def test_lang_status_all_proofread_when_no_needs_review() -> None:
-    from trans_lib.project_runtime import LangTranslationStatus
+    from lesia.project_runtime import LangTranslationStatus
 
     lang = LangTranslationStatus(lang="French", total_chunks=5, translated_chunks=5)
     assert lang.needs_review_chunks == 0

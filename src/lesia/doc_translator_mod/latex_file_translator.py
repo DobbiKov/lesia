@@ -2,12 +2,12 @@ from unified_model_caller import LLMCaller
 from ..prompts import prompt4
 from pathlib import Path
 
-from trans_lib.doc_translator_mod.latex_chunker import split_latex_document_into_chunks
-from trans_lib.translator_retrieval import ChunkTranslator, Meta, build_translator_with_model
-from trans_lib.vocab_list import VocabList
+from lesia.doc_translator_mod.latex_chunker import split_latex_document_into_chunks
+from lesia.translator_retrieval import ChunkTranslator, Meta, build_translator_with_model
+from lesia.vocab_list import VocabList
 from ..enums import ChunkType, DocumentType, Language
 from ..helpers import calculate_checksum
-from trans_lib.errors import ChunkTranslationFailed
+from lesia.errors import ChunkTranslationFailed
 from loguru import logger
 
 
@@ -60,8 +60,8 @@ async def translate_file_async(
     reasoning_caller: LLMCaller | None = None,
 ) -> None:
     """Handler for a latex file-to-file translation"""
-    from trans_lib.translation_cache.cache_rebuilder import read_existing_target_metadata
-    from trans_lib.enums import DocumentType as _DT
+    from lesia.translation_cache.cache_rebuilder import read_existing_target_metadata
+    from lesia.enums import DocumentType as _DT
     existing_meta = read_existing_target_metadata(target_file_path, _DT.LaTeX)
     tr = build_translator_with_model(root_path, llm_caller, reasoning_caller)
 

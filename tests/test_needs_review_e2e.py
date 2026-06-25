@@ -7,29 +7,29 @@ from pathlib import Path
 import jupytext
 import nbformat
 
-from trans_lib.enums import Language
-from trans_lib.helpers import calculate_checksum
-from trans_lib.doc_translator_mod import (
+from lesia.enums import Language
+from lesia.helpers import calculate_checksum
+from lesia.doc_translator_mod import (
     myst_file_translator,
     latex_file_translator,
     typst_file_translator,
     notebook_file_translator,
 )
-from trans_lib.doc_translator_mod.myst_file_translator import (
+from lesia.doc_translator_mod.myst_file_translator import (
     compile_myst_cells,
     get_myst_cells,
     read_chunks_with_metadata_from_myst,
 )
-from trans_lib.doc_translator_mod.latex_file_translator import (
+from lesia.doc_translator_mod.latex_file_translator import (
     compile_latex_cells,
     get_latex_cells,
 )
-from trans_lib.doc_translator_mod.latex_chunker import read_chunks_with_metadata_from_latex
-from trans_lib.doc_translator_mod.typst_file_translator import (
+from lesia.doc_translator_mod.latex_chunker import read_chunks_with_metadata_from_latex
+from lesia.doc_translator_mod.typst_file_translator import (
     compile_typst_cells,
     get_typst_cells,
 )
-from trans_lib.doc_translator_mod.typst_chunker import read_chunks_with_metadata_from_typst
+from lesia.doc_translator_mod.typst_chunker import read_chunks_with_metadata_from_typst
 
 
 SRC = Language.ENGLISH

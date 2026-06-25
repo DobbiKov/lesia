@@ -1,8 +1,8 @@
 from loguru import logger
 from unified_model_caller import LLMCaller
 
-from trans_lib.doc_translator_mod import myst_file_translator
-from trans_lib.vocab_list import VocabList
+from lesia.doc_translator_mod import myst_file_translator
+from lesia.vocab_list import VocabList
 from .enums import DocumentType, Language
 from .translator import LLM_API_KEY, LLM_REASONING_API_KEY, translate_contents_async
 from .helpers import read_string_from_file, analyze_document_type

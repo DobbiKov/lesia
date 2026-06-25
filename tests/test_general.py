@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from trans_lib.enums import Language, CustomLanguage
+from lesia.enums import Language, CustomLanguage
 
 
 def test_custom_language(tmp_path: Path) -> None:

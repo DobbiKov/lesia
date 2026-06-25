@@ -7,12 +7,12 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from trans_lib.constants import CONF_DIR
-from trans_lib.enums import Language
-from trans_lib.project_config_models import ProjectConfig
-from trans_lib.project_manager import Project
-import trans_lib.project_runtime as project_runtime
-import trans_lib.doc_translator as doc_translator
+from lesia.constants import CONF_DIR
+from lesia.enums import Language
+from lesia.project_config_models import ProjectConfig
+from lesia.project_manager import Project
+import lesia.project_runtime as project_runtime
+import lesia.doc_translator as doc_translator
 
 
 CASUAL_SERVICE = "google"
@@ -288,7 +288,7 @@ class TestDocTranslatorApiKeyErrors:
         monkeypatch.setattr(doc_translator, "LLM_REASONING_API_KEY", None)
         monkeypatch.setattr(doc_translator, "LLMCaller", self._make_requiring_caller())
 
-        from trans_lib.errors import TranslationProcessError
+        from lesia.errors import TranslationProcessError
         with pytest.raises(TranslationProcessError) as exc_info:
             asyncio.run(doc_translator.translate_file_to_file_async(
                 tmp_path, src, Language.ENGLISH, tgt, Language.FRENCH, "doc.md", None,
@@ -308,7 +308,7 @@ class TestDocTranslatorApiKeyErrors:
         monkeypatch.setattr(doc_translator, "LLM_REASONING_API_KEY", None)
         monkeypatch.setattr(doc_translator, "LLMCaller", self._make_requiring_caller())
 
-        from trans_lib.errors import TranslationProcessError
+        from lesia.errors import TranslationProcessError
         with pytest.raises(TranslationProcessError) as exc_info:
             asyncio.run(doc_translator.translate_file_to_file_async(
                 tmp_path, src, Language.ENGLISH, tgt, Language.FRENCH, "doc.md", None,

@@ -58,17 +58,17 @@ if "google" not in sys.modules:  # pragma: no cover - optional dependency stub
     sys.modules["google.genai.types"] = types_module
 
 
-from trans_lib.doc_translator_mod import myst_file_translator, latex_file_translator, notebook_file_translator
-from trans_lib.enums import ChunkType, DocumentType, Language
-from trans_lib.errors import ChunkTranslationFailed
-from trans_lib.helpers import calculate_checksum
-from trans_lib.translator_retrieval import (
+from lesia.doc_translator_mod import myst_file_translator, latex_file_translator, notebook_file_translator
+from lesia.enums import ChunkType, DocumentType, Language
+from lesia.errors import ChunkTranslationFailed
+from lesia.helpers import calculate_checksum
+from lesia.translator_retrieval import (
     ChunkTranslator,
     Meta,
     ModelOverloadedError,
     _split_typst_chunk_for_internal_translation,
 )
-from trans_lib.xml_manipulator_mod.mod import typst_to_xml_mod
+from lesia.xml_manipulator_mod.mod import typst_to_xml_mod
 from unified_model_caller.errors import ApiCallError
 
 
@@ -299,7 +299,7 @@ def test_model_overloaded_retries_then_succeeds(monkeypatch):
     )
 
     monkeypatch.setattr(
-        "trans_lib.translator_retrieval.chunk_contains_ph_only",
+        "lesia.translator_retrieval.chunk_contains_ph_only",
         lambda *args, **kwargs: False,
     )
 
@@ -342,7 +342,7 @@ def test_model_overloaded_exhausts_retries(monkeypatch):
     )
 
     monkeypatch.setattr(
-        "trans_lib.translator_retrieval.chunk_contains_ph_only",
+        "lesia.translator_retrieval.chunk_contains_ph_only",
         lambda *args, **kwargs: False,
     )
 
