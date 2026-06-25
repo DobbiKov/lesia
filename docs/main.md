@@ -84,15 +84,15 @@ asyncio.run(project.translate_single_file("analysis_notes_fr/main.tex", Language
 To use a custom language not in the predefined list:
 
 ```python
-# Register the custom language
-project.add_custom_language("Catalan", "_ca")
+# Register the custom language (optional short alias)
+project.add_custom_language("American English", "_ae", short="AmEng")
 
-# Resolve it to a CustomLanguage object for use in other calls
-catalan = project.config.resolve_language("Catalan")
+# Resolve it using either the full name or the short alias
+american_english = project.config.resolve_language("AmEng")  # or "American English"
 
 # Use it just like a predefined language
-project.add_target_language(catalan)
-asyncio.run(project.translate_all_for_language(catalan, None))
+project.add_target_language(american_english)
+asyncio.run(project.translate_all_for_language(american_english, None))
 ```
 
 To work with an existing project, load it from the current directory (searched upward, like `git`):
@@ -346,16 +346,17 @@ Custom languages extend the fixed predefined set. Once registered, they are stor
 #### `add_custom_language`
 
 ```python
-project.add_custom_language(name: str, suffix: str) -> None
+project.add_custom_language(name: str, suffix: str, short: str | None = None) -> None
 ```
 
-Registers a new custom language. `name` is the display name (e.g. `"Catalan"`); `suffix` is the directory suffix (e.g. `"_ca"`).
+Registers a new custom language. `name` is the display name (e.g. `"American English"`); `suffix` is the directory suffix (e.g. `"_ae"`). The optional `short` parameter registers a short alias (e.g. `"AmEng"`) that can be used in place of the full name in any call that accepts a language name.
 
 ```python
 project.add_custom_language("Catalan", "_ca")
+project.add_custom_language("American English", "_ae", short="AmEng")
 ```
 
-**Raises:** `AddCustomLanguageError` — if the name matches a predefined language or is already registered.
+**Raises:** `AddCustomLanguageError` — if the name matches a predefined language, is already registered, or the short alias is already used by another custom language.
 
 #### `remove_custom_language`
 
@@ -363,9 +364,14 @@ project.add_custom_language("Catalan", "_ca")
 project.remove_custom_language(name: str) -> None
 ```
 
-Removes a custom language from the project config.
+Removes a custom language from the project config. Accepts either the full name or the registered short alias. Removing a language also removes its short alias.
 
-**Raises:** `RemoveCustomLanguageError` — if the name matches a predefined language, is not registered, or still has an associated target directory (remove the target first with `remove_target_language`).
+```python
+project.remove_custom_language("Catalan")
+project.remove_custom_language("AmEng")  # same as remove_custom_language("American English")
+```
+
+**Raises:** `RemoveCustomLanguageError` — if the name/alias matches a predefined language, is not registered, or still has an associated target directory (remove the target first with `remove_target_language`).
 
 #### `ProjectConfig.resolve_language`
 
@@ -373,22 +379,25 @@ Removes a custom language from the project config.
 project.config.resolve_language(name: str) -> CustomLanguage
 ```
 
-Resolves a language name to a `CustomLanguage` instance. Tries predefined languages first, then the custom registry.
+Resolves a language name or short alias to a `CustomLanguage` instance. Checks predefined languages first, then the custom registry by full name, then by short alias (case-insensitive).
 
 ```python
-french  = project.config.resolve_language("French")   # predefined
-catalan = project.config.resolve_language("Catalan")  # custom
+french          = project.config.resolve_language("French")           # predefined
+catalan         = project.config.resolve_language("Catalan")          # custom full name
+american_en     = project.config.resolve_language("American English") # custom full name
+american_en     = project.config.resolve_language("AmEng")           # custom short alias
 ```
 
-**Raises:** `ValueError` — if the name is not found in either the predefined list or the custom registry.
+**Raises:** `ValueError` — if the name is not found in either the predefined list or the custom registry (by full name or short alias).
 
 #### `ProjectConfig.custom_languages`
 
 ```python
-project.config.custom_languages  # dict[str, str]  — name → suffix
+project.config.custom_languages       # dict[str, str]  — full name → suffix
+project.config.custom_language_shorts # dict[str, str]  — short alias → full name
 ```
 
-Read-only dict of all registered custom languages. Persisted to `config.json` under the `custom_languages` key.
+`custom_languages` maps each registered custom language's full name to its directory suffix. `custom_language_shorts` maps each registered short alias to its corresponding full name. Both are persisted to `config.json`.
 
 ---
 
