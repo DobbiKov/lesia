@@ -2,7 +2,7 @@
 CONFIG_FILENAME = "config.json"
 INTER_FILE_TRANSLATION_DELAY_SECONDS = 5 
 
-CACHE_DIR_NAME = "translate_cache"
+CACHE_DIR_NAME = "cache"
 CORRESPONDENCE_CACHE_FILENAME = "correspondence_cache.csv"
 PATH_MAP_FILENAME = "path_checksums.csv"
 
