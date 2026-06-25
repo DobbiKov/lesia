@@ -301,11 +301,12 @@ Initializes a new translation project in the given directory (default: current d
 lesia set-source <dir_name> <language>
 ```
 
-Sets (or changes) the source directory and its language. `dir_name` is relative to the project root. `language` can be a predefined language name (e.g. `French`) or any custom language previously registered with `add-lang`.
+Sets (or changes) the source directory and its language. `dir_name` is relative to the project root. `language` can be a predefined language name (e.g. `French`), a custom language name, or a short alias previously registered with `add-lang`.
 
 ```
 lesia set-source analysis_notes_fr french
 lesia set-source analysis_notes_ca catalan
+lesia set-source analysis_notes_ae AmEng
 ```
 
 #### `set-target`
@@ -314,11 +315,12 @@ lesia set-source analysis_notes_ca catalan
 lesia set-target <dir_name> <language>
 ```
 
-Registers an existing directory as the target for a language. `language` can be a predefined language name or any custom language previously registered with `add-lang`.
+Registers an existing directory as the target for a language. `language` can be a predefined language name, a custom language name, or a short alias previously registered with `add-lang`.
 
 ```
 lesia set-target analysis_notes_en english
 lesia set-target analysis_notes_ca catalan
+lesia set-target analysis_notes_ae AmEng
 ```
 
 #### `remove-target`
@@ -327,11 +329,12 @@ lesia set-target analysis_notes_ca catalan
 lesia remove-target <language>
 ```
 
-Removes a target language from the project configuration and deletes its directory from disk. Accepts predefined or custom language names.
+Removes a target language from the project configuration and deletes its directory from disk. Accepts predefined language names, custom language names, and short aliases.
 
 ```
 lesia remove-target english
 lesia remove-target catalan
+lesia remove-target AmEng
 ```
 
 #### `info`
@@ -391,40 +394,47 @@ Lines are printed in green when all chunks are translated **and** none need revi
 
 By default, lesia supports a fixed set of predefined languages (`French`, `English`, `German`, `Spanish`, `Ukrainian`, `Armenian`). Custom languages let you work with any language not in this list — you register them in the project config with a name and a directory suffix, and then use them everywhere a language name is accepted (`set-source`, `set-target`, `remove-target`, `translate file`, `translate all`, `cache clear --lang`).
 
+You can optionally assign a **short alias** to a custom language. Once registered, the short alias is interchangeable with the full name in every command.
+
 Custom languages are stored in the project config and are therefore shared with anyone who clones the repository.
 
 #### `add-lang`
 
 ```
-lesia add-lang <name> <suffix>
+lesia add-lang <name> <suffix> [--short <alias>]
 ```
 
-Registers a new custom language in the project. `name` is the display name used in all other commands; `suffix` is the directory suffix used when creating target directories automatically (e.g. `_ca` produces `<project_name>_ca`).
+Registers a new custom language in the project. `name` is the display name used in all other commands; `suffix` is the directory suffix used when creating target directories automatically (e.g. `_ae` produces `<project_name>_ae`). The optional `--short` flag registers a short alias that can be used in place of the full name in any subsequent command.
 
 ```
 lesia add-lang Catalan _ca
-lesia add-lang Basque _eu
+lesia add-lang "American English" _ae --short AmEng
 ```
+
+After the second command, both `"American English"` and `AmEng` are accepted anywhere a language name is expected.
 
 **Errors:**
 - The name matches a predefined language → error.
 - The name is already registered as a custom language → error.
+- The short alias is already used by another custom language → error.
 
 #### `remove-lang`
 
 ```
 lesia remove-lang <name>
+lesia remove-lang <alias>
 ```
 
-Removes a custom language from the project config.
+Removes a custom language from the project config. Both the full name and the short alias (if one was registered) are accepted. Removing a language also removes its short alias.
 
 ```
 lesia remove-lang Catalan
+lesia remove-lang AmEng        # same as: lesia remove-lang "American English"
 ```
 
 **Errors:**
 - The name matches a predefined language → error (predefined languages cannot be removed).
-- The name is not in the config → error.
+- The name/alias is not in the config → error.
 - The language still has an associated target directory configured → error. Remove the target first with `remove-target <name>`.
 
 ---
@@ -475,12 +485,12 @@ Translation commands require `LLM_API_KEY` to be set in the environment.
 lesia translate file <file_path> <language> [--vocabulary <csv_path>] [--use-reasoning-model]
 ```
 
-Translates a single file to the specified target language. The file must be marked as translatable. `language` accepts predefined or custom language names.
+Translates a single file to the specified target language. The file must be marked as translatable. `language` accepts predefined language names, custom language names, and short aliases.
 
 ```
 lesia translate file analysis_notes_fr/main.tex english
 lesia translate file analysis_notes_fr/main.tex catalan --vocabulary vocab.csv
-lesia translate file analysis_notes_fr/main.tex english --use-reasoning-model
+lesia translate file analysis_notes_fr/main.tex AmEng --use-reasoning-model
 ```
 
 #### `translate all`
@@ -489,12 +499,12 @@ lesia translate file analysis_notes_fr/main.tex english --use-reasoning-model
 lesia translate all <language> [--vocabulary <csv_path>] [--use-reasoning-model]
 ```
 
-Translates all translatable files to the specified language. `language` accepts predefined or custom language names.
+Translates all translatable files to the specified language. `language` accepts predefined language names, custom language names, and short aliases.
 
 ```
 lesia translate all english
 lesia translate all catalan --vocabulary vocab.csv
-lesia translate all english --use-reasoning-model
+lesia translate all AmEng --use-reasoning-model
 ```
 
 #### `--use-reasoning-model`
@@ -536,7 +546,7 @@ Cleans up cache entries. Exactly one action flag is required: `--missing-chunks`
 **Rules and constraints:**
 - `--lang`, `--file`, and `--keyword` only work with `--all`.
 - `--keyword` cannot be combined with `--missing-chunks`.
-- Language names are case-insensitive and accept predefined or custom language names.
+- Language names are case-insensitive and accept predefined language names, custom language names, and short aliases.
 - `--file` expects a project file path (the same path used with `translate file`).
 
 **What `--missing-chunks` does:**
@@ -562,6 +572,7 @@ Cleans up cache entries. Exactly one action flag is required: `--missing-chunks`
 ```
 lesia cache clear --missing-chunks
 lesia cache clear --all --lang English
+lesia cache clear --all --lang AmEng
 lesia cache clear --all --file analysis_notes_fr/doc.md
 lesia cache clear --all --lang French --file analysis_notes_fr/doc.md
 lesia cache clear --all
