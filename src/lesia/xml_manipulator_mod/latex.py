@@ -154,7 +154,8 @@ class LatexParser:
                 self._process_chars_node(node, in_alignment=(len(env_stack)>0) and env_stack[-1] in self.alignment_envs)
             elif node.isNodeType(LatexCommentNode):
                 self._add_placeholder('% ')
-                self._add_text(node.comment)
+                # self._add_text(node.comment)
+                self._add_placeholder(node.comment)
                 self._add_placeholder(node.comment_post_space or '\n')
             elif node.isNodeType(LatexMathNode):
                 self._add_placeholder(node.delimiters[0])
