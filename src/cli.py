@@ -86,14 +86,18 @@ def init(
 @app.command("add-lang")
 def add_custom_language(
     ctx: typer.Context,
-    name: Annotated[str, typer.Argument(help="Custom language name, e.g. 'Catalan'.")],
-    suffix: Annotated[str, typer.Argument(help="Directory suffix for the language, e.g. '_ca'.")],
+    name: Annotated[str, typer.Argument(help="Custom language name, e.g. 'American English'.")],
+    suffix: Annotated[str, typer.Argument(help="Directory suffix for the language, e.g. '_ae'.")],
+    short: Annotated[str | None, typer.Option("--short", help="Optional short name alias, e.g. 'AmEng'.")] = None,
 ):
     """Registers a new custom language in the project."""
     project = get_project_from_context(ctx)
     try:
-        project.add_custom_language(name, suffix)
-        typer.secho(f"Custom language '{name}' with suffix '{suffix}' added.", fg=typer.colors.GREEN)
+        project.add_custom_language(name, suffix, short)
+        msg = f"Custom language '{name}' with suffix '{suffix}' added."
+        if short:
+            msg += f" Short alias: '{short}'."
+        typer.secho(msg, fg=typer.colors.GREEN)
     except AddCustomLanguageError as e:
         typer.secho(f"Error adding custom language: {e}", fg=typer.colors.RED, err=True)
         raise typer.Exit(code=1)
@@ -339,10 +343,15 @@ def info_on_project(ctx: typer.Context):
 
 
     custom_languages = project.config.custom_languages
+    custom_shorts = project.config.custom_language_shorts
+    # Build reverse map: full_name → short
+    shorts_by_name = {full: short for short, full in custom_shorts.items()}
     if custom_languages:
         print("Custom languages:")
-        for name, suffix in sorted(custom_languages.items()):
-            print("\t{:<20} suffix: {}".format(name, suffix))
+        for lang_name, suffix in sorted(custom_languages.items()):
+            short = shorts_by_name.get(lang_name)
+            short_str = f" (short: {short})" if short else ""
+            print("\t{:<20} suffix: {}{}".format(lang_name, suffix, short_str))
     else:
         print("Custom languages: None")
 
