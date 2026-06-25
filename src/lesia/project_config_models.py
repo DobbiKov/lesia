@@ -97,6 +97,7 @@ class ProjectConfig(BaseModel):
     runtime_root_path: Path | None = Field(default=None, exclude=True)
 
     custom_languages: dict[str, str] = Field(default_factory=dict)
+    custom_language_shorts: dict[str, str] = Field(default_factory=dict)  # short → full name
 
     llm_service: str = "google"
     llm_model: str = "gemini-2.0-flash"
@@ -182,7 +183,7 @@ class ProjectConfig(BaseModel):
         self.lang_dirs = [ld for ld in self.lang_dirs if ld.get_lang().lower() != lang_str]
         return len(self.lang_dirs) < original_len
 
-    def add_custom_language(self, name: str, suffix: str) -> None:
+    def add_custom_language(self, name: str, suffix: str, short: Optional[str] = None) -> None:
         """Registers a custom language in the config."""
         normalized_name = name.strip()
         normalized_suffix = suffix.strip()
@@ -198,17 +199,38 @@ class ProjectConfig(BaseModel):
                 raise
         if normalized_name in self.custom_languages:
             raise ValueError(f"Custom language '{normalized_name}' already exists.")
+        normalized_short = short.strip() if short else None
+        if normalized_short:
+            if normalized_short in self.custom_language_shorts:
+                existing = self.custom_language_shorts[normalized_short]
+                raise ValueError(f"Short name '{normalized_short}' is already used by '{existing}'.")
         self.custom_languages[normalized_name] = normalized_suffix
+        if normalized_short:
+            self.custom_language_shorts[normalized_short] = normalized_name
+
+    def _resolve_custom_name(self, name: str) -> str:
+        """Returns the canonical full name for a custom language, resolving short aliases."""
+        stripped = name.strip()
+        if stripped in self.custom_languages:
+            return stripped
+        for short, full_name in self.custom_language_shorts.items():
+            if short.lower() == stripped.lower():
+                return full_name
+        return stripped  # Return as-is; caller handles the missing-language error
 
     def remove_custom_language(self, name: str) -> None:
         """Removes a custom language from the registry."""
-        normalized = name.strip()
+        normalized = self._resolve_custom_name(name)
         if normalized not in self.custom_languages:
-            raise ValueError(f"Custom language '{normalized}' not found.")
+            raise ValueError(f"Custom language '{name.strip()}' not found.")
         del self.custom_languages[normalized]
+        # Remove any short name that points to this language
+        shorts_to_remove = [s for s, full in self.custom_language_shorts.items() if full == normalized]
+        for s in shorts_to_remove:
+            del self.custom_language_shorts[s]
 
     def resolve_language(self, name: str) -> CustomLanguage:
-        """Resolves a language name to a CustomLanguage, checking predefined then custom registry."""
+        """Resolves a language name (or short name) to a CustomLanguage."""
         try:
             predefined = Language.from_str(name)
             return CustomLanguage.from_language(predefined)
@@ -216,6 +238,10 @@ class ProjectConfig(BaseModel):
             pass
         if name in self.custom_languages:
             return CustomLanguage(name, self.custom_languages[name])
+        # Check short names (case-insensitive)
+        for short, full_name in self.custom_language_shorts.items():
+            if short.lower() == name.lower():
+                return CustomLanguage(full_name, self.custom_languages[full_name])
         raise ValueError(f"Unknown language: '{name}'. Add it via add_custom_language() first.")
             
     def _find_file_and_apply(self, dir_model: DirectoryModel, path: Path, func: Callable[[FileModel], None]) -> bool:

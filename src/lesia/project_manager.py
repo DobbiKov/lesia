@@ -273,17 +273,17 @@ class Project:
         except Exception as e:
             raise SetLLMServiceError(f"Error while setting reasoning llm service: {e}")
 
-    def add_custom_language(self, name: str, suffix: str) -> None:
+    def add_custom_language(self, name: str, suffix: str, short: str | None = None) -> None:
         """Registers a new custom language in the project config."""
         try:
-            self.config.add_custom_language(name, suffix)
+            self.config.add_custom_language(name, suffix, short)
             self.save_config()
         except ValueError as e:
             raise AddCustomLanguageError(str(e))
 
     def remove_custom_language(self, name: str) -> None:
         """Removes a custom language from the project config."""
-        normalized = name.strip()
+        normalized = self.config._resolve_custom_name(name)
         try:
             Language.from_str(normalized)
             raise RemoveCustomLanguageError(f"'{normalized}' is a predefined language and cannot be removed.")
@@ -291,7 +291,7 @@ class Project:
             if "predefined" in str(e):
                 raise RemoveCustomLanguageError(str(e))
         if normalized not in self.config.custom_languages:
-            raise RemoveCustomLanguageError(f"Custom language '{normalized}' is not in the config.")
+            raise RemoveCustomLanguageError(f"Custom language '{name.strip()}' is not in the config.")
         if (
             self.config.src_dir is not None
             and self.config.src_dir.language.lower() == normalized.lower()
