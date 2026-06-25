@@ -3,12 +3,12 @@ from pathlib import Path
 
 from loguru import logger
 from unified_model_caller import LLMCaller
-from trans_lib.doc_translator_mod.myst_chunker import split_myst_document_into_chunks
-from trans_lib.enums import ChunkType, DocumentType, Language
-from trans_lib.helpers import calculate_checksum
-from trans_lib.errors import ChunkTranslationFailed
-from trans_lib.translator_retrieval import ChunkTranslator, Meta, build_translator_with_model
-from trans_lib.vocab_list import VocabList
+from lesia.doc_translator_mod.myst_chunker import split_myst_document_into_chunks
+from lesia.enums import ChunkType, DocumentType, Language
+from lesia.helpers import calculate_checksum
+from lesia.errors import ChunkTranslationFailed
+from lesia.translator_retrieval import ChunkTranslator, Meta, build_translator_with_model
+from lesia.vocab_list import VocabList
 
 
 def _format_metadata_block(metadata: dict[str, str]) -> str:
@@ -61,8 +61,8 @@ async def translate_file_async(
     reasoning_caller: LLMCaller | None = None,
 ) -> None:
     """Handler for a latex file-to-file translation"""
-    from trans_lib.translation_cache.cache_rebuilder import read_existing_target_metadata
-    from trans_lib.enums import DocumentType as _DT
+    from lesia.translation_cache.cache_rebuilder import read_existing_target_metadata
+    from lesia.enums import DocumentType as _DT
     existing_meta = read_existing_target_metadata(target_file_path, _DT.Markdown)
     tr = build_translator_with_model(root_path, llm_caller, reasoning_caller)
 

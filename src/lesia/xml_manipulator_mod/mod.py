@@ -1,9 +1,9 @@
-from trans_lib.enums import ChunkType
-from trans_lib.xml_manipulator_mod.code import CodeParser
-from trans_lib.xml_manipulator_mod.latex import parse_latex
-from trans_lib.xml_manipulator_mod.myst import parse_myst
-from trans_lib.xml_manipulator_mod.typst import typst_to_xml
-from trans_lib.xml_manipulator_mod.xml import create_translation_xml
+from lesia.enums import ChunkType
+from lesia.xml_manipulator_mod.code import CodeParser
+from lesia.xml_manipulator_mod.latex import parse_latex
+from lesia.xml_manipulator_mod.myst import parse_myst
+from lesia.xml_manipulator_mod.typst import typst_to_xml
+from lesia.xml_manipulator_mod.xml import create_translation_xml
 
 def chunk_to_xml_bis(source: str, chunk_type: ChunkType) -> tuple[str, dict, bool]:
     """

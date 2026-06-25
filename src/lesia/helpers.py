@@ -9,8 +9,8 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from typing import Iterable, List, Optional
 
-from trans_lib.constants import CONF_DIR
-from trans_lib.enums import DocumentType
+from lesia.constants import CONF_DIR
+from lesia.enums import DocumentType
 
 def calculate_checksum(contents: str) -> str:
     """

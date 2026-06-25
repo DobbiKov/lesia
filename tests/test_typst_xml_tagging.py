@@ -1,12 +1,12 @@
 import xml.etree.ElementTree as ET
 
-from trans_lib.enums import ChunkType
-from trans_lib.xml_manipulator_mod.mod import chunk_to_xml_with_placeholders, typst_to_xml_mod
-from trans_lib.xml_manipulator_mod.typst import (
+from lesia.enums import ChunkType
+from lesia.xml_manipulator_mod.mod import chunk_to_xml_with_placeholders, typst_to_xml_mod
+from lesia.xml_manipulator_mod.typst import (
     configure_typst_translatable_string_args_by_function,
     reset_typst_translatable_string_args_by_function,
 )
-from trans_lib.xml_manipulator_mod.xml import reconstruct_from_xml
+from lesia.xml_manipulator_mod.xml import reconstruct_from_xml
 
 
 TYPST_SAMPLE = """= Heading

@@ -181,7 +181,7 @@ Typst markup is simpler than LaTeX — there is no arbitrary macro redefinition.
 ## Recommended Implementation Path
 
 1. Install `tree-sitter` and `tree-sitter-language-pack`
-2. Create `src/trans_lib/xml_manipulator_mod/typst.py` mirroring `latex.py` / `myst.py`
+2. Create `src/lesia/xml_manipulator_mod/typst.py` mirroring `latex.py` / `myst.py`
 3. Walk the CST recursively: `text` nodes → `'text'`; structural wrappers (`emph`, `strong`, `heading`) → emit delimiter nodes as `'placeholder'` and recurse into content children; code/math/raw → `'placeholder'`
 4. Handle `text()` calls inside math analogously to `math_text_macros` in the LaTeX parser
 5. Add `DocumentType.Typst` and `ChunkType.Typst` to `enums.py`
@@ -194,9 +194,9 @@ Typst markup is simpler than LaTeX — there is no arbitrary macro redefinition.
 The Typst parser and chunker described above have been implemented. This section documents how they actually work, including the chunking pipeline and how oversized chunks are handled at translation time.
 
 Relevant source files:
-- `src/trans_lib/xml_manipulator_mod/typst.py` — segment parser (`parse_typst`)
-- `src/trans_lib/doc_translator_mod/typst_chunker.py` — file-level chunker
-- `src/trans_lib/translator_retrieval.py` — translation-time subchunking
+- `src/lesia/xml_manipulator_mod/typst.py` — segment parser (`parse_typst`)
+- `src/lesia/doc_translator_mod/typst_chunker.py` — file-level chunker
+- `src/lesia/translator_retrieval.py` — translation-time subchunking
 
 ### File-level chunking
 

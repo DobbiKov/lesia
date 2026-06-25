@@ -1,4 +1,4 @@
-from trans_lib.doc_translator_mod.typst_chunker import split_typst_document_into_chunks
+from lesia.doc_translator_mod.typst_chunker import split_typst_document_into_chunks
 
 
 def test_inline_math_stays_in_single_context_chunk() -> None:

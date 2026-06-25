@@ -4,21 +4,21 @@ from dataclasses import dataclass
 from typing import Callable
 import xml.etree.ElementTree as ET
 from loguru import logger
-from trans_lib.helpers import calculate_checksum, extract_translated_from_response
+from lesia.helpers import calculate_checksum, extract_translated_from_response
 from pathlib import Path
-from trans_lib.enums import ChunkType, DocumentType, Language
-from trans_lib.translation_cache.translation_cache import TranslationCache, TranslationCacheCsv
-from trans_lib.translator import finalize_prompt, finalize_xml_prompt, _prepare_prompt_for_language, _prepare_prompt_for_vocab_list, _prepare_prompt_for_content_type, _prepare_prompt_for_translation_example
-from trans_lib.vocab_list import VocabList
-from trans_lib.xml_manipulator_mod.xml import reconstruct_from_xml, verify_placeholders
-from trans_lib.xml_manipulator_mod.mod import chunk_contains_ph_only, chunk_to_xml, chunk_to_xml_with_placeholders, code_to_xml
-from trans_lib.xml_manipulator_mod.typst import parse_typst
-from trans_lib.prompts import xml_translation_prompt
-from trans_lib.translator import _ask_gemini_model
-from trans_lib.prompts import prompt4, xml_with_previous_translation_prompt
+from lesia.enums import ChunkType, DocumentType, Language
+from lesia.translation_cache.translation_cache import TranslationCache, TranslationCacheCsv
+from lesia.translator import finalize_prompt, finalize_xml_prompt, _prepare_prompt_for_language, _prepare_prompt_for_vocab_list, _prepare_prompt_for_content_type, _prepare_prompt_for_translation_example
+from lesia.vocab_list import VocabList
+from lesia.xml_manipulator_mod.xml import reconstruct_from_xml, verify_placeholders
+from lesia.xml_manipulator_mod.mod import chunk_contains_ph_only, chunk_to_xml, chunk_to_xml_with_placeholders, code_to_xml
+from lesia.xml_manipulator_mod.typst import parse_typst
+from lesia.prompts import xml_translation_prompt
+from lesia.translator import _ask_gemini_model
+from lesia.prompts import prompt4, xml_with_previous_translation_prompt
 from unified_model_caller import LLMCaller
 from unified_model_caller.errors import ApiCallError
-from trans_lib.errors import ChunkTranslationFailed, PlaceholderVerificationError
+from lesia.errors import ChunkTranslationFailed, PlaceholderVerificationError
 try:
     from unified_model_caller.errors import ModelOverloadedError
 except ImportError:  # pragma: no cover - unified_model_caller may not expose the new error yet

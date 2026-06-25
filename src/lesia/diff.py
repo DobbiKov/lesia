@@ -2,7 +2,7 @@ from difflib import SequenceMatcher
 import os
 from pathlib import Path
 
-from trans_lib.helpers import read_string_from_file
+from lesia.helpers import read_string_from_file
 
 def diff_score(a: str, b: str) -> float:
     # ratio() in [0..1], based on length of longest common subsequence

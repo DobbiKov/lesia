@@ -2,13 +2,13 @@ from pathlib import Path
 
 import nbformat
 
-from trans_lib.doc_translator_mod.typst_file_translator import compile_typst_cells, get_typst_cells
-from trans_lib.enums import Language
-from trans_lib.helpers import calculate_checksum
-from trans_lib.project_config_models import ProjectConfig
-from trans_lib.project_manager import Project
-from trans_lib.translation_cache.translation_cache import TranslationCacheCsv
-from trans_lib.constants import CONF_DIR
+from lesia.doc_translator_mod.typst_file_translator import compile_typst_cells, get_typst_cells
+from lesia.enums import Language
+from lesia.helpers import calculate_checksum
+from lesia.project_config_models import ProjectConfig
+from lesia.project_manager import Project
+from lesia.translation_cache.translation_cache import TranslationCacheCsv
+from lesia.constants import CONF_DIR
 
 
 def _write_notebook(path: Path, cells: list[nbformat.NotebookNode]) -> None:

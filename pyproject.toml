@@ -37,7 +37,7 @@ dev = [
 lesia = "cli:app"
 
 [tool.setuptools] 
-py-modules = ["trans_lib", "cli"]
+py-modules = ["lesia", "cli"]
 
 
 [tool.pytest.ini_options]

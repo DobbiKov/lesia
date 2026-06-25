@@ -3,10 +3,10 @@ not on cache hits, and is preserved from an existing translated file."""
 
 import asyncio
 
-from trans_lib.enums import Language, ChunkType, DocumentType
-from trans_lib.helpers import calculate_checksum
-from trans_lib.translator_retrieval import ChunkTranslator, Meta
-from trans_lib.doc_translator_mod import (
+from lesia.enums import Language, ChunkType, DocumentType
+from lesia.helpers import calculate_checksum
+from lesia.translator_retrieval import ChunkTranslator, Meta
+from lesia.doc_translator_mod import (
     myst_file_translator,
     latex_file_translator,
     typst_file_translator,
@@ -203,7 +203,7 @@ class TestSessionChecksums:
         """Second occurrence of a chunk in the same file should still return
         from_cache=False because it was LLM-translated in this same pass."""
         monkeypatch.setattr(
-            "trans_lib.translator_retrieval.chunk_contains_ph_only",
+            "lesia.translator_retrieval.chunk_contains_ph_only",
             lambda *a, **kw: False,
         )
         caller = CountingCaller()
@@ -222,7 +222,7 @@ class TestSessionChecksums:
         """A fresh ChunkTranslator on a new file has an empty session set, so a
         lookup that hits a pre-existing cache entry is correctly from_cache=True."""
         monkeypatch.setattr(
-            "trans_lib.translator_retrieval.chunk_contains_ph_only",
+            "lesia.translator_retrieval.chunk_contains_ph_only",
             lambda *a, **kw: False,
         )
         chunk = "Hello world."
@@ -240,7 +240,7 @@ class TestSessionChecksums:
         """Session checksums are per-instance. Two files translated with separate
         translators don't share session state."""
         monkeypatch.setattr(
-            "trans_lib.translator_retrieval.chunk_contains_ph_only",
+            "lesia.translator_retrieval.chunk_contains_ph_only",
             lambda *a, **kw: False,
         )
         # Shared persistent store (simulates the on-disk cache)

@@ -2,11 +2,11 @@ import xml.etree.ElementTree as ET
 
 import pytest
 
-from trans_lib.enums import ChunkType
-from trans_lib.errors import PlaceholderVerificationError
-from trans_lib.translator_retrieval import PromptContext, _xml_postprocess
-from trans_lib.xml_manipulator_mod.mod import chunk_to_xml_with_placeholders, latex_to_xml, myst_to_xml
-from trans_lib.xml_manipulator_mod.xml import reconstruct_from_xml, verify_placeholders
+from lesia.enums import ChunkType
+from lesia.errors import PlaceholderVerificationError
+from lesia.translator_retrieval import PromptContext, _xml_postprocess
+from lesia.xml_manipulator_mod.mod import chunk_to_xml_with_placeholders, latex_to_xml, myst_to_xml
+from lesia.xml_manipulator_mod.xml import reconstruct_from_xml, verify_placeholders
 
 
 LATEX_SAMPLE = r"""\section*{Introduction}

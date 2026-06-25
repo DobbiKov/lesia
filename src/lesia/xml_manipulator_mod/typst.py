@@ -5,7 +5,7 @@ from typing import Any
 
 from typst_syntax import SyntaxKind, parse_source
 
-from trans_lib.xml_manipulator_mod.xml import create_translation_xml
+from lesia.xml_manipulator_mod.xml import create_translation_xml
 
 _MATH_TEXT_FUNCTIONS = {"text", "upright", "bold", "italic"}
 

@@ -4,7 +4,7 @@ from pathlib import Path
 
 from loguru import logger
 
-from trans_lib.vocab_list import VocabList
+from lesia.vocab_list import VocabList
 
 from .constants import INTER_FILE_TRANSLATION_DELAY_SECONDS 
 from .prompts import prompt4

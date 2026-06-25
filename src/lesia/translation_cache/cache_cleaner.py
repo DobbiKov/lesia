@@ -4,10 +4,10 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable
 
-from trans_lib.constants import CACHE_DIR_NAME
-from trans_lib.enums import Language, CustomLanguage
-from trans_lib.helpers import calculate_path_checksum, get_config_dir_from_root, normalize_relative_path
-from trans_lib.translation_cache.cache_backend import (
+from lesia.constants import CACHE_DIR_NAME
+from lesia.enums import Language, CustomLanguage
+from lesia.helpers import calculate_path_checksum, get_config_dir_from_root, normalize_relative_path
+from lesia.translation_cache.cache_backend import (
     PATH_CHECKSUM_COLUMN,
     read_correspondence_cache,
     write_correspondence_cache,

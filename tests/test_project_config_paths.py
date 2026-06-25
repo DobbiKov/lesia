@@ -3,11 +3,11 @@ from pathlib import Path
 
 import pytest
 
-from trans_lib.enums import CustomLanguage, Language
-from trans_lib.project_config_models import LangDir, ProjectConfig
-from trans_lib.project_config_io import write_project_config
-from trans_lib.project_manager import load_project
-from trans_lib.constants import CONF_DIR, CONFIG_FILENAME
+from lesia.enums import CustomLanguage, Language
+from lesia.project_config_models import LangDir, ProjectConfig
+from lesia.project_config_io import write_project_config
+from lesia.project_manager import load_project
+from lesia.constants import CONF_DIR, CONFIG_FILENAME
 
 
 def test_config_stores_relative_paths(tmp_path):
@@ -223,8 +223,8 @@ def test_add_duplicate_custom_language_raises():
 
 
 def test_add_predefined_language_as_custom_via_project_manager(tmp_path):
-    from trans_lib.project_manager import init_project
-    from trans_lib.errors import AddCustomLanguageError
+    from lesia.project_manager import init_project
+    from lesia.errors import AddCustomLanguageError
 
     project = init_project("proj", str(tmp_path))
     with pytest.raises(AddCustomLanguageError, match="already a predefined"):
@@ -232,8 +232,8 @@ def test_add_predefined_language_as_custom_via_project_manager(tmp_path):
 
 
 def test_add_duplicate_custom_language_via_project_manager(tmp_path):
-    from trans_lib.project_manager import init_project
-    from trans_lib.errors import AddCustomLanguageError
+    from lesia.project_manager import init_project
+    from lesia.errors import AddCustomLanguageError
 
     project = init_project("proj", str(tmp_path))
     project.add_custom_language("Catalan", "_ca")
@@ -248,8 +248,8 @@ def test_remove_nonexistent_custom_language_raises():
 
 
 def test_remove_custom_language_success(tmp_path):
-    from trans_lib.project_manager import init_project
-    from trans_lib.errors import RemoveCustomLanguageError
+    from lesia.project_manager import init_project
+    from lesia.errors import RemoveCustomLanguageError
 
     project = init_project("proj", str(tmp_path))
     project.add_custom_language("Catalan", "_ca")
@@ -258,8 +258,8 @@ def test_remove_custom_language_success(tmp_path):
 
 
 def test_remove_predefined_language_raises(tmp_path):
-    from trans_lib.project_manager import init_project
-    from trans_lib.errors import RemoveCustomLanguageError
+    from lesia.project_manager import init_project
+    from lesia.errors import RemoveCustomLanguageError
 
     project = init_project("proj", str(tmp_path))
     with pytest.raises(RemoveCustomLanguageError, match="predefined"):
@@ -267,8 +267,8 @@ def test_remove_predefined_language_raises(tmp_path):
 
 
 def test_remove_nonexistent_custom_language_via_project_raises(tmp_path):
-    from trans_lib.project_manager import init_project
-    from trans_lib.errors import RemoveCustomLanguageError
+    from lesia.project_manager import init_project
+    from lesia.errors import RemoveCustomLanguageError
 
     project = init_project("proj", str(tmp_path))
     with pytest.raises(RemoveCustomLanguageError, match="not in the config"):
@@ -276,8 +276,8 @@ def test_remove_nonexistent_custom_language_via_project_raises(tmp_path):
 
 
 def test_remove_custom_language_with_target_dir_raises(tmp_path):
-    from trans_lib.project_manager import init_project
-    from trans_lib.errors import RemoveCustomLanguageError
+    from lesia.project_manager import init_project
+    from lesia.errors import RemoveCustomLanguageError
 
     project = init_project("proj", str(tmp_path))
     project.add_custom_language("Catalan", "_ca")

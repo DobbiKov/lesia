@@ -27,7 +27,7 @@ from .errors import (
 )
 
 if TYPE_CHECKING:
-    from trans_lib.vocab_list import VocabList
+    from lesia.vocab_list import VocabList
 
 
 # TODO: add refine translation command

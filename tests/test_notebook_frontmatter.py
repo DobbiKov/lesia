@@ -7,8 +7,8 @@ from pathlib import Path
 
 import yaml
 
-from trans_lib.enums import Language
-from trans_lib.doc_translator_mod import notebook_file_translator
+from lesia.enums import Language
+from lesia.doc_translator_mod import notebook_file_translator
 
 
 SRC = Language.ENGLISH

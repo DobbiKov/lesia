@@ -3,8 +3,8 @@ import csv
 from pathlib import Path
 from typing import Iterable
 
-from trans_lib.enums import Language
-from trans_lib.helpers import (
+from lesia.enums import Language
+from lesia.helpers import (
     calculate_checksum,
     calculate_path_checksum,
     ensure_dir_exists,
@@ -12,7 +12,7 @@ from trans_lib.helpers import (
     normalize_relative_path,
     read_string_from_file,
 )
-from trans_lib.constants import CACHE_DIR_NAME, CORRESPONDENCE_CACHE_FILENAME, PATH_MAP_FILENAME
+from lesia.constants import CACHE_DIR_NAME, CORRESPONDENCE_CACHE_FILENAME, PATH_MAP_FILENAME
 
 PATH_CHECKSUM_COLUMN = "path_checksum"
 PATH_MAP_COLUMNS = [PATH_CHECKSUM_COLUMN, "relative_path"]

@@ -3,8 +3,8 @@ from pathlib import Path
 from typer.testing import CliRunner
 
 from cli import app
-from trans_lib.project_manager import init_project, load_project
-from trans_lib.enums import Language
+from lesia.project_manager import init_project, load_project
+from lesia.enums import Language
 
 runner = CliRunner()
 
@@ -22,7 +22,7 @@ def test_cli_add_lang_success(project, tmp_path):
     assert result.exit_code == 0
     assert "Catalan" in result.output
 
-    from trans_lib.project_manager import load_project
+    from lesia.project_manager import load_project
     reloaded = load_project(str(tmp_path))
     assert "Catalan" in reloaded.config.custom_languages
 
@@ -48,7 +48,7 @@ def test_cli_remove_lang_success(project, tmp_path):
     assert result.exit_code == 0
     assert "Catalan" in result.output
 
-    from trans_lib.project_manager import load_project
+    from lesia.project_manager import load_project
     reloaded = load_project(str(tmp_path))
     assert "Catalan" not in reloaded.config.custom_languages
 
@@ -248,7 +248,7 @@ def test_cli_cache_clear_custom_language_resolves(project, tmp_path):
 
 
 def test_cli_remove_lang_with_associated_source_dir_errors(project, tmp_path):
-    from trans_lib.project_manager import load_project
+    from lesia.project_manager import load_project
 
     runner.invoke(app, ["add-lang", "Catalan", "_ca"])
 
@@ -266,7 +266,7 @@ def test_cli_remove_lang_with_associated_source_dir_errors(project, tmp_path):
 
 
 def test_cli_remove_lang_with_associated_target_dir_errors(project, tmp_path):
-    from trans_lib.project_manager import load_project
+    from lesia.project_manager import load_project
 
     runner.invoke(app, ["add-lang", "Catalan", "_ca"])
 

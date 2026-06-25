@@ -59,8 +59,8 @@ uv sync
 
 ```python
 import asyncio
-from trans_lib.project_manager import init_project, load_project
-from trans_lib.enums import Language
+from lesia.project_manager import init_project, load_project
+from lesia.enums import Language
 
 # Initialize a new project in an existing directory
 project = init_project("my_project", "/path/to/project/root")
@@ -98,7 +98,7 @@ asyncio.run(project.translate_all_for_language(catalan, None))
 To work with an existing project, load it from the current directory (searched upward, like `git`):
 
 ```python
-from trans_lib.project_manager import load_project
+from lesia.project_manager import load_project
 
 project = load_project(".")
 ```
@@ -108,7 +108,7 @@ project = load_project(".")
 ## Language
 
 ```python
-from trans_lib.enums import Language
+from lesia.enums import Language
 ```
 
 `Language` is a `str` enum of supported languages.
@@ -138,7 +138,7 @@ lang = Language.from_str("ENGLISH") # Language.ENGLISH
 ## CustomLanguage
 
 ```python
-from trans_lib.enums import CustomLanguage
+from lesia.enums import CustomLanguage
 ```
 
 `CustomLanguage` is the runtime representation of a language — both predefined and custom. All `Project` methods that accept a language argument accept either a `Language` enum member or a `CustomLanguage` instance.
@@ -197,7 +197,7 @@ english = project.config.resolve_language("English")
 ## VocabList
 
 ```python
-from trans_lib.vocab_list import VocabList, vocab_list_from_vocab_db
+from lesia.vocab_list import VocabList, vocab_list_from_vocab_db
 ```
 
 Holds a custom glossary that is passed to the LLM during translation to improve term consistency.
@@ -231,8 +231,8 @@ Extracts a `VocabList` from a multi-language vocabulary database. The `db` argum
 
 ```python
 import csv
-from trans_lib.vocab_list import vocab_list_from_vocab_db
-from trans_lib.enums import Language
+from lesia.vocab_list import vocab_list_from_vocab_db
+from lesia.enums import Language
 
 with open("vocab.csv") as f:
     db = list(csv.DictReader(f))
@@ -252,7 +252,7 @@ If the source or target language is not found as a column header, a warning is l
 ## Module-level functions
 
 ```python
-from trans_lib.project_manager import init_project, load_project
+from lesia.project_manager import init_project, load_project
 ```
 
 ### `init_project`
@@ -280,7 +280,7 @@ Loads an existing project. Searches upward from `path_str` for a `.lesia` direct
 ## Project class
 
 ```python
-from trans_lib.project_manager import Project
+from lesia.project_manager import Project
 ```
 
 `Project` is the central object for all operations. Always obtain an instance via `init_project` or `load_project`; do not instantiate directly.
@@ -622,7 +622,7 @@ Returns the current mapping of function names to their registered translatable a
 
 All exceptions inherit from `DirectoryTranslationError`.
 
-Import path: `from trans_lib import errors`.
+Import path: `from lesia import errors`.
 
 ```
 DirectoryTranslationError

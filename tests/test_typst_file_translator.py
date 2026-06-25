@@ -1,5 +1,5 @@
-from trans_lib.doc_translator_mod.typst_chunker import read_chunks_with_metadata_from_typst
-from trans_lib.doc_translator_mod.typst_file_translator import compile_typst_cells
+from lesia.doc_translator_mod.typst_chunker import read_chunks_with_metadata_from_typst
+from lesia.doc_translator_mod.typst_file_translator import compile_typst_cells
 
 
 def test_compile_typst_cells_forces_metadata_to_start_on_new_line_between_chunks(tmp_path) -> None:

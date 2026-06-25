@@ -1,16 +1,16 @@
 from pathlib import Path
 
-from trans_lib.constants import CACHE_DIR_NAME, CONF_DIR
-from trans_lib.enums import Language
-from trans_lib.helpers import calculate_checksum, calculate_path_checksum
-from trans_lib.project_config_models import ProjectConfig
-from trans_lib.project_manager import Project
-from trans_lib.translation_cache.cache_backend import (
+from lesia.constants import CACHE_DIR_NAME, CONF_DIR
+from lesia.enums import Language
+from lesia.helpers import calculate_checksum, calculate_path_checksum
+from lesia.project_config_models import ProjectConfig
+from lesia.project_manager import Project
+from lesia.translation_cache.cache_backend import (
     PATH_CHECKSUM_COLUMN,
     read_correspondence_cache,
     write_correspondence_cache,
 )
-from trans_lib.translation_cache.translation_cache import TranslationCacheCsv
+from lesia.translation_cache.translation_cache import TranslationCacheCsv
 
 
 def _write_chunk(cache_dir: Path, lang: Language, path_hash: str, checksum: str, contents: str) -> None:
