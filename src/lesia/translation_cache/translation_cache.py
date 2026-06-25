@@ -4,13 +4,14 @@ from pathlib import Path
 from lesia.diff import get_best_match_in_dir, get_checksum_for_best_match_in_dir
 from lesia.enums import Language
 from lesia.translation_cache.cache_backend import (
+    PATH_CHECKSUM_COLUMN,
     add_contents_to_cache,
     do_translation_correspond_to_source,
     ensure_cache_dir,
     ensure_lang_cache_dirs,
-    find_correspondent_checksum,
     get_lang_cache_path_dir,
     read_cached_contents_by_lang,
+    read_correspondence_cache,
     register_path_hash,
     set_checksum_pair_in_correspondence_cache,
 )
@@ -70,11 +71,32 @@ class TranslationCacheCsv(TranslationCache):
     def __init__(self, root_path: Path) -> None:
         cache_path = ensure_cache_dir(root_path)
         super().__init__(root_path, cache_path)
+        self._index: dict[tuple[str, str, str, str], str] = {}
+        self._load_index()
+
+    def _load_index(self) -> None:
+        cache_data = read_correspondence_cache(self.root_path)
+        if cache_data is None:
+            return
+        fields, data_list = cache_data
+        lang_fields = [f for f in fields if f != PATH_CHECKSUM_COLUMN]
+        for row in data_list:
+            path_hash = row.get(PATH_CHECKSUM_COLUMN, "")
+            for src_lang in lang_fields:
+                src_checksum = row.get(src_lang, "")
+                if not src_checksum:
+                    continue
+                for tgt_lang in lang_fields:
+                    if src_lang == tgt_lang:
+                        continue
+                    tgt_checksum = row.get(tgt_lang, "")
+                    if tgt_checksum:
+                        self._index[(path_hash, src_lang, tgt_lang, src_checksum)] = tgt_checksum
 
     def lookup(self, src_checksum: str, src_lang: Language, tgt_lang: Language, relative_path: str) -> str | None:
         """Return the cached *target text* if the pair exists, else *None*."""
         path_hash = register_path_hash(self.root_path, relative_path)
-        tgt_checksum = find_correspondent_checksum(self.root_path, src_checksum, src_lang, tgt_lang, path_hash)
+        tgt_checksum = self._index.get((path_hash, str(src_lang), str(tgt_lang), src_checksum))
         if tgt_checksum is None:
             return None
         return read_cached_contents_by_lang(self.root_path, tgt_checksum, tgt_lang, path_hash)
@@ -103,6 +125,8 @@ class TranslationCacheCsv(TranslationCache):
             tgt_lang,
             path_hash,
         )
+        self._index[(path_hash, str(src_lang), str(tgt_lang), src_checksum)] = tgt_checksum
+        self._index[(path_hash, str(tgt_lang), str(src_lang), tgt_checksum)] = src_checksum
 
     def get_best_pair_example_from_cache(self, lang: Language, tgt_lang: Language, txt: str, relative_path: str) -> tuple[str, str, float] | None:
         """
