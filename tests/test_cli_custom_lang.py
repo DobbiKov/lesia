@@ -285,3 +285,110 @@ def test_cli_remove_lang_with_associated_target_dir_errors(project, tmp_path):
     result = runner.invoke(app, ["remove-lang", "Catalan"])
     assert result.exit_code == 1
     assert "associated target directory" in result.output
+
+
+# --- short name (--short flag) ---
+
+def test_cli_add_lang_with_short(project, tmp_path):
+    result = runner.invoke(app, ["add-lang", "American English", "_ae", "--short", "AmEng"])
+    assert result.exit_code == 0
+    assert "American English" in result.output
+    assert "AmEng" in result.output
+
+    reloaded = load_project(str(tmp_path))
+    assert "American English" in reloaded.config.custom_languages
+    assert reloaded.config.custom_language_shorts.get("AmEng") == "American English"
+
+
+def test_cli_add_lang_duplicate_short_errors(project):
+    runner.invoke(app, ["add-lang", "American English", "_ae", "--short", "AmEng"])
+    result = runner.invoke(app, ["add-lang", "Australian English", "_au", "--short", "AmEng"])
+    assert result.exit_code == 1
+    assert "already used" in result.output
+
+
+def test_cli_set_source_with_short(project, tmp_path):
+    src_dir = tmp_path / "src_ae"
+    src_dir.mkdir()
+    runner.invoke(app, ["add-lang", "American English", "_ae", "--short", "AmEng"])
+
+    result = runner.invoke(app, ["set-source", "src_ae", "AmEng"])
+    assert result.exit_code == 0
+
+    reloaded = load_project(str(tmp_path))
+    assert reloaded.config.src_dir is not None
+    assert reloaded.config.src_dir.language == "American English"
+
+
+def test_cli_set_target_with_short(project, tmp_path):
+    src_dir = tmp_path / "src_en"
+    tgt_dir = tmp_path / "tgt_ae"
+    src_dir.mkdir()
+    tgt_dir.mkdir()
+    runner.invoke(app, ["set-source", "src_en", "English"])
+    runner.invoke(app, ["add-lang", "American English", "_ae", "--short", "AmEng"])
+
+    result = runner.invoke(app, ["set-target", "tgt_ae", "AmEng"])
+    assert result.exit_code == 0
+
+    reloaded = load_project(str(tmp_path))
+    lang = reloaded.config.resolve_language("American English")
+    assert reloaded.config.get_target_dir_path_by_lang(lang) == tgt_dir.resolve()
+
+
+def test_cli_remove_target_with_short(project, tmp_path):
+    src_dir = tmp_path / "src_en"
+    tgt_dir = tmp_path / "tgt_ae"
+    src_dir.mkdir()
+    tgt_dir.mkdir()
+    runner.invoke(app, ["add-lang", "American English", "_ae", "--short", "AmEng"])
+    runner.invoke(app, ["set-source", "src_en", "English"])
+    runner.invoke(app, ["set-target", "tgt_ae", "AmEng"])
+
+    result = runner.invoke(app, ["remove-target", "AmEng"])
+    assert result.exit_code == 0
+
+    reloaded = load_project(str(tmp_path))
+    lang = reloaded.config.resolve_language("American English")
+    assert reloaded.config.get_target_dir_path_by_lang(lang) is None
+
+
+def test_cli_remove_lang_with_short(project, tmp_path):
+    runner.invoke(app, ["add-lang", "American English", "_ae", "--short", "AmEng"])
+
+    result = runner.invoke(app, ["remove-lang", "AmEng"])
+    assert result.exit_code == 0
+
+    reloaded = load_project(str(tmp_path))
+    assert "American English" not in reloaded.config.custom_languages
+    assert "AmEng" not in reloaded.config.custom_language_shorts
+
+
+def test_cli_remove_lang_clears_short(project, tmp_path):
+    runner.invoke(app, ["add-lang", "American English", "_ae", "--short", "AmEng"])
+    runner.invoke(app, ["remove-lang", "American English"])
+
+    reloaded = load_project(str(tmp_path))
+    assert "AmEng" not in reloaded.config.custom_language_shorts
+
+
+def test_cli_translate_file_with_short_resolves(project, tmp_path):
+    _setup_project_with_custom_target(tmp_path)
+    runner.invoke(app, ["add-lang", "American English", "_ae", "--short", "AmEng"])
+
+    result = runner.invoke(app, ["translate", "file", "src_en/doc.txt", "AmEng"])
+    assert "Unknown language" not in (result.output or "")
+
+
+def test_cli_translate_all_with_short_resolves(project, tmp_path):
+    _setup_project_with_custom_target(tmp_path)
+    runner.invoke(app, ["add-lang", "American English", "_ae", "--short", "AmEng"])
+
+    result = runner.invoke(app, ["translate", "all", "AmEng"])
+    assert "Unknown language" not in (result.output or "")
+
+
+def test_cli_cache_clear_with_short_resolves(project, tmp_path):
+    runner.invoke(app, ["add-lang", "American English", "_ae", "--short", "AmEng"])
+    result = runner.invoke(app, ["cache", "clear", "--all", "--lang", "AmEng"])
+    assert "Unknown language" not in (result.output or "")
