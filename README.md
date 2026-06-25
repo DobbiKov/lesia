@@ -34,12 +34,12 @@ integrates easily into your workflow.
 4. Create a directory for the documents you want to translate `mkdir -p src/fr`
     - In this example our source language is French
 5. Move your files to the created source directory `src/fr`
-6. Create directories for target languages `mkdir -p tgt/en`, `mkdir -p tgt/ua`
+6. Create directories for target languages `mkdir -p src/en`, `mkdir -p src/ua`
 7. Associate source and target directories with desired languages
     ```sh
-    lesia set-source srs/fr french
-    lesia set-target tgt/en english
-    lesia set-target tgt/ua ukrainian
+    lesia set-source src/fr french
+    lesia set-target src/en english
+    lesia set-target src/ua ukrainian
     ```
 8. Mark files that should be translated `lesia add src/fr/main.md`
 9. Synchronize directories `lesia sync`
