@@ -339,6 +339,88 @@ class Project:
     def get_typst_translatable_string_args_by_function(self) -> dict[str, list[str]]:
         return self.config.get_typst_translatable_string_args_by_function()
 
+    # ------------------------------------------------------------------
+    # LaTeX configuration
+    # ------------------------------------------------------------------
+
+    def add_latex_placeholder_env(self, env_name: str) -> None:
+        try:
+            self.config.add_latex_placeholder_env(env_name)
+            self.save_config()
+        except Exception as e:
+            raise SetLLMServiceError(f"Error adding LaTeX placeholder environment: {e}")
+
+    def remove_latex_placeholder_env(self, env_name: str) -> None:
+        try:
+            self.config.remove_latex_placeholder_env(env_name)
+            self.save_config()
+        except Exception as e:
+            raise SetLLMServiceError(f"Error removing LaTeX placeholder environment: {e}")
+
+    def add_latex_math_env(self, env_name: str) -> None:
+        try:
+            self.config.add_latex_math_env(env_name)
+            self.save_config()
+        except Exception as e:
+            raise SetLLMServiceError(f"Error adding LaTeX math environment: {e}")
+
+    def remove_latex_math_env(self, env_name: str) -> None:
+        try:
+            self.config.remove_latex_math_env(env_name)
+            self.save_config()
+        except Exception as e:
+            raise SetLLMServiceError(f"Error removing LaTeX math environment: {e}")
+
+    def add_latex_placeholder_command(self, cmd_name: str) -> None:
+        try:
+            self.config.add_latex_placeholder_command(cmd_name)
+            self.save_config()
+        except Exception as e:
+            raise SetLLMServiceError(f"Error adding LaTeX placeholder command: {e}")
+
+    def remove_latex_placeholder_command(self, cmd_name: str) -> None:
+        try:
+            self.config.remove_latex_placeholder_command(cmd_name)
+            self.save_config()
+        except Exception as e:
+            raise SetLLMServiceError(f"Error removing LaTeX placeholder command: {e}")
+
+    def set_latex_command_translatable_args(
+        self,
+        cmd_name: str,
+        mandatory: list[int] | None = None,
+        optional: list[int] | None = None,
+    ) -> None:
+        try:
+            self.config.set_latex_command_translatable_args(cmd_name, mandatory=mandatory, optional=optional)
+            self.save_config()
+        except Exception as e:
+            raise SetLLMServiceError(f"Error setting LaTeX command translatable args: {e}")
+
+    def remove_latex_command_translatable_args(self, cmd_name: str) -> None:
+        try:
+            self.config.remove_latex_command_translatable_args(cmd_name)
+            self.save_config()
+        except Exception as e:
+            raise SetLLMServiceError(f"Error removing LaTeX command translatable args: {e}")
+
+    def set_latex_custom_command_spec(self, cmd_name: str, mandatory: int, optional: int = 0) -> None:
+        try:
+            self.config.set_latex_custom_command_spec(cmd_name, mandatory=mandatory, optional=optional)
+            self.save_config()
+        except Exception as e:
+            raise SetLLMServiceError(f"Error setting LaTeX custom command spec: {e}")
+
+    def remove_latex_custom_command_spec(self, cmd_name: str) -> None:
+        try:
+            self.config.remove_latex_custom_command_spec(cmd_name)
+            self.save_config()
+        except Exception as e:
+            raise SetLLMServiceError(f"Error removing LaTeX custom command spec: {e}")
+
+    def get_latex_settings(self) -> dict:
+        return self.config.get_latex_settings()
+
     def _find_correspondent_translatable_file(self, target_path: Path) -> Path | None:
         """
         Returns a correspondent source language translatable file for the given translated one or None

@@ -107,6 +107,14 @@ class ProjectConfig(BaseModel):
         default_factory=lambda: {"ex": ["info"]}
     )
 
+    latex_extra_placeholder_envs: list[str] = Field(default_factory=list)
+    latex_extra_math_envs: list[str] = Field(default_factory=list)
+    latex_extra_placeholder_commands: list[str] = Field(default_factory=list)
+    # command name → {"mandatory": [1, 2, ...], "optional": [1, ...]}  (1-based)
+    latex_command_translatable_args: dict[str, dict[str, list[int]]] = Field(default_factory=dict)
+    # command name → {"mandatory": N, "optional": M}  — arg counts for pylatexenc spec registration
+    latex_custom_command_specs: dict[str, dict[str, int]] = Field(default_factory=dict)
+
     @classmethod
     def new(cls, project_name: str) -> ProjectConfig:
         return cls(
@@ -299,6 +307,117 @@ class ProjectConfig(BaseModel):
         normalized_function = function_name.strip().lower()
         if normalized_function in self.typst_translatable_string_args_by_function:
             del self.typst_translatable_string_args_by_function[normalized_function]
+
+    # ------------------------------------------------------------------
+    # LaTeX configuration
+    # ------------------------------------------------------------------
+
+    def add_latex_placeholder_env(self, env_name: str) -> None:
+        name = env_name.strip()
+        if not name:
+            raise ValueError("Environment name cannot be empty.")
+        if name not in self.latex_extra_placeholder_envs:
+            self.latex_extra_placeholder_envs.append(name)
+
+    def remove_latex_placeholder_env(self, env_name: str) -> None:
+        name = env_name.strip()
+        if name not in self.latex_extra_placeholder_envs:
+            raise ValueError(f"Environment '{name}' is not in the placeholder list.")
+        self.latex_extra_placeholder_envs.remove(name)
+
+    def add_latex_math_env(self, env_name: str) -> None:
+        name = env_name.strip()
+        if not name:
+            raise ValueError("Environment name cannot be empty.")
+        if name not in self.latex_extra_math_envs:
+            self.latex_extra_math_envs.append(name)
+
+    def remove_latex_math_env(self, env_name: str) -> None:
+        name = env_name.strip()
+        if name not in self.latex_extra_math_envs:
+            raise ValueError(f"Environment '{name}' is not in the math list.")
+        self.latex_extra_math_envs.remove(name)
+
+    def add_latex_placeholder_command(self, cmd_name: str) -> None:
+        name = cmd_name.strip()
+        if not name:
+            raise ValueError("Command name cannot be empty.")
+        if name not in self.latex_extra_placeholder_commands:
+            self.latex_extra_placeholder_commands.append(name)
+
+    def remove_latex_placeholder_command(self, cmd_name: str) -> None:
+        name = cmd_name.strip()
+        if name not in self.latex_extra_placeholder_commands:
+            raise ValueError(f"Command '{name}' is not in the placeholder list.")
+        self.latex_extra_placeholder_commands.remove(name)
+
+    def set_latex_command_translatable_args(
+        self,
+        cmd_name: str,
+        mandatory: list[int] | None = None,
+        optional: list[int] | None = None,
+    ) -> None:
+        name = cmd_name.strip()
+        if not name:
+            raise ValueError("Command name cannot be empty.")
+        entry: dict[str, list[int]] = {}
+        if mandatory is not None:
+            bad = [i for i in mandatory if not isinstance(i, int) or i < 1]
+            if bad:
+                raise ValueError(f"Mandatory arg indices must be integers >= 1, got: {bad}")
+            entry["mandatory"] = sorted(set(mandatory))
+        if optional is not None:
+            bad = [i for i in optional if not isinstance(i, int) or i < 1]
+            if bad:
+                raise ValueError(f"Optional arg indices must be integers >= 1, got: {bad}")
+            entry["optional"] = sorted(set(optional))
+        if not entry:
+            raise ValueError("At least one of 'mandatory' or 'optional' must be provided.")
+        self.latex_command_translatable_args[name] = entry
+
+    def remove_latex_command_translatable_args(self, cmd_name: str) -> None:
+        name = cmd_name.strip()
+        if name not in self.latex_command_translatable_args:
+            raise ValueError(f"Command '{name}' has no translatable-args config.")
+        del self.latex_command_translatable_args[name]
+
+    def set_latex_custom_command_spec(
+        self,
+        cmd_name: str,
+        mandatory: int,
+        optional: int = 0,
+    ) -> None:
+        name = cmd_name.strip()
+        if not name:
+            raise ValueError("Command name cannot be empty.")
+        if not isinstance(mandatory, int) or mandatory < 0:
+            raise ValueError("mandatory must be a non-negative integer.")
+        if not isinstance(optional, int) or optional < 0:
+            raise ValueError("optional must be a non-negative integer.")
+        if mandatory == 0 and optional == 0:
+            raise ValueError("At least one of mandatory or optional must be > 0.")
+        self.latex_custom_command_specs[name] = {"mandatory": mandatory, "optional": optional}
+
+    def remove_latex_custom_command_spec(self, cmd_name: str) -> None:
+        name = cmd_name.strip()
+        if name not in self.latex_custom_command_specs:
+            raise ValueError(f"Command '{name}' has no custom spec defined.")
+        del self.latex_custom_command_specs[name]
+
+    def get_latex_settings(self) -> dict:
+        return {
+            "extra_placeholder_envs": list(self.latex_extra_placeholder_envs),
+            "extra_math_envs": list(self.latex_extra_math_envs),
+            "extra_placeholder_commands": list(self.latex_extra_placeholder_commands),
+            "command_translatable_args": {
+                cmd: dict(spec)
+                for cmd, spec in self.latex_command_translatable_args.items()
+            },
+            "custom_command_specs": {
+                cmd: dict(spec)
+                for cmd, spec in self.latex_custom_command_specs.items()
+            },
+        }
 
     def make_file_translatable(self, path: Path, translatable: bool) -> None:
         """Marks a file as translatable or untranslatable."""
