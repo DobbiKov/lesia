@@ -50,6 +50,14 @@ class NoConfigFoundError(LoadProjectError):
 class SetLLMServiceError(ProjectError):
     """Errors when setting the llm service."""
     pass
+
+class SetTypstConfigError(ProjectError):
+    """Errors when setting Typst parser configuration."""
+    pass
+
+class SetLatexConfigError(ProjectError):
+    """Errors when setting LaTeX parser configuration."""
+    pass
 class SetSourceDirError(ProjectError):
     """Errors when setting the source directory."""
     pass
