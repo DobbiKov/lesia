@@ -3,6 +3,9 @@
 [![Tests](https://github.com/DobbiKov/lesia/actions/workflows/tests.yml/badge.svg)](https://github.com/DobbiKov/lesia/actions/workflows/tests.yml)
 [![GitHub Release](https://img.shields.io/github/release/DobbiKov/lesia.svg?style=flat)]()  
 
+- [WebSite](https://lesia.korotenky.com)
+- [Documentation](https://dobbikov.github.io/lesia)
+
 ## About
 **Lesia** is a tool to help you maintain your multilingual documents that
 integrates easily into your workflow.
