@@ -80,6 +80,19 @@ def _apply_typst_translation_settings(project: Project) -> None:
     )
 
 
+def _apply_latex_translation_settings(project: Project) -> None:
+    from .xml_manipulator_mod.latex import configure_latex_settings
+
+    settings = project.get_latex_settings()
+    configure_latex_settings(
+        extra_placeholder_envs=settings["extra_placeholder_envs"],
+        extra_math_envs=settings["extra_math_envs"],
+        extra_placeholder_commands=settings["extra_placeholder_commands"],
+        command_translatable_args=settings["command_translatable_args"],
+        custom_command_specs=settings["custom_command_specs"],
+    )
+
+
 def _get_target_dir_config(project: Project, target_lang: Language | CustomLanguage):
     for lang_dir in project.config.lang_dirs:
         if lang_dir.language == target_lang:
@@ -354,6 +367,7 @@ async def translate_single_file(
     use_reasoning_model: bool = False,
 ) -> None:
     _apply_typst_translation_settings(project)
+    _apply_latex_translation_settings(project)
 
     try:
         file_path = Path(file_path_str).resolve(strict=True)

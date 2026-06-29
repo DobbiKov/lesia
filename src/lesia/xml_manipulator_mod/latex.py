@@ -2,6 +2,115 @@ import re
 import uuid
 from pylatexenc.latexwalker import (LatexCommentNode, LatexWalker, LatexCharsNode, LatexMacroNode,
                                     LatexEnvironmentNode, LatexMathNode, LatexGroupNode)
+from pylatexenc.macrospec import MacroSpec, MacroStandardArgsParser
+
+# ---------------------------------------------------------------------------
+# Module-level runtime configuration (process-wide, like typst.py)
+# ---------------------------------------------------------------------------
+
+_runtime_extra_placeholder_envs: set[str] = set()
+_runtime_extra_math_envs: set[str] = set()
+_runtime_extra_placeholder_commands: set[str] = set()
+# command name → {"mandatory": [1, 2, ...], "optional": [1, ...]}  (1-based)
+_runtime_command_translatable_args: dict[str, dict[str, list[int]]] = {}
+# command name → {"mandatory": N, "optional": M}  — used to register MacrosDef with pylatexenc
+_runtime_custom_command_specs: dict[str, dict[str, int]] = {}
+
+
+def configure_latex_settings(
+    extra_placeholder_envs: list[str] | set[str] = (),
+    extra_math_envs: list[str] | set[str] = (),
+    extra_placeholder_commands: list[str] | set[str] = (),
+    command_translatable_args: dict[str, dict[str, list[int]]] | None = None,
+    custom_command_specs: dict[str, dict[str, int]] | None = None,
+) -> None:
+    """Configure module-level LaTeX parsing behaviour.
+
+    All sets are *additive* on top of the hardcoded defaults — the user
+    cannot accidentally remove built-in entries (e.g. \\cite, verbatim).
+
+    Args:
+        extra_placeholder_envs: Additional environment names whose entire
+            content should be treated as a placeholder (not translated).
+        extra_math_envs: Additional environment names whose body should be
+            walked as math (not translated as text).
+        extra_placeholder_commands: Additional command names that should be
+            treated as a single placeholder (not translated at all).
+        command_translatable_args: Per-command specification of which
+            arguments are translatable.  Keys are command names; values are
+            dicts with optional keys ``"mandatory"`` and ``"optional"``,
+            each containing a 1-based list of argument indices that should
+            be translated.  Arguments not listed are treated as placeholders.
+            Commands absent from this dict keep the default behaviour
+            (all arguments walked as text).
+        custom_command_specs: Argument structure for custom/unknown macros,
+            so pylatexenc can parse their arguments correctly.  Keys are
+            command names; values are dicts with optional integer keys
+            ``"mandatory"`` (number of mandatory ``{..}`` args) and
+            ``"optional"`` (number of optional ``[..]`` args).  Optional
+            args are assumed to precede mandatory args (the most common
+            LaTeX pattern).  Commands defined here get a ``MacrosDef``
+            registered with ``LatexWalker`` so their args appear in
+            ``node.nodeargs`` and ``command_translatable_args`` can act
+            on them.
+
+    Example::
+
+        configure_latex_settings(
+            extra_placeholder_envs=["myverbatim"],
+            extra_placeholder_commands=["myref"],
+            custom_command_specs={
+                "myfig": {"mandatory": 2, "optional": 0},
+            },
+            command_translatable_args={
+                "myfig":     {"mandatory": [2]},
+                "textcolor": {"mandatory": [2]},
+                "section":   {"mandatory": [1], "optional": [1]},
+            },
+        )
+    """
+    global _runtime_extra_placeholder_envs
+    global _runtime_extra_math_envs
+    global _runtime_extra_placeholder_commands
+    global _runtime_command_translatable_args
+    global _runtime_custom_command_specs
+
+    _runtime_extra_placeholder_envs = {e.strip() for e in extra_placeholder_envs if e and e.strip()}
+    _runtime_extra_math_envs = {e.strip() for e in extra_math_envs if e and e.strip()}
+    _runtime_extra_placeholder_commands = {c.strip() for c in extra_placeholder_commands if c and c.strip()}
+
+    normalized_args: dict[str, dict[str, list[int]]] = {}
+    for cmd, spec in (command_translatable_args or {}).items():
+        cmd_norm = cmd.strip()
+        if not cmd_norm:
+            continue
+        entry: dict[str, list[int]] = {}
+        for key in ("mandatory", "optional"):
+            if key in spec:
+                entry[key] = sorted({i for i in spec[key] if isinstance(i, int) and i >= 1})
+        normalized_args[cmd_norm] = entry
+    _runtime_command_translatable_args = normalized_args
+
+    normalized_specs: dict[str, dict[str, int]] = {}
+    for cmd, spec in (custom_command_specs or {}).items():
+        cmd_norm = cmd.strip()
+        if not cmd_norm:
+            continue
+        entry_spec: dict[str, int] = {}
+        if "mandatory" in spec and isinstance(spec["mandatory"], int) and spec["mandatory"] >= 0:
+            entry_spec["mandatory"] = spec["mandatory"]
+        if "optional" in spec and isinstance(spec["optional"], int) and spec["optional"] >= 0:
+            entry_spec["optional"] = spec["optional"]
+        if entry_spec:
+            normalized_specs[cmd_norm] = entry_spec
+    _runtime_custom_command_specs = normalized_specs
+
+
+def reset_latex_settings() -> None:
+    """Reset all runtime LaTeX settings back to defaults (empty)."""
+    configure_latex_settings()
+
+
 class LatexParser:
     """
     Unified LaTeX parser that combines all functionality:
@@ -16,7 +125,7 @@ class LatexParser:
         self.placeholder_commands = {'ref', 'autoref', 'cite', 'label', 'includegraphics', 'input', 'include', 'frac', 'sqrt', 'path', 'url', 'href', '\\', 'verb'}
         self.placeholder_envs = {'verbatim', 'Verbatim', 'lstlisting', 'minted'}
         self.math_envs = {
-                'equation', 'equation*', 'align', 'align*', 'aligned', 'gather', 'gather*', 
+                'equation', 'equation*', 'align', 'align*', 'aligned', 'gather', 'gather*',
                 'gathered', 'flalign', 'flalign*', 'alignat', 'alignat*', 'multline', 'multline*',
                 'displaymath', 'math', 'eqnarray', 'eqnarray*'
                 }
@@ -27,7 +136,13 @@ class LatexParser:
         self.alignment_envs = {'tabular', 'tabular*', 'array', 'align', 'align*',
                                'aligned', 'flalign', 'flalign*', 'alignat',
                                'alignat*', 'gather', 'gather*'}
-        # Allow customization
+        # Apply module-level runtime config (additive)
+        self.placeholder_commands.update(_runtime_extra_placeholder_commands)
+        self.placeholder_envs.update(_runtime_extra_placeholder_envs)
+        self.math_envs.update(_runtime_extra_math_envs)
+        self.command_translatable_args: dict[str, dict[str, list[int]]] = dict(_runtime_command_translatable_args)
+        self.custom_command_specs: dict[str, dict[str, int]] = dict(_runtime_custom_command_specs)
+        # Allow further per-instance customization
         if len(placeholder_commands) != 0:
             self.placeholder_commands.update(placeholder_commands)
         if len(placeholder_envs) != 0:
@@ -55,7 +170,7 @@ class LatexParser:
         # Parse with LaTeX parser
         self.segments = []
         self.latex_content = processed_content
-        lw = LatexWalker(processed_content)
+        lw = LatexWalker(processed_content, macro_dict=self._build_macro_dict())
         nodelist, _, _ = lw.get_latex_nodes()
         if r'\end{document}' in processed_content and r'\begin{document}' not in processed_content:
             return [('placeholder', latex_content)]
@@ -173,19 +288,30 @@ class LatexParser:
                 else:
                     # ASTERISK PRESERVATION: Use latex_verbatim() and extract command part
                     full_command = node.latex_verbatim()
-                    if node.nodeargs:
+                    cmd_config = self.command_translatable_args.get(node.macroname)
+                    # Use nodeargd.argnlist (full arg list including optional) when available,
+                    # otherwise fall back to nodeargs (mandatory-only in pylatexenc v2).
+                    all_args = (
+                        node.nodeargd.argnlist
+                        if getattr(node, 'nodeargd', None) is not None and node.nodeargd.argnlist
+                        else node.nodeargs
+                    )
+                    if all_args:
                         # Find where the command ends and arguments begin
                         command_part = full_command
-                        for arg_node in node.nodeargs:
+                        for arg_node in all_args:
                             if arg_node is not None:
                                 arg_start = arg_node.pos - node.pos
                                 command_part = full_command[:arg_start]
                                 break
                         self._add_placeholder(command_part)
-                        for arg_node in node.nodeargs:
-                            if arg_node is None:
-                                continue
-                            self._walk_text_nodes([arg_node])
+                        if cmd_config is not None:
+                            self._walk_args_with_config(all_args, cmd_config)
+                        else:
+                            for arg_node in all_args:
+                                if arg_node is None:
+                                    continue
+                                self._walk_text_nodes([arg_node])
                     else:
                         # No arguments, use the full command
                         self._add_placeholder(full_command)
@@ -225,6 +351,39 @@ class LatexParser:
                 env_stack.pop()
             else:
                 self._add_placeholder(node.latex_verbatim())
+
+    def _walk_args_with_config(self, nodeargs, cmd_config: dict[str, list[int]]) -> None:
+        """Walk macro arguments according to per-command translatable-arg config.
+
+        ``cmd_config`` has optional keys ``"mandatory"`` and ``"optional"``,
+        each holding a 1-based list of argument indices that are translatable.
+        Arguments whose index is not listed are emitted as placeholders.
+        Absent optional arguments (``None`` entries) are always skipped.
+        """
+        translatable_mandatory: list[int] = cmd_config.get("mandatory", [])
+        translatable_optional: list[int] = cmd_config.get("optional", [])
+        mandatory_idx = 0
+        optional_idx = 0
+        for arg_node in nodeargs:
+            if arg_node is None:
+                optional_idx += 1
+                continue
+            is_optional = (
+                isinstance(getattr(arg_node, "delimiters", None), (list, tuple))
+                and arg_node.delimiters[0] == "["
+            )
+            if is_optional:
+                optional_idx += 1
+                if optional_idx in translatable_optional:
+                    self._walk_text_nodes([arg_node])
+                else:
+                    self._add_placeholder(arg_node.latex_verbatim())
+            else:
+                mandatory_idx += 1
+                if mandatory_idx in translatable_mandatory:
+                    self._walk_text_nodes([arg_node])
+                else:
+                    self._add_placeholder(arg_node.latex_verbatim())
 
     def _process_definition_macro(self, node):
         """Process definition macros like \\newcommand with asterisk preservation."""
@@ -340,6 +499,23 @@ class LatexParser:
             if not made_changes:
                 i += 1
     # === UTILITIES ===
+    def _build_macro_dict(self) -> dict:
+        """Build a pylatexenc macro_dict from custom_command_specs.
+
+        Optional args are assumed to precede mandatory args, which is the
+        most common LaTeX pattern (e.g. \\section[short]{title}).
+        Returns an empty dict if no custom specs are defined.
+        """
+        if not self.custom_command_specs:
+            return {}
+        macro_dict = {}
+        for cmd, spec in self.custom_command_specs.items():
+            n_optional = spec.get("optional", 0)
+            n_mandatory = spec.get("mandatory", 0)
+            argspec = '[' * n_optional + '{' * n_mandatory
+            macro_dict[cmd] = MacroSpec(cmd, args_parser=MacroStandardArgsParser(argspec))
+        return macro_dict
+
     def _env_header_end(self, env_node):
         """
         Return the character offset immediately after
@@ -398,7 +574,10 @@ class LatexParser:
         return i  # character *after* the closing '}' of the mandatory arg
 
 def parse_latex(latex_content) -> list[tuple[str, str]]:
-    """High-level function to instantiate and use the LatexParser."""
+    """High-level function to instantiate and use the LatexParser.
+
+    Picks up any settings previously applied via :func:`configure_latex_settings`.
+    """
     parser = LatexParser()
     return parser.parse(latex_content)
 
