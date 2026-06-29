@@ -264,7 +264,7 @@ def set_typst_function_args(
             f"Typst function '{function_name}' translatable string args set to: {', '.join(arg_names)}",
             fg=typer.colors.GREEN,
         )
-    except errors.SetLLMServiceError as e:
+    except errors.SetTypstConfigError as e:
         typer.secho(f"Error setting Typst function args: {e}", fg=typer.colors.RED, err=True)
         raise typer.Exit(code=1)
 
@@ -282,7 +282,7 @@ def unset_typst_function_args(
             f"Typst function '{function_name}' settings removed.",
             fg=typer.colors.GREEN,
         )
-    except errors.SetLLMServiceError as e:
+    except errors.SetTypstConfigError as e:
         typer.secho(f"Error removing Typst function args: {e}", fg=typer.colors.RED, err=True)
         raise typer.Exit(code=1)
 
@@ -296,7 +296,7 @@ def add_latex_placeholder_env(
     try:
         project.add_latex_placeholder_env(env_name)
         typer.secho(f"LaTeX environment '{env_name}' added to placeholder list.", fg=typer.colors.GREEN)
-    except errors.SetLLMServiceError as e:
+    except errors.SetLatexConfigError as e:
         typer.secho(f"Error: {e}", fg=typer.colors.RED, err=True)
         raise typer.Exit(code=1)
 
@@ -311,7 +311,7 @@ def remove_latex_placeholder_env(
     try:
         project.remove_latex_placeholder_env(env_name)
         typer.secho(f"LaTeX environment '{env_name}' removed from placeholder list.", fg=typer.colors.GREEN)
-    except errors.SetLLMServiceError as e:
+    except errors.SetLatexConfigError as e:
         typer.secho(f"Error: {e}", fg=typer.colors.RED, err=True)
         raise typer.Exit(code=1)
 
@@ -326,7 +326,7 @@ def add_latex_math_env(
     try:
         project.add_latex_math_env(env_name)
         typer.secho(f"LaTeX environment '{env_name}' added to math list.", fg=typer.colors.GREEN)
-    except errors.SetLLMServiceError as e:
+    except errors.SetLatexConfigError as e:
         typer.secho(f"Error: {e}", fg=typer.colors.RED, err=True)
         raise typer.Exit(code=1)
 
@@ -341,7 +341,7 @@ def remove_latex_math_env(
     try:
         project.remove_latex_math_env(env_name)
         typer.secho(f"LaTeX environment '{env_name}' removed from math list.", fg=typer.colors.GREEN)
-    except errors.SetLLMServiceError as e:
+    except errors.SetLatexConfigError as e:
         typer.secho(f"Error: {e}", fg=typer.colors.RED, err=True)
         raise typer.Exit(code=1)
 
@@ -356,7 +356,7 @@ def add_latex_placeholder_command(
     try:
         project.add_latex_placeholder_command(cmd_name)
         typer.secho(f"LaTeX command '{cmd_name}' added to placeholder list.", fg=typer.colors.GREEN)
-    except errors.SetLLMServiceError as e:
+    except errors.SetLatexConfigError as e:
         typer.secho(f"Error: {e}", fg=typer.colors.RED, err=True)
         raise typer.Exit(code=1)
 
@@ -371,7 +371,7 @@ def remove_latex_placeholder_command(
     try:
         project.remove_latex_placeholder_command(cmd_name)
         typer.secho(f"LaTeX command '{cmd_name}' removed from placeholder list.", fg=typer.colors.GREEN)
-    except errors.SetLLMServiceError as e:
+    except errors.SetLatexConfigError as e:
         typer.secho(f"Error: {e}", fg=typer.colors.RED, err=True)
         raise typer.Exit(code=1)
 
@@ -406,7 +406,7 @@ def set_latex_command_translatable_args(
             f"LaTeX command '{cmd_name}' translatable args set — {', '.join(parts)}.",
             fg=typer.colors.GREEN,
         )
-    except errors.SetLLMServiceError as e:
+    except errors.SetLatexConfigError as e:
         typer.secho(f"Error: {e}", fg=typer.colors.RED, err=True)
         raise typer.Exit(code=1)
 
@@ -421,7 +421,7 @@ def unset_latex_command_translatable_args(
     try:
         project.remove_latex_command_translatable_args(cmd_name)
         typer.secho(f"LaTeX command '{cmd_name}' arg config removed.", fg=typer.colors.GREEN)
-    except errors.SetLLMServiceError as e:
+    except errors.SetLatexConfigError as e:
         typer.secho(f"Error: {e}", fg=typer.colors.RED, err=True)
         raise typer.Exit(code=1)
 
@@ -453,7 +453,7 @@ def set_latex_custom_command_spec(
             f"LaTeX command '{cmd_name}' spec set — mandatory: {mandatory}, optional: {optional}.",
             fg=typer.colors.GREEN,
         )
-    except errors.SetLLMServiceError as e:
+    except errors.SetLatexConfigError as e:
         typer.secho(f"Error: {e}", fg=typer.colors.RED, err=True)
         raise typer.Exit(code=1)
 
@@ -468,7 +468,7 @@ def unset_latex_custom_command_spec(
     try:
         project.remove_latex_custom_command_spec(cmd_name)
         typer.secho(f"LaTeX command '{cmd_name}' spec removed.", fg=typer.colors.GREEN)
-    except errors.SetLLMServiceError as e:
+    except errors.SetLatexConfigError as e:
         typer.secho(f"Error: {e}", fg=typer.colors.RED, err=True)
         raise typer.Exit(code=1)
 

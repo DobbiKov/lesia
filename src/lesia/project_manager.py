@@ -15,7 +15,9 @@ from .project_config_io import (
 from .helpers import find_dir_upwards
 from .constants import CONF_DIR, CONFIG_FILENAME, CUSTOM_SERVICES_DIR_NAME, CUSTOM_SERVICES_TEMPLATE_FILENAME
 from .errors import (
-    InitProjectError, InvalidPathError, ProjectAlreadyInitializedError, SetLLMServiceError, WriteConfigError as ConfigWriteError,
+    InitProjectError, InvalidPathError, ProjectAlreadyInitializedError, SetLLMServiceError,
+    SetTypstConfigError, SetLatexConfigError,
+    WriteConfigError as ConfigWriteError,
     LoadProjectError, NoConfigFoundError, LoadConfigError as ConfigLoadError,
     SetSourceDirError, DirectoryDoesNotExistError, NotADirectoryError as PathNotADirectoryError,
     AnalyzeDirError, LangAlreadyInProjectError,
@@ -283,31 +285,8 @@ class Project:
 
     def remove_custom_language(self, name: str) -> None:
         """Removes a custom language from the project config."""
-        normalized = self.config._resolve_custom_name(name)
         try:
-            Language.from_str(normalized)
-            raise RemoveCustomLanguageError(f"'{normalized}' is a predefined language and cannot be removed.")
-        except ValueError as e:
-            if "predefined" in str(e):
-                raise RemoveCustomLanguageError(str(e))
-        if normalized not in self.config.custom_languages:
-            raise RemoveCustomLanguageError(f"Custom language '{name.strip()}' is not in the config.")
-        if (
-            self.config.src_dir is not None
-            and self.config.src_dir.language.lower() == normalized.lower()
-        ):
-            raise RemoveCustomLanguageError(
-                f"Cannot remove '{normalized}': it is configured as the source directory language. "
-                "Change or unset the source directory first."
-            )
-        target_dir = self.config.get_target_dir_path_by_lang(normalized)
-        if target_dir is not None:
-            raise RemoveCustomLanguageError(
-                f"Cannot remove '{normalized}': it has an associated target directory '{target_dir}'. "
-                "Remove the target language first with 'remove-target'."
-            )
-        try:
-            self.config.remove_custom_language(normalized)
+            self.config.remove_custom_language(name)
             self.save_config()
         except ValueError as e:
             raise RemoveCustomLanguageError(str(e))
@@ -322,7 +301,7 @@ class Project:
             self.config.set_typst_translatable_string_args_for_function(function_name, arg_names)
             self.save_config()
         except Exception as e:
-            raise SetLLMServiceError(
+            raise SetTypstConfigError(
                 f"Error while setting Typst translatable string arguments for function '{function_name}': {e}"
             )
 
@@ -332,7 +311,7 @@ class Project:
             self.config.remove_typst_translatable_string_args_for_function(function_name)
             self.save_config()
         except Exception as e:
-            raise SetLLMServiceError(
+            raise SetTypstConfigError(
                 f"Error while removing Typst translatable string arguments for function '{function_name}': {e}"
             )
 
@@ -348,42 +327,42 @@ class Project:
             self.config.add_latex_placeholder_env(env_name)
             self.save_config()
         except Exception as e:
-            raise SetLLMServiceError(f"Error adding LaTeX placeholder environment: {e}")
+            raise SetLatexConfigError(f"Error adding LaTeX placeholder environment: {e}")
 
     def remove_latex_placeholder_env(self, env_name: str) -> None:
         try:
             self.config.remove_latex_placeholder_env(env_name)
             self.save_config()
         except Exception as e:
-            raise SetLLMServiceError(f"Error removing LaTeX placeholder environment: {e}")
+            raise SetLatexConfigError(f"Error removing LaTeX placeholder environment: {e}")
 
     def add_latex_math_env(self, env_name: str) -> None:
         try:
             self.config.add_latex_math_env(env_name)
             self.save_config()
         except Exception as e:
-            raise SetLLMServiceError(f"Error adding LaTeX math environment: {e}")
+            raise SetLatexConfigError(f"Error adding LaTeX math environment: {e}")
 
     def remove_latex_math_env(self, env_name: str) -> None:
         try:
             self.config.remove_latex_math_env(env_name)
             self.save_config()
         except Exception as e:
-            raise SetLLMServiceError(f"Error removing LaTeX math environment: {e}")
+            raise SetLatexConfigError(f"Error removing LaTeX math environment: {e}")
 
     def add_latex_placeholder_command(self, cmd_name: str) -> None:
         try:
             self.config.add_latex_placeholder_command(cmd_name)
             self.save_config()
         except Exception as e:
-            raise SetLLMServiceError(f"Error adding LaTeX placeholder command: {e}")
+            raise SetLatexConfigError(f"Error adding LaTeX placeholder command: {e}")
 
     def remove_latex_placeholder_command(self, cmd_name: str) -> None:
         try:
             self.config.remove_latex_placeholder_command(cmd_name)
             self.save_config()
         except Exception as e:
-            raise SetLLMServiceError(f"Error removing LaTeX placeholder command: {e}")
+            raise SetLatexConfigError(f"Error removing LaTeX placeholder command: {e}")
 
     def set_latex_command_translatable_args(
         self,
@@ -395,28 +374,28 @@ class Project:
             self.config.set_latex_command_translatable_args(cmd_name, mandatory=mandatory, optional=optional)
             self.save_config()
         except Exception as e:
-            raise SetLLMServiceError(f"Error setting LaTeX command translatable args: {e}")
+            raise SetLatexConfigError(f"Error setting LaTeX command translatable args: {e}")
 
     def remove_latex_command_translatable_args(self, cmd_name: str) -> None:
         try:
             self.config.remove_latex_command_translatable_args(cmd_name)
             self.save_config()
         except Exception as e:
-            raise SetLLMServiceError(f"Error removing LaTeX command translatable args: {e}")
+            raise SetLatexConfigError(f"Error removing LaTeX command translatable args: {e}")
 
     def set_latex_custom_command_spec(self, cmd_name: str, mandatory: int, optional: int = 0) -> None:
         try:
             self.config.set_latex_custom_command_spec(cmd_name, mandatory=mandatory, optional=optional)
             self.save_config()
         except Exception as e:
-            raise SetLLMServiceError(f"Error setting LaTeX custom command spec: {e}")
+            raise SetLatexConfigError(f"Error setting LaTeX custom command spec: {e}")
 
     def remove_latex_custom_command_spec(self, cmd_name: str) -> None:
         try:
             self.config.remove_latex_custom_command_spec(cmd_name)
             self.save_config()
         except Exception as e:
-            raise SetLLMServiceError(f"Error removing LaTeX custom command spec: {e}")
+            raise SetLatexConfigError(f"Error removing LaTeX custom command spec: {e}")
 
     def get_latex_settings(self) -> dict:
         return self.config.get_latex_settings()

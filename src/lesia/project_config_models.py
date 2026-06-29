@@ -227,10 +227,32 @@ class ProjectConfig(BaseModel):
         return stripped  # Return as-is; caller handles the missing-language error
 
     def remove_custom_language(self, name: str) -> None:
-        """Removes a custom language from the registry."""
+        """Removes a custom language from the registry, with safety checks."""
         normalized = self._resolve_custom_name(name)
+
+        try:
+            Language.from_str(normalized)
+            raise ValueError(f"'{normalized}' is a predefined language and cannot be removed.")
+        except ValueError as e:
+            if "predefined" in str(e):
+                raise
+
         if normalized not in self.custom_languages:
-            raise ValueError(f"Custom language '{name.strip()}' not found.")
+            raise ValueError(f"Custom language '{name.strip()}' not found: it is not in the config.")
+
+        if self.src_dir is not None and self.src_dir.language.lower() == normalized.lower():
+            raise ValueError(
+                f"Cannot remove '{normalized}': it is configured as the source directory language. "
+                "Change or unset the source directory first."
+            )
+
+        for ld in self.lang_dirs:
+            if ld.language.lower() == normalized.lower():
+                raise ValueError(
+                    f"Cannot remove '{normalized}': it has an associated target directory '{ld.get_path()}'. "
+                    "Remove the target language first with 'remove-target'."
+                )
+
         del self.custom_languages[normalized]
         # Remove any short name that points to this language
         shorts_to_remove = [s for s, full in self.custom_language_shorts.items() if full == normalized]
