@@ -27,6 +27,7 @@ For a conceptual overview of how the tool works, see the [profound explanation](
   - [Cache management](#cache-management)
   - [LLM configuration](#llm-configuration)
   - [Typst configuration](#typst-configuration)
+- [LaTeX configuration](#latex-configuration)
 - [Error reference](#error-reference)
 
 ---
@@ -605,7 +606,7 @@ project.set_typst_translatable_string_args_for_function("figure", ["caption"])
 project.set_typst_translatable_string_args_for_function("ex", ["info", "caption"])
 ```
 
-**Raises:** `SetLLMServiceError`.
+**Raises:** `SetTypstConfigError`.
 
 #### `remove_typst_translatable_string_args_for_function`
 
@@ -615,7 +616,7 @@ project.remove_typst_translatable_string_args_for_function(function_name: str) -
 
 Removes the translatable-arg configuration for `function_name`.
 
-**Raises:** `SetLLMServiceError`.
+**Raises:** `SetTypstConfigError`.
 
 #### `get_typst_translatable_string_args_by_function`
 
@@ -624,6 +625,200 @@ project.get_typst_translatable_string_args_by_function() -> dict[str, list[str]]
 ```
 
 Returns the current mapping of function names to their registered translatable argument names.
+
+---
+
+### LaTeX configuration
+
+The LaTeX parser has a set of hardcoded defaults — environments like `verbatim` and `lstlisting` are treated as opaque placeholders, commands like `\cite` and `\ref` are never translated, and all unrecognised environments and commands have their body/arguments walked as translatable text. These methods let you extend and fine-tune that behaviour without modifying source code.
+
+All settings are persisted in `.lesia/config.json` and applied automatically before every translation run.
+
+> **Two layers:** Every project method below simply stores the setting and calls `save_config()`. The actual parsing logic lives in `configure_latex_settings()` in `lesia.xml_manipulator_mod.latex`, which can also be called directly without a project (see [Standalone usage](#standalone-usage) below).
+
+#### `add_latex_placeholder_env` / `remove_latex_placeholder_env`
+
+```python
+project.add_latex_placeholder_env(env_name: str) -> None
+project.remove_latex_placeholder_env(env_name: str) -> None
+```
+
+Mark an environment as non-translatable — the entire `\begin{env}…\end{env}` block is emitted as a single opaque placeholder and its content is never sent to the LLM.
+
+```python
+project.add_latex_placeholder_env("myverbatim")
+project.add_latex_placeholder_env("algorithm")
+project.remove_latex_placeholder_env("myverbatim")
+```
+
+**Raises:** `SetLatexConfigError` — if the name is empty or (for remove) the environment is not in the list.
+
+#### `add_latex_math_env` / `remove_latex_math_env`
+
+```python
+project.add_latex_math_env(env_name: str) -> None
+project.remove_latex_math_env(env_name: str) -> None
+```
+
+Mark an environment as a math environment. Its body is walked in math mode: plain text inside is treated as a placeholder and only `\text{…}`-style macros (known to pylatexenc) expose translatable content.
+
+```python
+project.add_latex_math_env("myequation")
+project.remove_latex_math_env("myequation")
+```
+
+**Raises:** `SetLatexConfigError` — if the name is empty or (for remove) the environment is not in the list.
+
+#### `add_latex_placeholder_command` / `remove_latex_placeholder_command`
+
+```python
+project.add_latex_placeholder_command(cmd_name: str) -> None
+project.remove_latex_placeholder_command(cmd_name: str) -> None
+```
+
+Mark a command as fully non-translatable.
+
+For **commands that pylatexenc knows** (standard LaTeX commands), the command together with all its arguments becomes a single placeholder.
+
+For **unknown custom commands**, only the command token itself becomes a placeholder; the `{…}` groups that follow are sibling nodes in the parse tree and are still walked as text. To make an unknown command's arguments non-translatable as well, register its argument structure first with `set_latex_custom_command_spec` — once pylatexenc knows the spec, `node.latex_verbatim()` includes all arguments and the entire expression is suppressed.
+
+```python
+# Standard usage (command is fully suppressed):
+project.add_latex_placeholder_command("myref")
+
+# Custom command — register spec first, then suppress:
+project.set_latex_custom_command_spec("myfig", mandatory=2)
+project.add_latex_placeholder_command("myfig")
+# Now \myfig{label}{caption} becomes a single placeholder.
+```
+
+**Raises:** `SetLatexConfigError` — if the name is empty or (for remove) the command is not in the list.
+
+#### `set_latex_command_translatable_args` / `remove_latex_command_translatable_args`
+
+```python
+project.set_latex_command_translatable_args(
+    cmd_name: str,
+    mandatory: list[int] | None = None,
+    optional: list[int] | None = None,
+) -> None
+
+project.remove_latex_command_translatable_args(cmd_name: str) -> None
+```
+
+Specify which arguments of a command are translatable. Arguments use **1-based indexing**, counting `{…}` (mandatory) and `[…]` (optional) separately.
+
+- `mandatory`: 1-based indices of `{…}` arguments that should be translated. Arguments not listed become placeholders.
+- `optional`: 1-based indices of `[…]` arguments that should be translated. Arguments not listed become placeholders.
+- At least one of `mandatory` or `optional` must be provided.
+
+> **Prerequisite for custom commands:** this setting only takes effect when pylatexenc can parse the command's arguments into `node.nodeargs`. For commands pylatexenc does not know, register the argument structure with `set_latex_custom_command_spec` first.
+
+```python
+# \textcolor{color}{text} — translate only the text argument
+project.set_latex_custom_command_spec("textcolor", mandatory=2)
+project.set_latex_command_translatable_args("textcolor", mandatory=[2])
+
+# \mybox[label]{title}{body} — translate only the body
+project.set_latex_custom_command_spec("mybox", mandatory=2, optional=1)
+project.set_latex_command_translatable_args("mybox", mandatory=[2], optional=[])
+
+# \section[short title]{full title} — translate both
+project.set_latex_command_translatable_args("section", mandatory=[1], optional=[1])
+```
+
+**Raises:** `SetLatexConfigError` — if the name is empty, any index is < 1, or neither `mandatory` nor `optional` is provided. For remove: if the command has no config.
+
+#### `set_latex_custom_command_spec` / `remove_latex_custom_command_spec`
+
+```python
+project.set_latex_custom_command_spec(
+    cmd_name: str,
+    mandatory: int,
+    optional: int = 0,
+) -> None
+
+project.remove_latex_custom_command_spec(cmd_name: str) -> None
+```
+
+Register the argument structure of a custom command with pylatexenc. This is required before `set_latex_command_translatable_args` or `add_latex_placeholder_command` can work correctly on commands not built into pylatexenc.
+
+- `mandatory`: total number of mandatory `{…}` arguments.
+- `optional`: total number of optional `[…]` arguments (default `0`). Optional arguments are assumed to come **before** mandatory ones — the most common LaTeX pattern.
+
+```python
+# \myfig{label}{caption}
+project.set_latex_custom_command_spec("myfig", mandatory=2)
+
+# \mybox[label]{title}{body}
+project.set_latex_custom_command_spec("mybox", mandatory=2, optional=1)
+
+# Remove a spec
+project.remove_latex_custom_command_spec("myfig")
+```
+
+**Raises:** `SetLatexConfigError` — if the name is empty, either count is negative, or both counts are zero.
+
+#### `get_latex_settings`
+
+```python
+project.get_latex_settings() -> dict
+```
+
+Returns the current LaTeX configuration as a plain dict:
+
+```python
+{
+    "extra_placeholder_envs":   ["myverbatim", "algorithm"],
+    "extra_math_envs":          ["myequation"],
+    "extra_placeholder_commands": ["myref"],
+    "command_translatable_args": {
+        "myfig": {"mandatory": [2]},
+        "mybox": {"mandatory": [2], "optional": []},
+    },
+    "custom_command_specs": {
+        "myfig": {"mandatory": 2, "optional": 0},
+        "mybox": {"mandatory": 2, "optional": 1},
+    },
+}
+```
+
+---
+
+#### Standalone usage
+
+All of the above can be used without a `Project` by calling `configure_latex_settings` directly in the `lesia.xml_manipulator_mod.latex` module. This is useful when you call `parse_latex` from your own code without managing a project.
+
+```python
+from lesia.xml_manipulator_mod.latex import (
+    configure_latex_settings,
+    reset_latex_settings,
+    parse_latex,
+)
+
+configure_latex_settings(
+    extra_placeholder_envs=["myverbatim", "algorithm"],
+    extra_math_envs=["myequation"],
+    extra_placeholder_commands=["myref"],
+    custom_command_specs={
+        "myfig": {"mandatory": 2, "optional": 0},
+        "mybox": {"mandatory": 2, "optional": 1},
+    },
+    command_translatable_args={
+        "myfig": {"mandatory": [2]},
+        "mybox": {"mandatory": [2], "optional": []},
+        "section": {"mandatory": [1], "optional": [1]},
+    },
+)
+
+segments = parse_latex(r"\myfig{fig:label}{My caption} \section[Short]{Full title}")
+# [('placeholder', '\\myfig'), ('placeholder', '{fig:label}'),
+#  ('placeholder', '{'), ('text', 'My caption'), ('placeholder', '}'), ...]
+
+reset_latex_settings()  # restore defaults
+```
+
+Settings are **process-wide and additive** on top of the hardcoded defaults — you cannot accidentally remove built-in entries such as `\cite` or `verbatim`. Calling `configure_latex_settings` again replaces the previous call entirely; call `reset_latex_settings` to return to defaults.
 
 ---
 
@@ -645,6 +840,8 @@ DirectoryTranslationError
     ├── LoadProjectError
     │   └── NoConfigFoundError
     ├── SetLLMServiceError
+    ├── SetTypstConfigError
+    ├── SetLatexConfigError
     ├── SetSourceDirError
     │   ├── DirectoryDoesNotExistError
     │   ├── NotADirectoryError

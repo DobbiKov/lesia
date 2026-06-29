@@ -38,6 +38,7 @@ Extended abstract about the project: [link](https://dobbikov.github.io/sci-trans
     - [LLM configuration](#llm-configuration)
         - [Custom LLM services](#custom-llm-services)
     - [Typst configuration](#typst-configuration)
+    - [LaTeX configuration](#latex-configuration)
 - [Documentation](#documentation)
 - [Contributing](#contributing)
 
@@ -58,6 +59,7 @@ content rather than wrestling with markup.
 - [x] **Vocabulary support** – Fine-tune translations with custom glossaries
 - [x] **Cache-aware corrections** – Preserve manual fixes by syncing the cache from files on disk
 - [x] **Typst support** – Full support for Typst documents including configurable function argument translation
+- [x] **LaTeX configuration** – Fine-grained control over which environments, commands, and arguments are translated
 
 ## Citation
 
@@ -343,7 +345,7 @@ lesia remove-target AmEng
 lesia info
 ```
 
-Displays a summary of the current project: name, root path, source language and directory, configured LLM, reasoning model, Typst function arg settings, and all target languages with their directories.
+Displays a summary of the current project: name, root path, source language and directory, configured LLM, reasoning model, Typst function arg settings, LaTeX configuration, and all target languages with their directories.
 
 #### `sync`
 
@@ -714,6 +716,176 @@ Removes the translatable-arg configuration for a function.
 
 ```
 lesia unset-typst-func-args ex
+```
+
+---
+
+### LaTeX configuration
+
+The LaTeX parser has hardcoded defaults for common environments and commands. These commands let you extend that behaviour on a per-project basis. All settings are stored in `.lesia/config.json` and applied automatically before every translation run.
+
+> **Two layers of control:** these CLI commands are a thin wrapper around the library API. The same settings can be set programmatically via `Project` methods — see the [LaTeX configuration section](./main.md#latex-configuration) of the library reference.
+
+#### Understanding how unknown commands work
+
+For **commands that pylatexenc knows** (standard LaTeX: `\section`, `\textbf`, etc.), arguments are parsed into `node.nodeargs` and every setting below works as expected.
+
+For **custom or unknown commands**, pylatexenc does not parse the `{…}` groups as arguments — they become sibling nodes walked as text. To get full control over a custom command, register its argument structure first with `set-latex-cmd-spec`, then use the other commands to configure translatability.
+
+#### `add-latex-placeholder-env`
+
+```
+lesia add-latex-placeholder-env <env_name>
+```
+
+Mark an environment as non-translatable. The entire `\begin{env}…\end{env}` block becomes an opaque placeholder — its content is never sent to the LLM.
+
+```
+lesia add-latex-placeholder-env algorithm
+lesia add-latex-placeholder-env myverbatim
+```
+
+#### `remove-latex-placeholder-env`
+
+```
+lesia remove-latex-placeholder-env <env_name>
+```
+
+Remove an environment from the non-translatable list.
+
+```
+lesia remove-latex-placeholder-env myverbatim
+```
+
+#### `add-latex-math-env`
+
+```
+lesia add-latex-math-env <env_name>
+```
+
+Mark an environment as a math environment. Its body is walked in math mode: only `\text{…}` and similar macros (known to pylatexenc) expose translatable content; everything else is a placeholder.
+
+```
+lesia add-latex-math-env myequation
+lesia add-latex-math-env myalign
+```
+
+#### `remove-latex-math-env`
+
+```
+lesia remove-latex-math-env <env_name>
+```
+
+Remove an environment from the math list.
+
+```
+lesia remove-latex-math-env myequation
+```
+
+#### `add-latex-placeholder-cmd`
+
+```
+lesia add-latex-placeholder-cmd <cmd_name>
+```
+
+Mark a command as non-translatable. For standard commands (known to pylatexenc), the command together with all its arguments becomes a single placeholder. For custom commands, register the argument structure first with `set-latex-cmd-spec`.
+
+```
+# Suppress a standard command
+lesia add-latex-placeholder-cmd myref
+
+# Suppress a custom command including its arguments
+lesia set-latex-cmd-spec myfig --mandatory 2
+lesia add-latex-placeholder-cmd myfig
+```
+
+#### `remove-latex-placeholder-cmd`
+
+```
+lesia remove-latex-placeholder-cmd <cmd_name>
+```
+
+Remove a command from the non-translatable list.
+
+```
+lesia remove-latex-placeholder-cmd myref
+```
+
+#### `set-latex-cmd-spec`
+
+```
+lesia set-latex-cmd-spec <cmd_name> --mandatory <N> [--optional <M>]
+```
+
+Register the argument structure of a custom command with pylatexenc, so its arguments appear in `node.nodeargs` and can be controlled by `set-latex-cmd-args` or `add-latex-placeholder-cmd`.
+
+| Option | Short | Description |
+|---|---|---|
+| `--mandatory` | `-m` | Number of mandatory `{…}` arguments |
+| `--optional` | `-o` | Number of optional `[…]` arguments (default `0`) |
+
+Optional arguments are assumed to come **before** mandatory ones.
+
+```
+# \myfig{label}{caption}
+lesia set-latex-cmd-spec myfig --mandatory 2
+
+# \mybox[label]{title}{body}
+lesia set-latex-cmd-spec mybox --mandatory 2 --optional 1
+```
+
+#### `unset-latex-cmd-spec`
+
+```
+lesia unset-latex-cmd-spec <cmd_name>
+```
+
+Remove the custom argument structure definition for a command.
+
+```
+lesia unset-latex-cmd-spec myfig
+```
+
+#### `set-latex-cmd-args`
+
+```
+lesia set-latex-cmd-args <cmd_name> [--mandatory <i> [<i> ...]] [--optional <j> [<j> ...]]
+```
+
+Specify which arguments of a command are translatable using **1-based indices**, counting mandatory `{…}` and optional `[…]` arguments separately. Arguments not listed become placeholders.
+
+> Requires the command's argument structure to be known to pylatexenc. For custom commands, run `set-latex-cmd-spec` first.
+
+| Option | Short | Description |
+|---|---|---|
+| `--mandatory` | `-m` | 1-based indices of `{…}` args that are translatable |
+| `--optional` | `-o` | 1-based indices of `[…]` args that are translatable |
+
+At least one option is required.
+
+```
+# \myfig{label}{caption} — translate only the caption (arg 2)
+lesia set-latex-cmd-spec myfig --mandatory 2
+lesia set-latex-cmd-args myfig --mandatory 2
+
+# \mybox[label]{title}{body} — translate only the body (mandatory arg 2)
+lesia set-latex-cmd-spec mybox --mandatory 2 --optional 1
+lesia set-latex-cmd-args mybox --mandatory 2
+
+# \section[short title]{full title} — translate both
+lesia set-latex-cmd-args section --mandatory 1 --optional 1
+```
+
+#### `unset-latex-cmd-args`
+
+```
+lesia unset-latex-cmd-args <cmd_name>
+```
+
+Remove the per-argument translation configuration for a command (reverts to default: all arguments translatable).
+
+```
+lesia unset-latex-cmd-args myfig
 ```
 
 ---
