@@ -37,10 +37,9 @@ jobs:
           node-version: 18.x
       - name: Install MyST
         run: npm install -g mystmd
-      - name: Go to docs directory
-        run: cd docs
       - name: Build HTML Assets
         run: myst build --html
+        working-directory: docs
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
