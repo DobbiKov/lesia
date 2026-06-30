@@ -2,6 +2,7 @@ import re
 import uuid
 from pylatexenc.latexwalker import (LatexCommentNode, LatexWalker, LatexCharsNode, LatexMacroNode,
                                     LatexEnvironmentNode, LatexMathNode, LatexGroupNode)
+from pylatexenc.latexwalker import get_default_latex_context_db
 from pylatexenc.macrospec import MacroSpec, MacroStandardArgsParser
 
 # ---------------------------------------------------------------------------
@@ -170,7 +171,7 @@ class LatexParser:
         # Parse with LaTeX parser
         self.segments = []
         self.latex_content = processed_content
-        lw = LatexWalker(processed_content, macro_dict=self._build_macro_dict())
+        lw = LatexWalker(processed_content, latex_context=self._build_latex_context())
         nodelist, _, _ = lw.get_latex_nodes()
         if r'\end{document}' in processed_content and r'\begin{document}' not in processed_content:
             return [('placeholder', latex_content)]
@@ -499,22 +500,41 @@ class LatexParser:
             if not made_changes:
                 i += 1
     # === UTILITIES ===
-    def _build_macro_dict(self) -> dict:
-        """Build a pylatexenc macro_dict from custom_command_specs.
+    # Specs for predefined placeholder commands that pylatexenc's default
+    # context does not include.  Commands already known by pylatexenc
+    # (ref, autoref, cite, label, includegraphics, input, include, frac,
+    # sqrt, url) are handled by the default context automatically.
+    _MISSING_PLACEHOLDER_CMD_ARGSPECS: dict[str, str] = {
+        'path': '{',   # \path{...}
+        'href': '{{',  # \href{url}{text}
+    }
 
-        Optional args are assumed to precede mandatory args, which is the
-        most common LaTeX pattern (e.g. \\section[short]{title}).
-        Returns an empty dict if no custom specs are defined.
+    def _build_latex_context(self):
+        """Build a pylatexenc latex context by extending the default context.
+
+        Starts from pylatexenc's default context (which already knows standard
+        macros like \\label, \\ref, \\cite, \\input, etc.) and adds a custom
+        category on top for:
+        - predefined placeholder commands not included in pylatexenc's defaults
+          (\\path, \\href)
+        - user-supplied custom_command_specs
+
+        This avoids the deprecated ``macro_dict=`` path that strips all default
+        macro specs.
         """
-        if not self.custom_command_specs:
-            return {}
-        macro_dict = {}
+        latex_context = get_default_latex_context_db()
+        extra_specs = [
+            MacroSpec(cmd, args_parser=MacroStandardArgsParser(argspec))
+            for cmd, argspec in self._MISSING_PLACEHOLDER_CMD_ARGSPECS.items()
+        ]
         for cmd, spec in self.custom_command_specs.items():
             n_optional = spec.get("optional", 0)
             n_mandatory = spec.get("mandatory", 0)
             argspec = '[' * n_optional + '{' * n_mandatory
-            macro_dict[cmd] = MacroSpec(cmd, args_parser=MacroStandardArgsParser(argspec))
-        return macro_dict
+            extra_specs.append(MacroSpec(cmd, args_parser=MacroStandardArgsParser(argspec)))
+        if extra_specs:
+            latex_context.add_context_category('custom', extra_specs, prepend=True)
+        return latex_context
 
     def _env_header_end(self, env_node):
         """
