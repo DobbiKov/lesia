@@ -520,6 +520,31 @@ def _write_custom_services_template(config_dir_path: Path) -> None:
     template_path.write_text(_CUSTOM_SERVICE_TEMPLATE, encoding="utf-8")
 
 
+def _get_service_names_from_file(service_file: Path) -> list[str]:
+    """
+    Inspects *service_file* without registering anything and returns the
+    service names that its BaseService subclasses would register.
+    Returns an empty list if the file cannot be loaded or contains no subclasses.
+    """
+    import importlib.util as _ilu
+    import inspect as _ins
+    from unified_model_caller import BaseService
+
+    spec = _ilu.spec_from_file_location("_umc_precheck", str(service_file))
+    if spec is None or spec.loader is None:
+        return []
+    module = _ilu.module_from_spec(spec)
+    try:
+        spec.loader.exec_module(module)  # type: ignore[union-attr]
+    except Exception:
+        return []
+    return [
+        cls("").get_name().lower()
+        for _, cls in _ins.getmembers(module, _ins.isclass)
+        if issubclass(cls, BaseService) and cls is not BaseService
+    ]
+
+
 def load_custom_services(config_dir_path: Path) -> None:
     """Loads all .py files from the services subdirectory of the project config dir."""
     from loguru import logger
@@ -528,11 +553,30 @@ def load_custom_services(config_dir_path: Path) -> None:
     services_dir = config_dir_path / CUSTOM_SERVICES_DIR_NAME
     if not services_dir.is_dir():
         return
+
+    builtin_services = set(LLMCaller.get_services())
+    custom_loaded: set[str] = set()
+
     for service_file in sorted(services_dir.glob("*.py")):
         if service_file.name == CUSTOM_SERVICES_TEMPLATE_FILENAME:
             continue
+
+        for name in _get_service_names_from_file(service_file):
+            if name in custom_loaded:
+                raise ValueError(
+                    f"Custom service '{service_file.name}' defines name '{name}' "
+                    f"which conflicts with another custom service already loaded. "
+                    f"Remove or rename one of the conflicting service files."
+                )
+            if name in builtin_services:
+                logger.warning(
+                    f"Custom service '{service_file.name}' defines name '{name}' "
+                    f"which overshadows a built-in service. Is this intended?"
+                )
+
         try:
             LLMCaller.add_service(str(service_file))
+            custom_loaded.update(set(LLMCaller.get_services()) - builtin_services)
             logger.debug(f"Loaded custom service from {service_file}")
         except Exception as e:
             logger.warning(f"Failed to load custom service '{service_file.name}': {e}")
