@@ -414,6 +414,93 @@ class TestInteractions:
 
 
 # ===========================================================================
+# Predefined placeholder commands — arguments must NOT be translatable text
+# ===========================================================================
+
+class TestPredefinedPlaceholderCommands:
+    """Ensure that every built-in placeholder command is treated as a single
+    placeholder including its arguments — not just the command name."""
+
+    def test_label_is_full_placeholder(self):
+        result = parse_latex(r"\label{fig:myfig}")
+        assert "fig:myfig" not in _texts(result)
+        assert r"\label{fig:myfig}" in _joined_placeholders(result)
+
+    def test_input_is_full_placeholder(self):
+        result = parse_latex(r"\input{chapter1}")
+        assert "chapter1" not in _texts(result)
+        assert r"\input{chapter1}" in _joined_placeholders(result)
+
+    def test_include_is_full_placeholder(self):
+        result = parse_latex(r"\include{appendix}")
+        assert "appendix" not in _texts(result)
+        assert r"\include{appendix}" in _joined_placeholders(result)
+
+    def test_ref_is_full_placeholder(self):
+        result = parse_latex(r"\ref{eq:1}")
+        assert "eq:1" not in _texts(result)
+        assert r"\ref{eq:1}" in _joined_placeholders(result)
+
+    def test_autoref_is_full_placeholder(self):
+        result = parse_latex(r"\autoref{sec:intro}")
+        assert "sec:intro" not in _texts(result)
+        assert r"\autoref{sec:intro}" in _joined_placeholders(result)
+
+    def test_cite_is_full_placeholder(self):
+        result = parse_latex(r"\cite{smith2020}")
+        assert "smith2020" not in _texts(result)
+        assert r"\cite{smith2020}" in _joined_placeholders(result)
+
+    def test_cite_with_optional_note_is_full_placeholder(self):
+        result = parse_latex(r"\cite[p.~5]{smith2020}")
+        assert "smith2020" not in _texts(result)
+        assert "p.~5" not in _texts(result)
+
+    def test_includegraphics_is_full_placeholder(self):
+        result = parse_latex(r"\includegraphics{figure.png}")
+        assert "figure.png" not in _texts(result)
+        assert r"\includegraphics{figure.png}" in _joined_placeholders(result)
+
+    def test_includegraphics_with_options_is_full_placeholder(self):
+        result = parse_latex(r"\includegraphics[width=0.5\textwidth]{figure.png}")
+        assert "figure.png" not in _texts(result)
+
+    def test_href_is_full_placeholder(self):
+        result = parse_latex(r"\href{https://example.com}{click here}")
+        assert "https://example.com" not in _texts(result)
+        assert "click here" not in _texts(result)
+        assert r"\href{https://example.com}{click here}" in _joined_placeholders(result)
+
+    def test_url_is_full_placeholder(self):
+        result = parse_latex(r"\url{https://example.com}")
+        assert "https://example.com" not in _texts(result)
+        assert r"\url{https://example.com}" in _joined_placeholders(result)
+
+    def test_path_is_full_placeholder(self):
+        result = parse_latex(r"\path{/usr/local/bin}")
+        assert "/usr/local/bin" not in _texts(result)
+        assert r"\path{/usr/local/bin}" in _joined_placeholders(result)
+
+    def test_frac_is_full_placeholder(self):
+        result = parse_latex(r"\frac{1}{2}")
+        assert "1" not in _texts(result)
+        assert "2" not in _texts(result)
+        assert r"\frac{1}{2}" in _joined_placeholders(result)
+
+    def test_sqrt_is_full_placeholder(self):
+        result = parse_latex(r"\sqrt{x}")
+        assert "x" not in _texts(result)
+        assert r"\sqrt{x}" in _joined_placeholders(result)
+
+    def test_placeholder_commands_with_surrounding_text(self):
+        # Surrounding text must remain translatable
+        result = parse_latex(r"See \ref{fig:1} for details.")
+        assert _has_text(result, "See")
+        assert _has_text(result, "for details.")
+        assert "fig:1" not in _texts(result)
+
+
+# ===========================================================================
 # ProjectConfig — field validation
 # ===========================================================================
 
