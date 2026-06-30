@@ -212,6 +212,15 @@ class ProjectConfig(BaseModel):
             if normalized_short in self.custom_language_shorts:
                 existing = self.custom_language_shorts[normalized_short]
                 raise ValueError(f"Short name '{normalized_short}' is already used by '{existing}'.")
+            try:
+                Language.from_str(normalized_short)
+                raise ValueError(f"Short name '{normalized_short}' conflicts with a predefined language.")
+            except ValueError as e:
+                if "conflicts with a predefined" in str(e):
+                    raise
+            for existing_name in self.custom_languages:
+                if existing_name.lower() == normalized_short.lower():
+                    raise ValueError(f"Short name '{normalized_short}' conflicts with existing custom language '{existing_name}'.")
         self.custom_languages[normalized_name] = normalized_suffix
         if normalized_short:
             self.custom_language_shorts[normalized_short] = normalized_name
