@@ -8,8 +8,10 @@ project:
   # authors: []
   github: https://github.com/DobbiKov/lesia
   toc:
-    - file: README.md
+    - file: docs/landing.md
       title: Lesia Project
+    - file: README.md
+      title: Readme
     - file: CONTRIBUTING.md
       title: Contributing
     - file: CHANGELOG.md
