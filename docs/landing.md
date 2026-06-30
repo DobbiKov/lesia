@@ -101,47 +101,6 @@ Works with your documents — from academic papers to data science notebooks, Le
 
 ::::
 
-+++
-
-## How it works
-
-Lesia breaks the complex translation problem into a reliable, repeatable pipeline.
-
-::::{grid} 1 2 3 5
-:gutter: 3
-
-:::{card}
-**1. Chunk Documents**
-
-Documents are split into translatable chunks while preserving document hierarchy.
-:::
-
-:::{card}
-**2. XML Tag Syntax**
-
-Commands, code blocks, and special syntax are wrapped in XML tags to protect them from modification.
-:::
-
-:::{card}
-**3. LLM Translation**
-
-Each chunk is sent to your configured LLM service with carefully crafted prompts.
-:::
-
-:::{card}
-**4. Cache Storage**
-
-Translations are stored with checksums. Identical chunks across files share the same cached result.
-:::
-
-:::{card}
-**5. Reconstruct**
-
-Translated chunks are reassembled into complete, valid target documents ready to compile.
-:::
-
-::::
-
 +++ {"kind": "logo-cloud"}
 
 ## Your choice of AI model
@@ -297,19 +256,36 @@ Open-source projects and tools that actively use Lesia in their workflow.
 :::{card} 📚 Linear Algebra Lecture Notes
 Linear Algebra Lecture Notes in English, French and Ukrainian.
 
-[GitHub Source](https://github.com/DobbiKov/semester4-lecture-notes/tree/main/linalg_translation) · [🇫🇷 French](https://dobbikov.github.io/semester4-lecture-notes/linalg.pdf) · [🇺🇦 Ukrainian](https://dobbikov.github.io/semester4-lecture-notes/linalg_ua.pdf) · [🇬🇧 English](https://dobbikov.github.io/semester4-lecture-notes/linalg_en.pdf)
+- [GitHub Source](https://github.com/DobbiKov/semester4-lecture-notes/tree/main/linalg_translation)
+- [🇫🇷 French](https://dobbikov.github.io/semester4-lecture-notes/linalg.pdf) 
+- [🇺🇦 Ukrainian](https://dobbikov.github.io/semester4-lecture-notes/linalg_ua.pdf) 
+- [🇬🇧 English](https://dobbikov.github.io/semester4-lecture-notes/linalg_en.pdf)
 :::
 
 :::{card} 📚 Topology Lecture Notes
 Topology Lecture Notes in English, French and Ukrainian.
 
-[GitHub Source](https://github.com/DobbiKov/semester4-lecture-notes/tree/main/analyse) · [🇫🇷 French](https://dobbikov.github.io/semester4-lecture-notes/analyse.pdf) · [🇺🇦 Ukrainian](https://dobbikov.github.io/semester4-lecture-notes/analyse_ua.pdf) · [🇬🇧 English](https://dobbikov.github.io/semester4-lecture-notes/analyse_en.pdf)
+- [GitHub Source](https://github.com/DobbiKov/semester4-lecture-notes/tree/main/analyse) 
+- [🇫🇷 French](https://dobbikov.github.io/semester4-lecture-notes/analyse.pdf)
+- [🇺🇦 Ukrainian](https://dobbikov.github.io/semester4-lecture-notes/analyse_ua.pdf)
+- [🇬🇧 English](https://dobbikov.github.io/semester4-lecture-notes/analyse_en.pdf)
 :::
 
 :::{card} 📚 Statistics Lecture Notes
 Statistics Lecture Notes in English, French and Ukrainian.
 
-[GitHub Source](https://github.com/DobbiKov/semester6-lecture-notes/tree/main/stats) · [🇫🇷 French](https://dobbikov.github.io/semester6-lecture-notes/stats.pdf) · [🇺🇦 Ukrainian](https://dobbikov.github.io/semester6-lecture-notes/stats_ua.pdf) · [🇬🇧 English](https://dobbikov.github.io/semester6-lecture-notes/stats_en.pdf)
+- [GitHub Source](https://github.com/DobbiKov/semester6-lecture-notes/tree/main/stats)
+- [🇫🇷 French](https://dobbikov.github.io/semester6-lecture-notes/stats.pdf)
+- [🇺🇦 Ukrainian](https://dobbikov.github.io/semester6-lecture-notes/stats_ua.pdf)
+- [🇬🇧 English](https://dobbikov.github.io/semester6-lecture-notes/stats_en.pdf)
+:::
+
+:::{card} 📄 MyDocker Documentation
+Documentation for [MyDocker](https://mydocker.universite-paris-saclay.fr) service of Université Paris-Saclay.
+
+- [GitLab Source](https://gitlab.dsi.universite-paris-saclay.fr/mydocker/mydocker.gitlab.dsi.universite-paris-saclay.fr)
+- [🇫🇷 French](https://mydocker.gitlab.dsi.universite-paris-saclay.fr/)
+- [🇬🇧 English](https://mydocker.gitlab.dsi.universite-paris-saclay.fr/en/)
 :::
 
 ::::

@@ -1,0 +1,226 @@
+/* =========================================================
+   Lesia — landing page styles, inspired by index.html
+   ========================================================= */
+
+/* ----------------------------------------------------------
+   CSS custom properties (purple/violet palette)
+   ---------------------------------------------------------- */
+:root {
+  --lesia-accent:  #6c63ff;
+  --lesia-accent2: #a78bfa;
+  --lesia-pink:    #f472b6;
+  --lesia-green:   #34d399;
+  --lesia-blue:    #60a5fa;
+  --lesia-orange:  #fb923c;
+}
+
+/* ----------------------------------------------------------
+   Hero — centered block
+   ---------------------------------------------------------- */
+
+/* Radial glow behind the hero */
+.myst-landing-centered {
+  position: relative;
+  overflow: hidden;
+}
+.myst-landing-centered::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 80% 55% at 50% 0%,
+    rgba(108, 99, 255, 0.18), transparent);
+  pointer-events: none;
+  z-index: 0;
+}
+.myst-landing-centered-inner {
+  position: relative;
+  z-index: 1;
+  padding-top: 5rem !important;
+  padding-bottom: 5rem !important;
+}
+
+/* Gradient hero title */
+.myst-landing-centered-heading {
+  font-size: clamp(2.4rem, 5.5vw, 4rem) !important;
+  font-weight: 800 !important;
+  line-height: 1.1 !important;
+  letter-spacing: -0.02em;
+  background: linear-gradient(135deg, var(--lesia-accent), var(--lesia-accent2), var(--lesia-pink));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Version badge pill */
+.myst-landing-centered-subtitle {
+  display: inline-block !important;
+  background: rgba(108, 99, 255, 0.12) !important;
+  border: 1px solid rgba(108, 99, 255, 0.38) !important;
+  color: var(--lesia-accent2) !important;
+  font-size: 0.78rem !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.06em !important;
+  padding: 0.3rem 1rem !important;
+  border-radius: 999px !important;
+  margin-bottom: 1.25rem !important;
+  text-transform: none !important;
+}
+
+/* Hero body text */
+.myst-landing-centered-body {
+  font-size: 1.15rem;
+  color: #94a3b8;
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Hero buttons */
+.myst-landing-centered-links .link.button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.7rem 1.6rem !important;
+  border-radius: 8px !important;
+  font-size: 1rem !important;
+  font-weight: 600 !important;
+  background: var(--lesia-accent) !important;
+  color: #fff !important;
+  border: none !important;
+  transition: background 0.2s, transform 0.15s, box-shadow 0.2s !important;
+  text-decoration: none !important;
+}
+.myst-landing-centered-links .link.button:hover {
+  background: #5b52ee !important;
+  transform: translateY(-1px);
+  box-shadow: 0 8px 24px rgba(108, 99, 255, 0.35) !important;
+}
+
+/* Secondary plain links next to the button */
+.myst-landing-centered-links .link:not(.button) {
+  color: var(--lesia-accent2) !important;
+  font-weight: 600;
+  text-decoration: none !important;
+  transition: color 0.2s;
+  padding: 0.7rem 0.5rem;
+}
+.myst-landing-centered-links .link:not(.button):hover {
+  color: #fff !important;
+}
+
+/* ----------------------------------------------------------
+   Landing blocks — alternating background tint
+   ---------------------------------------------------------- */
+
+/* Logo-cloud blocks get a subtle dark surface tint */
+.myst-landing-logo-cloud {
+  background: rgba(108, 99, 255, 0.04);
+  border-top: 1px solid rgba(108, 99, 255, 0.1);
+  border-bottom: 1px solid rgba(108, 99, 255, 0.1);
+  padding-top: 4rem !important;
+  padding-bottom: 4rem !important;
+  padding-right: 2rem !important;
+  padding-left: 2rem !important;
+}
+
+.myst-landing-logo-cloud h2,
+.myst-landing-logo-cloud h3 {
+  font-size: clamp(1.5rem, 3vw, 2rem) !important;
+  font-weight: 700 !important;
+}
+
+.myst-landing-logo-cloud-body {
+  font-size: 1rem;
+  color: #94a3b8;
+  max-width: 560px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* ----------------------------------------------------------
+   Cards — feature cards, format pills, provider cards
+   ---------------------------------------------------------- */
+
+.myst-card {
+  border-radius: 12px !important;
+  transition: border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease !important;
+}
+
+.myst-card:hover {
+  border-color: var(--lesia-accent) !important;
+  transform: translateY(-3px);
+  box-shadow: 0 10px 28px rgba(108, 99, 255, 0.18) !important;
+}
+
+.myst-card-title {
+  font-size: 1rem !important;
+  font-weight: 700 !important;
+  padding-top: 1rem !important;
+  padding-left: 1rem !important;
+}
+
+.myst-card-body {
+  font-size: 0.9rem;
+  color: #94a3b8;
+  padding-bottom: 1.25rem !important;
+}
+
+/* Cards inside logo-cloud: more compact and centered */
+.myst-landing-logo-cloud .myst-card {
+  text-align: center;
+  padding: 0.6rem 1rem;
+}
+.myst-landing-logo-cloud .myst-card-title {
+  padding: 0.5rem 0.75rem !important;
+  font-size: 0.95rem !important;
+}
+.myst-landing-logo-cloud .myst-card:hover {
+  border-color: var(--lesia-accent2) !important;
+  box-shadow: 0 4px 16px rgba(167, 139, 250, 0.2) !important;
+}
+
+/* ----------------------------------------------------------
+   Section headings outside blocks
+   ---------------------------------------------------------- */
+
+.article.content h2 {
+  font-size: clamp(1.6rem, 3.5vw, 2.2rem) !important;
+  font-weight: 700 !important;
+  margin-top: 3.5rem;
+  margin-bottom: 0.4rem;
+}
+
+/* ----------------------------------------------------------
+   Tab set — installation
+   ---------------------------------------------------------- */
+
+.myst-tab-item-header-active {
+  color: var(--lesia-accent2) !important;
+  border-bottom-color: var(--lesia-accent2) !important;
+}
+
+.myst-tab-set-row {
+  border-bottom-color: rgba(108, 99, 255, 0.2) !important;
+}
+
+/* ----------------------------------------------------------
+   Code blocks
+   ---------------------------------------------------------- */
+
+.myst-code {
+  border-radius: 10px !important;
+}
+
+pre, code {
+  font-family: 'Fira Code', 'Cascadia Code', 'JetBrains Mono', monospace !important;
+  font-size: 0.875rem !important;
+}
+
+/* ----------------------------------------------------------
+   Footer links — purple hover accent
+   ---------------------------------------------------------- */
+
+.myst-footer-link:hover {
+  border-color: var(--lesia-accent) !important;
+  color: var(--lesia-accent2) !important;
+}
