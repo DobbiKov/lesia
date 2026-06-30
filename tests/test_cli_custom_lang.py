@@ -392,3 +392,29 @@ def test_cli_cache_clear_with_short_resolves(project, tmp_path):
     runner.invoke(app, ["add-lang", "American English", "_ae", "--short", "AmEng"])
     result = runner.invoke(app, ["cache", "clear", "--all", "--lang", "AmEng"])
     assert "Unknown language" not in (result.output or "")
+
+
+def test_cli_add_lang_short_conflicts_with_predefined_errors(project):
+    result = runner.invoke(app, ["add-lang", "Valencian", "_va", "--short", "French"])
+    assert result.exit_code == 1
+    assert "conflicts with a predefined language" in result.output
+
+
+def test_cli_add_lang_short_conflicts_with_predefined_case_insensitive_errors(project):
+    result = runner.invoke(app, ["add-lang", "Valencian", "_va", "--short", "french"])
+    assert result.exit_code == 1
+    assert "conflicts with a predefined language" in result.output
+
+
+def test_cli_add_lang_short_conflicts_with_existing_custom_lang_name_errors(project):
+    runner.invoke(app, ["add-lang", "Catalan", "_ca"])
+    result = runner.invoke(app, ["add-lang", "Valencian", "_va", "--short", "Catalan"])
+    assert result.exit_code == 1
+    assert "conflicts with existing custom language" in result.output
+
+
+def test_cli_add_lang_short_conflicts_with_existing_custom_lang_name_case_insensitive_errors(project):
+    runner.invoke(app, ["add-lang", "Catalan", "_ca"])
+    result = runner.invoke(app, ["add-lang", "Valencian", "_va", "--short", "catalan"])
+    assert result.exit_code == 1
+    assert "conflicts with existing custom language" in result.output
