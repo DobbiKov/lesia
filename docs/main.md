@@ -350,14 +350,21 @@ Custom languages extend the fixed predefined set. Once registered, they are stor
 project.add_custom_language(name: str, suffix: str, short: str | None = None) -> None
 ```
 
-Registers a new custom language. `name` is the display name (e.g. `"American English"`); `suffix` is the directory suffix (e.g. `"_ae"`). The optional `short` parameter registers a short alias (e.g. `"AmEng"`) that can be used in place of the full name in any call that accepts a language name.
+Registers a new custom language. `name` is the display name (e.g. `"American English"`); `suffix` is the directory suffix (e.g. `"_ae"`). The optional `short` parameter registers a short alias (e.g. `"AmEng"`) that can be used in place of the full name in any call that accepts a language name string.
 
 ```python
 project.add_custom_language("Catalan", "_ca")
 project.add_custom_language("American English", "_ae", short="AmEng")
 ```
 
-**Raises:** `AddCustomLanguageError` — if the name matches a predefined language, is already registered, or the short alias is already used by another custom language.
+The short alias is looked up case-insensitively, so `"ameng"` resolves the same as `"AmEng"`.
+
+**Raises:** `AddCustomLanguageError` — if:
+- `name` matches a predefined language.
+- `name` is already registered as a custom language.
+- `short` is already used by another custom language.
+- `short` matches a predefined language name (case-insensitive) — this would make the predefined language unreachable via `resolve_language`.
+- `short` matches an existing custom language's full name (case-insensitive) — this would create an ambiguous alias.
 
 #### `remove_custom_language`
 
@@ -380,7 +387,7 @@ project.remove_custom_language("AmEng")  # same as remove_custom_language("Ameri
 project.config.resolve_language(name: str) -> CustomLanguage
 ```
 
-Resolves a language name or short alias to a `CustomLanguage` instance. Checks predefined languages first, then the custom registry by full name, then by short alias (case-insensitive).
+Resolves a language name or short alias to a `CustomLanguage` instance. Resolution order: predefined languages first, then the custom registry by full name, then by short alias (case-insensitive). Because predefined languages are checked first, a short alias can never shadow a predefined language — `add_custom_language` rejects such aliases upfront.
 
 ```python
 french          = project.config.resolve_language("French")           # predefined

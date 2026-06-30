@@ -413,12 +413,14 @@ lesia add-lang Catalan _ca
 lesia add-lang "American English" _ae --short AmEng
 ```
 
-After the second command, both `"American English"` and `AmEng` are accepted anywhere a language name is expected.
+After the second command, both `"American English"` and `AmEng` are accepted anywhere a language name is expected. Short aliases are resolved case-insensitively.
 
 **Errors:**
 - The name matches a predefined language → error.
 - The name is already registered as a custom language → error.
 - The short alias is already used by another custom language → error.
+- The short alias matches a predefined language name (case-insensitive) → error (would make the predefined language unreachable).
+- The short alias matches an existing custom language's full name (case-insensitive) → error (would create an ambiguous alias).
 
 #### `remove-lang`
 
@@ -668,6 +670,23 @@ lesia set-llm my-service my-model-name
 ```
 
 The services directory is part of the project (inside `.lesia/`), so committing it makes the custom service available to everyone who clones the repository.
+
+#### Name conflicts
+
+When a project is loaded, all custom service files are inspected before any of them are registered. Two conflict rules apply:
+
+- **Custom service shadows a built-in** — the custom service is still loaded and replaces the built-in, but a warning is printed to stderr. This is allowed because overriding a built-in with a drop-in replacement can be intentional (e.g. routing calls through a local proxy).
+- **Two custom services share the same name** — loading is aborted with an error and the project command exits with a non-zero code. Remove or rename one of the conflicting files before running any `lesia` command.
+
+```
+WARNING - Custom service 'my_google.py' defines name 'google' which overshadows a built-in service. Is this intended?
+```
+
+```
+Error loading project: Custom service 'b_service.py' defines name 'my-service'
+which conflicts with another custom service already loaded.
+Remove or rename one of the conflicting service files.
+```
 
 #### External dependencies
 
