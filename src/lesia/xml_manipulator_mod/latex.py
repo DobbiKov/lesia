@@ -37,6 +37,15 @@ def configure_latex_settings(
             walked as math (not translated as text).
         extra_placeholder_commands: Additional command names that should be
             treated as a single placeholder (not translated at all).
+            **Important:** this only suppresses the command *and its arguments*
+            when pylatexenc already knows the command's argument structure
+            (built-in commands such as ``\\cite``, ``\\ref``, ``\\label``
+            work out of the box).  For custom or unknown commands whose
+            argument count is not in pylatexenc's default context, you must
+            also declare the argument structure via ``custom_command_specs``
+            — otherwise pylatexenc will not associate the ``{…}`` groups
+            with the command, and their contents will still be walked as
+            translatable text.
         command_translatable_args: Per-command specification of which
             arguments are translatable.  Keys are command names; values are
             dicts with optional keys ``"mandatory"`` and ``"optional"``,
@@ -59,7 +68,11 @@ def configure_latex_settings(
 
         configure_latex_settings(
             extra_placeholder_envs=["myverbatim"],
-            extra_placeholder_commands=["myref"],
+            # \cite is built-in — no custom_command_specs needed.
+            # \myfig is custom — register its spec first so pylatexenc
+            # associates {label}{caption} with the command node; then
+            # extra_placeholder_commands can suppress the whole expression.
+            extra_placeholder_commands=["cite", "myfig"],
             custom_command_specs={
                 "myfig": {"mandatory": 2, "optional": 0},
             },

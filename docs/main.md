@@ -806,7 +806,12 @@ from lesia.xml_manipulator_mod.latex import (
 configure_latex_settings(
     extra_placeholder_envs=["myverbatim", "algorithm"],
     extra_math_envs=["myequation"],
-    extra_placeholder_commands=["myref"],
+    # \myfig and \mybox are custom commands — their argument structure must
+    # be declared in custom_command_specs so pylatexenc associates the {…}
+    # groups with the command node.  Without that, extra_placeholder_commands
+    # would only suppress the bare command token and the arguments would
+    # still be walked as translatable text.
+    extra_placeholder_commands=["myfig", "mybox"],
     custom_command_specs={
         "myfig": {"mandatory": 2, "optional": 0},
         "mybox": {"mandatory": 2, "optional": 1},
@@ -819,8 +824,8 @@ configure_latex_settings(
 )
 
 segments = parse_latex(r"\myfig{fig:label}{My caption} \section[Short]{Full title}")
-# [('placeholder', '\\myfig'), ('placeholder', '{fig:label}'),
-#  ('placeholder', '{'), ('text', 'My caption'), ('placeholder', '}'), ...]
+# [('placeholder', '\\myfig{fig:label}{My caption}'),
+#  ('placeholder', '\\section[Short]'), ('text', 'Full title'), ('placeholder', '}'), ...]
 
 reset_latex_settings()  # restore defaults
 ```
