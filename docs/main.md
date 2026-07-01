@@ -450,9 +450,25 @@ Copies all untranslatable files from the source directory into every configured 
 
 Translation methods are `async` and require the `LLM_API_KEY` environment variable to be set for the configured service.
 
+#### Setting the API key
+
+`LLM_API_KEY` is read from the environment **at import time**, so it must be set before `lesia` is imported.
+
+**Option 1 — set it in the shell before running your script:**
 ```sh
 export LLM_API_KEY=<your_api_key>
+python your_script.py
 ```
+
+**Option 2 — set it in Python before importing lesia:**
+```python
+import os
+os.environ["LLM_API_KEY"] = "<your_api_key>"
+
+import lesia  # import AFTER setting the key
+```
+
+If you set `os.environ["LLM_API_KEY"]` after lesia is already imported, it will have no effect.
 
 #### `translate_single_file`
 
