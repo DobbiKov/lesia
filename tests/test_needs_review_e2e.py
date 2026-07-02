@@ -54,7 +54,7 @@ def _patch(monkeypatch, module, from_cache: bool):
     monkeypatch.setattr(
         module,
         "build_translator_with_model",
-        lambda root, caller, reasoning_caller=None: FakeTranslator(TRANSLATED, from_cache),
+        lambda *a, **kw: FakeTranslator(TRANSLATED, from_cache),
     )
 
 

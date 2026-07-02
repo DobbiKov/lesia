@@ -24,7 +24,7 @@ def _patch(monkeypatch):
     monkeypatch.setattr(
         notebook_file_translator,
         "build_translator_with_model",
-        lambda root, caller, reasoning_caller=None: FakeTranslator(),
+        lambda *a, **kw: FakeTranslator(),
     )
 
 
