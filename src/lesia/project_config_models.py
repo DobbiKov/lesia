@@ -103,6 +103,7 @@ class ProjectConfig(BaseModel):
     llm_model: str = "gemini-2.0-flash"
     llm_reasoning_service: Optional[str] = None
     llm_reasoning_model: Optional[str] = None
+    xml_retries_before_reasoning: int = 2
     typst_translatable_string_args_by_function: dict[str, list[str]] = Field(
         default_factory=lambda: {"ex": ["info"]}
     )
@@ -149,6 +150,14 @@ class ProjectConfig(BaseModel):
 
     def get_llm_reasoning_model(self) -> Optional[str]:
         return self.llm_reasoning_model
+
+    def get_xml_retries_before_reasoning(self) -> int:
+        return self.xml_retries_before_reasoning
+
+    def set_xml_retries_before_reasoning(self, n: int) -> None:
+        if n < 0:
+            raise ValueError(f"xml_retries_before_reasoning must be >= 0, got {n}")
+        self.xml_retries_before_reasoning = n
 
     def get_typst_translatable_string_args_by_function(self) -> dict[str, list[str]]:
         return {

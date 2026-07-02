@@ -250,6 +250,21 @@ def set_reasoning_model(
         raise typer.Exit(code=1)
 
 
+@app.command("set-xml-retries-before-reasoning")
+def set_xml_retries_before_reasoning(
+    ctx: typer.Context,
+    retries: Annotated[int, typer.Argument(help="Number of failed XML attempts with the standard model before switching to the reasoning model (0 = always use reasoning model).")],
+):
+    """Sets how many times the standard model is retried on XML errors before falling back to the reasoning model."""
+    project = get_project_from_context(ctx)
+    try:
+        project.set_xml_retries_before_reasoning(retries)
+        typer.secho(f"xml_retries_before_reasoning set to {retries}", fg=typer.colors.GREEN)
+    except errors.SetLLMServiceError as e:
+        typer.secho(f"Error: {e}", fg=typer.colors.RED, err=True)
+        raise typer.Exit(code=1)
+
+
 @app.command("set-typst-func-args")
 def set_typst_function_args(
     ctx: typer.Context,

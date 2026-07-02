@@ -30,6 +30,7 @@ async def translate_file_to_file_async(
     llm_reasoning_service: str | None = None,
     llm_reasoning_model: str | None = None,
     use_reasoning_model: bool = False,
+    xml_retries_before_reasoning: int = 2,
 ) -> None:
     """Translates a file and writes the result to another file asynchronously."""
     doc_type = analyze_document_type(source_path)
@@ -47,13 +48,13 @@ async def translate_file_to_file_async(
     try:
         if doc_type == DocumentType.JupyterNotebook:
             logger.debug("translate jupyter")
-            await translate_notebook_async(root_path, source_path, source_language, target_path, target_language, vocab_list, llm_caller, relative_path, reasoning_caller=reasoning_caller)
+            await translate_notebook_async(root_path, source_path, source_language, target_path, target_language, vocab_list, llm_caller, relative_path, reasoning_caller=reasoning_caller, xml_retries_before_reasoning=xml_retries_before_reasoning)
         elif doc_type == DocumentType.Markdown:
             logger.debug("translate markdown")
-            await myst_file_translator.translate_file_async(root_path, source_path, source_language, target_path, target_language, relative_path, vocab_list, llm_caller, reasoning_caller=reasoning_caller)
+            await myst_file_translator.translate_file_async(root_path, source_path, source_language, target_path, target_language, relative_path, vocab_list, llm_caller, reasoning_caller=reasoning_caller, xml_retries_before_reasoning=xml_retries_before_reasoning)
         elif doc_type == DocumentType.LaTeX:
             logger.trace("translate latex")
-            await latex_file_translator.translate_file_async(root_path, source_path, source_language, target_path, target_language, relative_path, vocab_list, llm_caller, reasoning_caller=reasoning_caller)
+            await latex_file_translator.translate_file_async(root_path, source_path, source_language, target_path, target_language, relative_path, vocab_list, llm_caller, reasoning_caller=reasoning_caller, xml_retries_before_reasoning=xml_retries_before_reasoning)
         elif doc_type == DocumentType.Typst:
             logger.debug("translate typst")
             await typst_file_translator.translate_file_async(
@@ -66,6 +67,7 @@ async def translate_file_to_file_async(
                 vocab_list,
                 llm_caller,
                 reasoning_caller=reasoning_caller,
+                xml_retries_before_reasoning=xml_retries_before_reasoning,
             )
         else: # any other type
             logger.debug("other type? lol")

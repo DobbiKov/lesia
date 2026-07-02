@@ -468,6 +468,16 @@ class Project:
     def get_llm_reasoning_model(self) -> Optional[str]:
         return self.config.get_llm_reasoning_model()
 
+    def get_xml_retries_before_reasoning(self) -> int:
+        return self.config.get_xml_retries_before_reasoning()
+
+    def set_xml_retries_before_reasoning(self, n: int) -> None:
+        try:
+            self.config.set_xml_retries_before_reasoning(n)
+            self.save_config()
+        except ValueError as e:
+            raise SetLLMServiceError(f"Error setting xml_retries_before_reasoning: {e}")
+
     async def translate_single_file(self, file_path_str: str, target_lang: Language | CustomLanguage, vocab_list: VocabList | None, use_reasoning_model: bool = False) -> None:
         """Translates a single specified file to the target language."""
         from . import project_runtime as _project_runtime

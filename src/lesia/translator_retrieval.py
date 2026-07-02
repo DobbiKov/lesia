@@ -320,6 +320,7 @@ class ChunkTranslator:
         overload_retry_attempts: int = 5,
         overload_retry_initial_delay: float = 1.0,
         overload_retry_max_delay: float = 16.0,
+        xml_retries_before_reasoning: int = 2,
     ):
         self._store = store
         self._caller: LLMCaller | None = model_caller
@@ -327,6 +328,7 @@ class ChunkTranslator:
         self._overload_attempts = max(1, overload_retry_attempts)
         self._overload_initial_delay = max(0.0, overload_retry_initial_delay)
         self._overload_max_delay = max(self._overload_initial_delay, overload_retry_max_delay)
+        self._xml_retries_before_reasoning = max(0, xml_retries_before_reasoning)
         self._session_checksums: set[str] = set()
 
     async def _translate_oversized_typst_chunk_async(
@@ -476,32 +478,32 @@ class ChunkTranslator:
                 )
                 return translated, from_cache
 
-        try:
-            translated = await self._run_with_caller(strategy, meta, caller)
-        except (ET.ParseError, PlaceholderVerificationError):
-            logger.warning("Invalid XML on attempt 1, retrying with standard model...")
+        total_attempts = self._xml_retries_before_reasoning + 1
+        reasoning_caller = self._reasoning_caller if self._reasoning_caller is not None else caller
+        translated = None
+        for attempt in range(1, total_attempts + 1):
+            is_final = attempt == total_attempts
+            active_caller = reasoning_caller if is_final else caller
             try:
-                translated = await self._run_with_caller(strategy, meta, caller)
-            except (ET.ParseError, PlaceholderVerificationError):
-                reasoning_caller = self._reasoning_caller if self._reasoning_caller is not None else caller
-                logger.warning("Invalid XML on attempt 2, retrying with reasoning model...")
-                try:
-                    translated = await self._run_with_caller(strategy, meta, reasoning_caller)
-                except Exception as exc:
+                translated = await self._run_with_caller(strategy, meta, active_caller)
+                break
+            except (ET.ParseError, PlaceholderVerificationError) as exc:
+                if is_final:
                     logger.error(
-                        f"Chunk translation failed after 3 attempts due to {exc.__class__.__name__}: {exc}",
+                        f"Chunk translation failed after {total_attempts} attempts due to {exc.__class__.__name__}: {exc}",
                     )
                     raise ChunkTranslationFailed(chunk, exc) from exc
-            except Exception as exc:  # noqa: BLE001 - non-ParseError/PlaceholderVerificationError on attempt 2
+                next_is_reasoning = attempt == self._xml_retries_before_reasoning
+                if next_is_reasoning:
+                    logger.warning(f"Invalid XML on attempt {attempt}, retrying with reasoning model...")
+                else:
+                    logger.warning(f"Invalid XML on attempt {attempt}, retrying with standard model...")
+            except Exception as exc:  # noqa: BLE001
                 logger.error(
-                    f"Chunk translation failed on attempt 2 due to {exc.__class__.__name__}: {exc}",
+                    f"Chunk translation failed on attempt {attempt} due to {exc.__class__.__name__}: {exc}",
                 )
                 raise ChunkTranslationFailed(chunk, exc) from exc
-        except Exception as exc:  # noqa: BLE001
-            logger.error(
-                f"Chunk translation failed due to {exc.__class__.__name__}: {exc}",
-            )
-            raise ChunkTranslationFailed(chunk, exc) from exc
+        assert translated is not None
 
         tgt_checksum = calculate_checksum(translated)
         self._session_checksums.add(src_checksum)
@@ -535,6 +537,6 @@ class ChunkTranslator:
                 await asyncio.sleep(wait_seconds)
                 delay = min(delay * 2, self._overload_max_delay)
 
-def build_translator_with_model(root_path: Path, caller: LLMCaller | None = None, reasoning_caller: LLMCaller | None = None) -> ChunkTranslator:
+def build_translator_with_model(root_path: Path, caller: LLMCaller | None = None, reasoning_caller: LLMCaller | None = None, xml_retries_before_reasoning: int = 2) -> ChunkTranslator:
     """Constructs default translation factory with a particular model"""
-    return ChunkTranslator(TranslationCacheCsv(root_path), caller, reasoning_caller)
+    return ChunkTranslator(TranslationCacheCsv(root_path), caller, reasoning_caller, xml_retries_before_reasoning=xml_retries_before_reasoning)

@@ -52,11 +52,12 @@ async def translate_file_async(
     vocab_list: VocabList | None,
     llm_caller: LLMCaller,
     reasoning_caller: LLMCaller | None = None,
+    xml_retries_before_reasoning: int = 2,
 ) -> None:
     from lesia.translation_cache.cache_rebuilder import read_existing_target_metadata
     from lesia.enums import DocumentType as _DT
     existing_meta = read_existing_target_metadata(target_file_path, _DT.Typst)
-    tr = build_translator_with_model(root_path, llm_caller, reasoning_caller)
+    tr = build_translator_with_model(root_path, llm_caller, reasoning_caller, xml_retries_before_reasoning)
 
     cells = get_typst_cells(source_file_path)
 

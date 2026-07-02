@@ -19,11 +19,12 @@ async def translate_notebook_async(
     llm_caller: LLMCaller,
     relative_path: str,
     reasoning_caller: LLMCaller | None = None,
+    xml_retries_before_reasoning: int = 2,
 ) -> None:
     from lesia.translation_cache.cache_rebuilder import read_existing_target_metadata
     from lesia.enums import DocumentType as _DT
     existing_meta = read_existing_target_metadata(target_file_path, _DT.JupyterNotebook)
-    tr = build_translator_with_model(root_path, llm_caller, reasoning_caller)
+    tr = build_translator_with_model(root_path, llm_caller, reasoning_caller, xml_retries_before_reasoning)
 
     nb = jupytext.read(source_file_path)
     for i in range(len(nb.cells)):
