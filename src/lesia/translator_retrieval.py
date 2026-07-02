@@ -482,18 +482,28 @@ class ChunkTranslator:
         reasoning_caller = self._reasoning_caller if self._reasoning_caller is not None else caller
         translated = None
         for attempt in range(1, total_attempts + 1):
+            # verify if the current number of attemps is equal to total allowed
+            # attemps
             is_final = attempt == total_attempts
+            # choose the llm caller (reasoning or casual)
             active_caller = reasoning_caller if is_final else caller
             try:
                 translated = await self._run_with_caller(strategy, meta, active_caller)
                 break
             except (ET.ParseError, PlaceholderVerificationError) as exc:
+                # if there is a parse error, or placeholders are corrupted we
+                # pass here
+
+                # if we used all allowed attemps and attempt with reasoning
+                # model, then we raise an error
                 if is_final:
                     logger.error(
                         f"Chunk translation failed after {total_attempts} attempts due to {exc.__class__.__name__}: {exc}",
                     )
                     raise ChunkTranslationFailed(chunk, exc) from exc
+                # if we used all attempts, but did not call the reasoner, then we call reasoner
                 next_is_reasoning = attempt == self._xml_retries_before_reasoning
+
                 if next_is_reasoning:
                     logger.warning(f"Invalid XML on attempt {attempt}, retrying with reasoning model...")
                 else:
