@@ -536,6 +536,7 @@ def info_on_project(ctx: typer.Context):
             print("\tReasoning model: {} {}".format(llm_reasoning_service, llm_reasoning_model))
         else:
             print("\tReasoning model: Not set")
+        print("\tXML retries before reasoning: {}".format(project.get_xml_retries_before_reasoning()))
         typst_string_args = project.get_typst_translatable_string_args_by_function()
         if typst_string_args:
             print("\tTypst translatable string args:")
