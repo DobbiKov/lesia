@@ -1,5 +1,5 @@
 /* =========================================================
-   Lesia — landing page styles, inspired by index.html
+   Lesia — landing page styles
    ========================================================= */
 
 /* ----------------------------------------------------------
@@ -12,15 +12,39 @@
   --lesia-green:   #34d399;
   --lesia-blue:    #60a5fa;
   --lesia-orange:  #fb923c;
+
+  /* Adaptive muted text — works in both light and dark themes */
+  --lesia-muted: #64748b;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --lesia-muted: #94a3b8;
+  }
+}
+
+/* MyST dark mode via data attribute */
+[data-theme="dark"] {
+  --lesia-muted: #94a3b8;
 }
 
 /* ----------------------------------------------------------
    Hero — centered block
    ---------------------------------------------------------- */
 
-/* Radial glow behind the hero */
+/* Remove the wrapper block's top/bottom padding so the hero hugs the nav */
+.myst-landing-block:has(.myst-landing-centered) {
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+}
+
+/* Hero: full viewport width, same breakout as logo-cloud */
 .myst-landing-centered {
-  position: relative;
+  width: 100vw !important;
+  position: relative !important;
+  left: 50% !important;
+  margin-left: -50vw !important;
+  margin-right: -50vw !important;
   overflow: hidden;
 }
 .myst-landing-centered::before {
@@ -28,7 +52,7 @@
   position: absolute;
   inset: 0;
   background: radial-gradient(ellipse 80% 55% at 50% 0%,
-    rgba(108, 99, 255, 0.18), transparent);
+    rgba(108, 99, 255, 0.13), transparent);
   pointer-events: none;
   z-index: 0;
 }
@@ -37,6 +61,12 @@
   z-index: 1;
   padding-top: 5rem !important;
   padding-bottom: 5rem !important;
+  max-width: 1200px !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+  padding-left: 2rem !important;
+  padding-right: 2rem !important;
+  box-sizing: border-box !important;
 }
 
 /* Gradient hero title */
@@ -51,7 +81,7 @@
   background-clip: text;
 }
 
-/* Version badge pill */
+/* Version badge pill — override the theme's uppercase/indigo-400 defaults */
 .myst-landing-centered-subtitle {
   display: inline-block !important;
   background: rgba(108, 99, 255, 0.12) !important;
@@ -69,7 +99,7 @@
 /* Hero body text */
 .myst-landing-centered-body {
   font-size: 1.15rem;
-  color: #94a3b8;
+  color: var(--lesia-muted);
   max-width: 600px;
   margin-left: auto;
   margin-right: auto;
@@ -105,22 +135,47 @@
   padding: 0.7rem 0.5rem;
 }
 .myst-landing-centered-links .link:not(.button):hover {
-  color: #fff !important;
+  color: var(--lesia-accent) !important;
+  text-decoration: underline !important;
 }
 
 /* ----------------------------------------------------------
    Landing blocks — alternating background tint
    ---------------------------------------------------------- */
 
-/* Logo-cloud blocks get a subtle dark surface tint */
+/* Logo-cloud blocks: full viewport width background, content stays constrained */
 .myst-landing-logo-cloud {
-  background: rgba(108, 99, 255, 0.04);
+  background: rgba(108, 99, 255, 0.05);
   border-top: 1px solid rgba(108, 99, 255, 0.1);
   border-bottom: 1px solid rgba(108, 99, 255, 0.1);
-  padding-top: 4rem !important;
-  padding-bottom: 4rem !important;
-  padding-right: 2rem !important;
+  padding-top: 3.5rem !important;
+  padding-bottom: 3.5rem !important;
+  /* Break out of the constrained column for the background */
+  width: 100vw !important;
+  position: relative !important;
+  left: 50% !important;
+  margin-left: -50vw !important;
+  margin-right: -50vw !important;
+}
+
+/* Constrain the inner content (heading, description, grid) to match other sections */
+.myst-landing-logo-cloud > * {
+  max-width: 1200px !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
   padding-left: 2rem !important;
+  padding-right: 2rem !important;
+  box-sizing: border-box !important;
+}
+
+/* The grid itself also needs constraining */
+.myst-landing-logo-cloud .myst-grid {
+  max-width: 1200px !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+  padding-left: 2rem !important;
+  padding-right: 2rem !important;
+  box-sizing: border-box !important;
 }
 
 .myst-landing-logo-cloud h2,
@@ -131,25 +186,36 @@
 
 .myst-landing-logo-cloud-body {
   font-size: 1rem;
-  color: #94a3b8;
+  color: var(--lesia-muted);
   max-width: 560px;
   margin-left: auto;
   margin-right: auto;
 }
 
 /* ----------------------------------------------------------
-   Cards — feature cards, format pills, provider cards
+   Cards — shared base
    ---------------------------------------------------------- */
 
+/* Override nearly-invisible light-mode border; add accent left
+   border that reveals on hover for a nice visual cue. */
 .myst-card {
+  border-color: rgba(108, 99, 255, 0.15) !important;
+  border-left: 3px solid transparent !important;
   border-radius: 12px !important;
-  transition: border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease !important;
+  transition: border-color 0.2s ease, border-left-color 0.2s ease,
+              transform 0.2s ease, box-shadow 0.2s ease !important;
 }
 
 .myst-card:hover {
   border-color: var(--lesia-accent) !important;
+  border-left-color: var(--lesia-accent) !important;
   transform: translateY(-3px);
   box-shadow: 0 10px 28px rgba(108, 99, 255, 0.18) !important;
+}
+
+/* Fix Tailwind group-hover:underline firing on non-link cards */
+.myst-card:hover .myst-card-title {
+  text-decoration: none !important;
 }
 
 .myst-card-title {
@@ -157,26 +223,50 @@
   font-weight: 700 !important;
   padding-top: 1rem !important;
   padding-left: 1rem !important;
+  text-decoration: none !important;
 }
 
 .myst-card-body {
   font-size: 0.9rem;
-  color: #94a3b8;
+  color: var(--lesia-muted);
   padding-bottom: 1.25rem !important;
 }
 
-/* Cards inside logo-cloud: more compact and centered */
+/* ----------------------------------------------------------
+   Logo-cloud cards — compact chip style
+   ---------------------------------------------------------- */
+
+/* Cards inside logo-cloud sections: compact pill/chip style.
+   These cards have no title — all content is in myst-card-body. */
 .myst-landing-logo-cloud .myst-card {
+  border-color: rgba(108, 99, 255, 0.2) !important;
+  border-left: 1px solid rgba(108, 99, 255, 0.2) !important;
+  border-radius: 10px !important;
   text-align: center;
-  padding: 0.6rem 1rem;
+  margin-top: 0.25rem !important;
+  margin-bottom: 0.25rem !important;
 }
-.myst-landing-logo-cloud .myst-card-title {
-  padding: 0.5rem 0.75rem !important;
+
+.myst-landing-logo-cloud .myst-card-body {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 0.8rem 1rem !important;
   font-size: 0.95rem !important;
 }
+
+/* Paragraph inside the body — remove its own margins */
+.myst-landing-logo-cloud .myst-card-body p {
+  margin: 0 !important;
+  font-size: 0.95rem !important;
+  font-weight: 600 !important;
+}
+
 .myst-landing-logo-cloud .myst-card:hover {
   border-color: var(--lesia-accent2) !important;
-  box-shadow: 0 4px 16px rgba(167, 139, 250, 0.2) !important;
+  border-left-color: var(--lesia-accent2) !important;
+  box-shadow: 0 4px 16px rgba(167, 139, 250, 0.22) !important;
+  transform: translateY(-2px);
 }
 
 /* ----------------------------------------------------------

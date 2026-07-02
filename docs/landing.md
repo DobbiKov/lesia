@@ -26,7 +26,6 @@ structure, formatting, and syntax while you stay in control.
 Built for researchers, scientists, and technical writers who need accurate, structure-preserving translations at scale.
 
 ::::{grid} 2 2 3 3
-:gutter: 3
 
 :::{card} 🔒 Format Preservation
 The system protects LaTeX commands, Typst syntax, Markdown fences, and code blocks from being altered during translation.
@@ -76,30 +75,35 @@ Embed Lesia into your own scripts and pipelines. Full async support for concurre
 
 Works with your documents — from academic papers to data science notebooks, Lesia handles the most popular scientific markup languages.
 
-::::{grid} 3 3 5 5
-:gutter: 2
+::::{grid} 2 3 5 5
 
 :::{card}
-**LaTeX**
+🔶 **LaTeX**
 :::
 
 :::{card}
-**Markdown**
+📝 **Markdown**
 :::
 
 :::{card}
-**Jupyter Notebooks**
+📓 **Jupyter Notebooks**
 :::
 
 :::{card}
-**MyST**
+⚡ **MyST**
 :::
 
 :::{card}
-**Typst**
+🔷 **Typst**
 :::
 
 ::::
+
++++ 
+## Open and Secure
+Lesia is completely free and open-source, you may download it, change it,
+redistribute as you wish. Moreover, the data is yours, you may choose any LLM
+model provider even the models you run locally.
 
 +++ {"kind": "logo-cloud"}
 
@@ -108,42 +112,36 @@ Works with your documents — from academic papers to data science notebooks, Le
 Lesia supports major commercial providers as well as self-hosted and institutional deployments.
 
 ::::{grid} 2 3 3 6
-:gutter: 2
 
 :::{card}
-♊ **Google Gemini**\
-*Default*
+♊ **Google Gemini**
 :::
 
 :::{card}
-🤖 **OpenAI**\
-*Supported*
+🤖 **OpenAI**
 :::
 
 :::{card}
-🔬 **Anthropic**\
-*Supported*
+🔬 **Anthropic**
 :::
 
 :::{card}
-✖️ **xAI (Grok)**\
-*Supported*
+✖️ **xAI / Grok**
 :::
 
 :::{card}
-🇫🇷 **iLaaS**\
-*Supported*
+🇫🇷 **iLaaS**
 :::
 
 :::{card}
-🐳 **MyDocker**\
-*Paris-Saclay*
+🐳 **MyDocker**
 :::
 
 ::::
 
 +++
 
+(install)=
 ## Get up and running
 
 Install as a standalone CLI tool or embed the library in your own Python project.
@@ -212,7 +210,6 @@ asyncio.run(project.translate_single_file(
 Translate between any combination of the supported natural languages.
 
 ::::{grid} 2 2 4 4
-:gutter: 2
 
 :::{card}
 🇬🇧 **English**
@@ -251,7 +248,6 @@ Translate between any combination of the supported natural languages.
 Open-source projects and tools that actively use Lesia in their workflow.
 
 ::::{grid} 1 1 3 3
-:gutter: 3
 
 :::{card} 📚 Linear Algebra Lecture Notes
 Linear Algebra Lecture Notes in English, French and Ukrainian.
@@ -294,7 +290,7 @@ Documentation for [MyDocker](https://mydocker.universite-paris-saclay.fr) servic
 
 Using Lesia in your research? Please cite it as follows.
 
-```bibtex
+```bib
 @software{korotenko_lesia_2026,
     author    = {Korotenko, Yehor},
     title     = {lesia},
