@@ -1,32 +1,16 @@
-# Translate dir CLI
-
-This is a CLI tool that aims to automate the translation of large documents written using markup languages such as:
-- LaTeX
-- Markdown
-- Jupyter
-- MyST
-- Typst
-
-This CLI tool is an implementation of [this library](https://github.com/DobbiKov/lesia).
-
-Learn more about the project: [main repository](https://github.com/DobbiKov/sci-trans-git).
-
-Extended abstract about the project: [link](https://dobbikov.github.io/sci-trans-git/jdse-paper.pdf)
+# Lesia CLI
 
 ⚠️ This tool is in early development. Expect bugs and incomplete features.
 
 ## Table of Contents
 
-- [Why lesia?](#why-lesia)
-- [Features](#features)
-- [Citation](#citation)
 - [Getting started](#getting-started)
     - [Installation](#installation)
     - [First steps](#first-steps)
         - [Project setup](#project-setup)
         - [Sync & Translate](#sync--translate)
         - [Correction](#correction)
-- [Getting started for developers](#getting-started-for-developers)
+    - [Getting started for developers](#getting-started-for-developers)
 - [Command reference](#command-reference)
     - [Global options](#global-options)
     - [Project management](#project-management)
@@ -40,46 +24,8 @@ Extended abstract about the project: [link](https://dobbikov.github.io/sci-trans
     - [Typst configuration](#typst-configuration)
     - [LaTeX configuration](#latex-configuration)
 - [Documentation](#documentation)
-- [Contributing](#contributing)
-
-## Why lesia?
-
-Manually translating large projects with scientific notation, Markdown, or
-LaTeX is slow and error-prone. This library automates this process while
-preserving file structure and formatting, so you can focus on refining the
-content rather than wrestling with markup.
-
-## Features
-
-- [x] **Project creation** – Set up a new translation workspace in seconds
-- [x] **Source & target language management** – Easily define languages for translation
-- [x] **File syncing** – Synchronize translatable and non-translatable files across languages
-- [x] **Translation cache** – Keep track of all translated content and corrections
-- [x] **AI-based translations** – Leverage Google Gemini and other LLM services for high-quality translations
-- [x] **Vocabulary support** – Fine-tune translations with custom glossaries
-- [x] **Cache-aware corrections** – Preserve manual fixes by syncing the cache from files on disk
-- [x] **Typst support** – Full support for Typst documents including configurable function argument translation
-- [x] **LaTeX configuration** – Fine-grained control over which environments, commands, and arguments are translated
-
-## Citation
-
-If you use this software in your research or for writing, please cite it as follows:
-
-```bib
-@software{korotenko-sci-trans-git,
-    author = {Yehor Korotenko},
-    title = {sci-trans-git},
-    year = {2025},
-    publisher = {GitHub},
-    version = {0.2.0-alpha},
-    url = {https://github.com/DobbiKov/sci-trans-git},
-    doi = {10.5281/zenodo.15775111}
-}
-```
 
 ## Getting started
-
-For developers: follow [here](#getting-started-for-developers)
 
 ### Installation
 
@@ -237,34 +183,22 @@ After automated translation, you will typically review the output and make manua
 
 See the [Translation Cache section](./tool-profound-explanation.md#the-translation-cache) of the profound explanation for a detailed description of the cache structure and how `cache sync` works.
 
----
-
-## Getting started for developers
+### Getting started for developers
 
 1. Ensure you have [uv](https://docs.astral.sh/uv/#__tabbed_1_1) installed.
-2. Clone the library first; the installation guide is [here](https://github.com/DobbiKov/lesia?tab=readme-ov-file#installation).
-3. Get the path to the library directory on your local machine (e.g. `realpath <your_dir>` on macOS).
-4. Clone this repo:
+2. Clone this repo:
     ```sh
     git clone https://github.com/DobbiKov/lesia
     ```
-5. Enter the directory:
+3. Enter the directory:
     ```sh
     cd lesia
     ```
-6. Remove the current library dependency:
-    ```sh
-    uv remove lesia
-    ```
-7. Add the local one:
-    ```sh
-    uv add --editable <path_to_local_lib_dir>
-    ```
-8. Install the dependencies:
+4. Install the dependencies:
     ```sh
     uv sync
     ```
-9. Install the CLI globally in editable mode:
+5. Install the CLI globally in editable mode:
     ```sh
     uv tool install -e .
     ```
@@ -914,7 +848,3 @@ lesia unset-latex-cmd-args myfig
 - Library API reference: [docs/main.md](./main.md)
 - Architecture and algorithms: [docs/tool-profound-explanation.md](./tool-profound-explanation.md)
 - Typst parsing and implementation: [docs/typst_parsing_analysis.md](./typst_parsing_analysis.md)
-
-## Contributing
-
-Suggestions and pull requests are welcome. Visit the issues pages as well as the project's [main page](https://github.com/DobbiKov/sci-trans-git) and the [shared document](https://codimd.math.cnrs.fr/sUW9PQ1tTLWcR98UjLHLpw) to know the current direction and plans.
