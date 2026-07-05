@@ -21,3 +21,7 @@ Conventions:
 - Use `print` only for user-facing CLI messages (results, progress, prompts).
 - Use `loguru.logger` for diagnostics (debug/info/warn/error, stack traces, internal state).
 - Library code should not configure Loguru; the CLI entrypoint wires log sinks and verbosity.
+
+## Documentation
+Make sure to read [documentation](./docs/main.md) when making changes. Update
+documentation when you make changes.
