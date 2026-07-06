@@ -712,3 +712,176 @@ def test_status_untranslated_chunks_not_counted_in_needs_review(tmp_path: Path) 
     assert lang.untranslated_chunks == len(checksums) - 1
     assert lang.needs_review_chunks == 1
     assert lang.proofread_chunks == 0
+
+
+# ---------------------------------------------------------------------------
+# Notebook (jupytext .md) needs_review counting
+# ---------------------------------------------------------------------------
+
+_JUPYTEXT_HEADER = """\
+---
+jupytext:
+  text_representation:
+    extension: .md
+    format_name: myst
+    format_version: '0.13'
+    jupytext_version: 1.19.4
+kernelspec:
+  display_name: Python 3
+  language: python
+  name: python3
+---
+"""
+
+
+def _write_jupytext_source_md(directory: Path, name: str, content: str) -> Path:
+    """Write a jupytext myst markdown source file."""
+    path = directory / name
+    path.write_text(_JUPYTEXT_HEADER + "\n" + content, encoding="utf-8")
+    return path
+
+
+def _jupytext_chunk_checksums(file_path: Path) -> list[str]:
+    """Return checksums for all non-empty cells in a jupytext source file."""
+    import jupytext
+    nb = jupytext.read(file_path)
+    return [calculate_checksum(cell["source"]) for cell in nb.cells if cell["source"].strip()]
+
+
+def _write_target_jupytext_md(
+    directory: Path,
+    name: str,
+    chunks: list[dict],
+) -> Path:
+    """Write a jupytext myst markdown target file with per-cell metadata.
+
+    Each entry in chunks:
+      - "src_checksum": str
+      - "source": str
+      - "needs_review": bool (optional)
+    """
+    import nbformat
+    import jupytext
+
+    cells = []
+    for chunk in chunks:
+        cell = nbformat.v4.new_markdown_cell(source=chunk["source"])
+        cell.metadata["src_checksum"] = chunk["src_checksum"]
+        if chunk.get("needs_review"):
+            cell.metadata.setdefault("tags", [])
+            cell.metadata["tags"].append("needs_review")
+        cells.append(cell)
+
+    nb = nbformat.v4.new_notebook(cells=cells)
+    nb.metadata["jupytext"] = {
+        "text_representation": {
+            "extension": ".md",
+            "format_name": "myst",
+            "format_version": "0.13",
+            "jupytext_version": "1.19.4",
+        }
+    }
+    path = directory / name
+    jupytext.write(nb, path, fmt={"notebook_metadata_filter": "all"})
+    return path
+
+
+def test_status_jupytext_md_all_chunks_need_review(tmp_path: Path) -> None:
+    """needs_review stored as a tag in jupytext .md cells must be counted correctly."""
+    project = _make_project(tmp_path)
+    tgt_dir = _add_french_target(project)
+    src_dir = project.config.get_src_dir_path()
+    assert src_dir is not None
+
+    src_file = _write_jupytext_source_md(src_dir, "doc.md", "# Hello\n\nWorld.\n")
+    project.config.make_file_translatable(src_file, True)
+
+    path_hash = calculate_path_checksum("doc.md")
+    checksums = _jupytext_chunk_checksums(src_file)
+    assert len(checksums) > 0
+
+    for cs in checksums:
+        _seed_row(project, path_hash, cs, {"French": calculate_checksum(f"fr_{cs}")})
+
+    _write_target_jupytext_md(
+        tgt_dir,
+        "doc.md",
+        [{"src_checksum": cs, "source": f"fr_{cs}", "needs_review": True} for cs in checksums],
+    )
+
+    status = project.get_translation_status(include_files=False)
+
+    lang = status.target_langs[0]
+    assert lang.translated_chunks == len(checksums)
+    assert lang.needs_review_chunks == len(checksums)
+    assert lang.proofread_chunks == 0
+
+
+def test_status_jupytext_md_no_needs_review_tag_counts_as_proofread(tmp_path: Path) -> None:
+    """jupytext .md cells without the needs_review tag are counted as proofread."""
+    project = _make_project(tmp_path)
+    tgt_dir = _add_french_target(project)
+    src_dir = project.config.get_src_dir_path()
+    assert src_dir is not None
+
+    src_file = _write_jupytext_source_md(src_dir, "doc.md", "# Hello\n\nWorld.\n")
+    project.config.make_file_translatable(src_file, True)
+
+    path_hash = calculate_path_checksum("doc.md")
+    checksums = _jupytext_chunk_checksums(src_file)
+
+    for cs in checksums:
+        _seed_row(project, path_hash, cs, {"French": calculate_checksum(f"fr_{cs}")})
+
+    _write_target_jupytext_md(
+        tgt_dir,
+        "doc.md",
+        [{"src_checksum": cs, "source": f"fr_{cs}", "needs_review": False} for cs in checksums],
+    )
+
+    status = project.get_translation_status(include_files=False)
+
+    lang = status.target_langs[0]
+    assert lang.translated_chunks == len(checksums)
+    assert lang.needs_review_chunks == 0
+    assert lang.proofread_chunks == len(checksums)
+
+
+def test_status_jupytext_md_partial_needs_review(tmp_path: Path) -> None:
+    """Only jupytext .md cells with needs_review tag are counted as needing review."""
+    project = _make_project(tmp_path)
+    tgt_dir = _add_french_target(project)
+    src_dir = project.config.get_src_dir_path()
+    assert src_dir is not None
+
+    # Use +++ to create explicit cell splits in the jupytext source
+    src_file = _write_jupytext_source_md(
+        src_dir, "doc.md", "# Title\n\n+++\n\n## Section\n\nParagraph.\n"
+    )
+    project.config.make_file_translatable(src_file, True)
+
+    path_hash = calculate_path_checksum("doc.md")
+    checksums = _jupytext_chunk_checksums(src_file)
+    assert len(checksums) >= 2
+
+    for cs in checksums:
+        _seed_row(project, path_hash, cs, {"French": calculate_checksum(f"fr_{cs}")})
+
+    _write_target_jupytext_md(
+        tgt_dir,
+        "doc.md",
+        [
+            {"src_checksum": checksums[0], "source": f"fr_{checksums[0]}", "needs_review": True},
+            *[
+                {"src_checksum": cs, "source": f"fr_{cs}", "needs_review": False}
+                for cs in checksums[1:]
+            ],
+        ],
+    )
+
+    status = project.get_translation_status(include_files=False)
+
+    lang = status.target_langs[0]
+    assert lang.translated_chunks == len(checksums)
+    assert lang.needs_review_chunks == 1
+    assert lang.proofread_chunks == len(checksums) - 1
