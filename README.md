@@ -6,6 +6,7 @@
 **Lesia** is an open-source Python library and CLI that automates the translation of LaTeX, Markdown, Typst, MyST, and Jupyter documents — preserving structure, formatting, and syntax while you stay in control.
 
 - [Website and Documentation](https://lesia.korotenky.com)
+- [Getting Started](./docs/cli.md/#getting-started)
 
 ## Installation
 
