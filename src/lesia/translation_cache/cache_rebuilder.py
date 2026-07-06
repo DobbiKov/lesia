@@ -145,6 +145,8 @@ def _read_notebook_target_metadata(target_path: Path) -> Dict[str, dict]:
         metadata = cell.get("metadata") or {}
         checksum = metadata.get("src_checksum")
         if checksum:
+            if "needs_review" in metadata.get("tags", []):
+                metadata["needs_review"] = "True"
             result.setdefault(checksum, metadata)
     return result
 
