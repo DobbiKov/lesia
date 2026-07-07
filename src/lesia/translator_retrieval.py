@@ -27,6 +27,27 @@ except ImportError:  # pragma: no cover - unified_model_caller may not expose th
         pass
 
 
+@dataclass
+class TranslationStats:
+    """Aggregated statistics for a single file translation run."""
+    chunks_from_cache: int = 0
+    chunks_translated: int = 0
+    chunks_passed_to_reasoning: int = 0
+    chunks_failed: int = 0
+
+    @property
+    def total(self) -> int:
+        return self.chunks_from_cache + self.chunks_translated + self.chunks_failed
+
+    def __add__(self, other: "TranslationStats") -> "TranslationStats":
+        return TranslationStats(
+            chunks_from_cache=self.chunks_from_cache + other.chunks_from_cache,
+            chunks_translated=self.chunks_translated + other.chunks_translated,
+            chunks_passed_to_reasoning=self.chunks_passed_to_reasoning + other.chunks_passed_to_reasoning,
+            chunks_failed=self.chunks_failed + other.chunks_failed,
+        )
+
+
 def is_whitespace(text: str) -> bool:
     return not text or text.isspace()
 
@@ -330,6 +351,7 @@ class ChunkTranslator:
         self._overload_max_delay = max(self._overload_initial_delay, overload_retry_max_delay)
         self._xml_retries_before_reasoning = max(0, xml_retries_before_reasoning)
         self._session_checksums: set[str] = set()
+        self.stats = TranslationStats()
 
     async def _translate_oversized_typst_chunk_async(
         self,
@@ -363,7 +385,7 @@ class ChunkTranslator:
                 meta.vocab,
                 meta.rel_path,
             )
-            translated_subchunk, from_cache = await self.translate_or_fetch(sub_meta)
+            translated_subchunk, from_cache = await self.translate_or_fetch(sub_meta, _skip_stats=True)
             translated_parts.append(translated_subchunk)
             all_from_cache = all_from_cache and from_cache
 
@@ -389,7 +411,7 @@ class ChunkTranslator:
             strategy.set_call_model(f_call_model)
         return await self._translate_with_retry(strategy, meta)
 
-    async def translate_or_fetch(self, meta: Meta) -> tuple[str, bool]:
+    async def translate_or_fetch(self, meta: Meta, _skip_stats: bool = False) -> tuple[str, bool]:
         """Translate one chunk or return it from cache.
 
         Returns `(translated_text, from_cache)`, where:
@@ -409,6 +431,8 @@ class ChunkTranslator:
         if cached is not None:
             from_cache = src_checksum not in self._session_checksums
             logger.debug(f"cache hit ({meta.src_lang} -> {meta.tgt_lang}), from_cache={from_cache}")
+            if not _skip_stats:
+                self.stats.chunks_from_cache += 1
             return cached, from_cache
 
         strategy = STRATEGY_MAP[(meta.doc_type, meta.chunk_type)]
@@ -462,6 +486,8 @@ class ChunkTranslator:
                     translated, from_cache = await self._translate_oversized_typst_chunk_async(meta)
                 except ChunkTranslationFailed as exc:
                     root_exc = exc.original_exception if exc.original_exception is not None else exc
+                    if not _skip_stats:
+                        self.stats.chunks_failed += 1
                     raise ChunkTranslationFailed(chunk, root_exc) from exc
 
                 tgt_checksum = calculate_checksum(translated)
@@ -476,11 +502,17 @@ class ChunkTranslator:
                     translated,
                     meta.rel_path,
                 )
+                if not _skip_stats:
+                    if from_cache:
+                        self.stats.chunks_from_cache += 1
+                    else:
+                        self.stats.chunks_translated += 1
                 return translated, from_cache
 
         total_attempts = self._xml_retries_before_reasoning + 1
         reasoning_caller = self._reasoning_caller if self._reasoning_caller is not None else caller
         translated = None
+        used_reasoning = False
         for attempt in range(1, total_attempts + 1):
             # verify if the current number of attemps is equal to total allowed
             # attemps
@@ -489,6 +521,8 @@ class ChunkTranslator:
             active_caller = reasoning_caller if is_final else caller
             try:
                 translated = await self._run_with_caller(strategy, meta, active_caller)
+                if is_final and self._reasoning_caller is not None:
+                    used_reasoning = True
                 break
             except (ET.ParseError, PlaceholderVerificationError) as exc:
                 # if there is a parse error, or placeholders are corrupted we
@@ -500,6 +534,10 @@ class ChunkTranslator:
                     logger.error(
                         f"Chunk translation failed after {total_attempts} attempts due to {exc.__class__.__name__}: {exc}",
                     )
+                    if not _skip_stats:
+                        self.stats.chunks_failed += 1
+                        if self._reasoning_caller is not None:
+                            self.stats.chunks_passed_to_reasoning += 1
                     raise ChunkTranslationFailed(chunk, exc) from exc
                 # if we used all attempts, but did not call the reasoner, then we call reasoner
                 next_is_reasoning = attempt == self._xml_retries_before_reasoning
@@ -512,8 +550,17 @@ class ChunkTranslator:
                 logger.error(
                     f"Chunk translation failed on attempt {attempt} due to {exc.__class__.__name__}: {exc}",
                 )
+                if not _skip_stats:
+                    self.stats.chunks_failed += 1
+                    if is_final and self._reasoning_caller is not None:
+                        self.stats.chunks_passed_to_reasoning += 1
                 raise ChunkTranslationFailed(chunk, exc) from exc
         assert translated is not None
+
+        if not _skip_stats:
+            self.stats.chunks_translated += 1
+            if used_reasoning:
+                self.stats.chunks_passed_to_reasoning += 1
 
         tgt_checksum = calculate_checksum(translated)
         self._session_checksums.add(src_checksum)

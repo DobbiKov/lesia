@@ -3,7 +3,7 @@ from ..prompts import prompt4
 from pathlib import Path
 
 from lesia.doc_translator_mod.latex_chunker import split_latex_document_into_chunks
-from lesia.translator_retrieval import ChunkTranslator, Meta, build_translator_with_model
+from lesia.translator_retrieval import ChunkTranslator, Meta, TranslationStats, build_translator_with_model
 from lesia.vocab_list import VocabList
 from ..enums import ChunkType, DocumentType, Language
 from ..helpers import calculate_checksum
@@ -59,7 +59,7 @@ async def translate_file_async(
     llm_caller: LLMCaller,
     reasoning_caller: LLMCaller | None = None,
     xml_retries_before_reasoning: int = 2,
-) -> None:
+) -> TranslationStats:
     """Handler for a latex file-to-file translation"""
     from lesia.translation_cache.cache_rebuilder import read_existing_target_metadata
     from lesia.enums import DocumentType as _DT
@@ -74,6 +74,8 @@ async def translate_file_async(
 
     with open(target_file_path, "w") as f:
         f.write(compile_latex_cells(cells))
+
+    return tr.stats
 
 
 async def translate_chunk_async(

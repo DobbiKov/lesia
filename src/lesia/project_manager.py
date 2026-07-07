@@ -30,6 +30,7 @@ from .errors import (
 
 if TYPE_CHECKING:
     from lesia.vocab_list import VocabList
+    from lesia.translator_retrieval import TranslationStats
 
 
 # TODO: add refine translation command
@@ -478,18 +479,18 @@ class Project:
         except ValueError as e:
             raise SetLLMServiceError(f"Error setting xml_retries_before_reasoning: {e}")
 
-    async def translate_single_file(self, file_path_str: str, target_lang: Language | CustomLanguage, vocab_list: VocabList | None, use_reasoning_model: bool = False) -> None:
+    async def translate_single_file(self, file_path_str: str, target_lang: Language | CustomLanguage, vocab_list: VocabList | None, use_reasoning_model: bool = False) -> TranslationStats:
         """Translates a single specified file to the target language."""
         from . import project_runtime as _project_runtime
 
-        await _project_runtime.translate_single_file(self, file_path_str, target_lang, vocab_list, use_reasoning_model=use_reasoning_model)
+        return await _project_runtime.translate_single_file(self, file_path_str, target_lang, vocab_list, use_reasoning_model=use_reasoning_model)
 
 
-    async def translate_all_for_language(self, target_lang: Language | CustomLanguage, vocab_list: VocabList | None, use_reasoning_model: bool = False) -> None:
+    async def translate_all_for_language(self, target_lang: Language | CustomLanguage, vocab_list: VocabList | None, use_reasoning_model: bool = False) -> TranslationStats:
         """Translates all translatable files to the specified target language."""
         from . import project_runtime as _project_runtime
 
-        await _project_runtime.translate_all_for_language(self, target_lang, vocab_list, use_reasoning_model=use_reasoning_model)
+        return await _project_runtime.translate_all_for_language(self, target_lang, vocab_list, use_reasoning_model=use_reasoning_model)
 
 # TODO: remove this, as it is diff, it must be implemented in the translation, after XML tagging
 # DEBUG!

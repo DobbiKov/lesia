@@ -2,7 +2,7 @@ from unified_model_caller import LLMCaller
 from ..prompts import prompt_jupyter_code, prompt_jupyter_md 
 from pathlib import Path
 
-from lesia.translator_retrieval import ChunkTranslator, CodeMeta, Meta, build_translator_with_model
+from lesia.translator_retrieval import ChunkTranslator, CodeMeta, Meta, TranslationStats, build_translator_with_model
 from lesia.errors import ChunkTranslationFailed
 from lesia.vocab_list import VocabList
 from ..enums import ChunkType, DocumentType, Language
@@ -20,7 +20,7 @@ async def translate_notebook_async(
     relative_path: str,
     reasoning_caller: LLMCaller | None = None,
     xml_retries_before_reasoning: int = 2,
-) -> None:
+) -> TranslationStats:
     from lesia.translation_cache.cache_rebuilder import read_existing_target_metadata
     from lesia.enums import DocumentType as _DT
     existing_meta = read_existing_target_metadata(target_file_path, _DT.JupyterNotebook)
@@ -30,6 +30,8 @@ async def translate_notebook_async(
     for i in range(len(nb.cells)):
         nb.cells[i] = await translate_jupyter_cell_async(nb.cells[i], source_language, target_language, vocab_list, tr, relative_path, existing_meta)
     jupytext.write(nb, target_file_path, fmt={"notebook_metadata_filter": "all"})
+
+    return tr.stats
 
 async def translate_jupyter_cell_async(
     cell: dict,

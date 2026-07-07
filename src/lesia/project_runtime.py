@@ -19,6 +19,7 @@ from .errors import (
     UntranslatableFileError,
 )
 from .enums import DocumentType, Language, CustomLanguage
+from .translator_retrieval import TranslationStats
 
 
 @dataclass
@@ -365,7 +366,7 @@ async def translate_single_file(
     target_lang: Language | CustomLanguage,
     vocab_list: VocabList | None,
     use_reasoning_model: bool = False,
-) -> None:
+) -> TranslationStats:
     _apply_typst_translation_settings(project)
     _apply_latex_translation_settings(project)
 
@@ -429,7 +430,7 @@ async def translate_single_file(
             print()
     from .doc_translator import translate_file_to_file_async
     try:
-        await translate_file_to_file_async(
+        stats = await translate_file_to_file_async(
             project.root_path,
             file_path,
             source_language,
@@ -448,6 +449,7 @@ async def translate_single_file(
         raise TranslateFileError(f"Translation process failed for {file_path.name}: {e}", e)
     except IOError as e:
         raise TranslateFileError(f"IO error during translation of {file_path.name}: {e}", e)
+    return stats
 
 
 async def translate_all_for_language(
@@ -455,20 +457,23 @@ async def translate_all_for_language(
     target_lang: Language | CustomLanguage,
     vocab_list: VocabList | None,
     use_reasoning_model: bool = False,
-) -> None:
+) -> TranslationStats:
     translatable_files = project.get_translatable_files()
     if not translatable_files:
         print(f"No translatable files found for language {target_lang}.")
-        return
+        return TranslationStats()
 
     print(f"Starting translation of {len(translatable_files)} files to {target_lang}...")
+    total_stats = TranslationStats()
     for i, file_path in enumerate(translatable_files):
         print(f"--- File {i+1}/{len(translatable_files)} ---")
         try:
-            await translate_single_file(project, str(file_path), target_lang, vocab_list, use_reasoning_model=use_reasoning_model)
+            file_stats = await translate_single_file(project, str(file_path), target_lang, vocab_list, use_reasoning_model=use_reasoning_model)
+            total_stats = total_stats + file_stats
         except TranslateFileError as e:
             print(f"ERROR translating {file_path.name}: {e}. Skipping this file.")
     print(f"Finished translation to {target_lang}.")
+    return total_stats
 
 
 def diff(project: Project, txt: str, lang: Language | CustomLanguage) -> tuple[str, float]:
