@@ -431,6 +431,17 @@ lesia translate file analysis_notes_fr/main.tex catalan --vocabulary vocab.csv
 lesia translate file analysis_notes_fr/main.tex AmEng --use-reasoning-model
 ```
 
+After translation, a statistics summary is printed:
+
+```
+  chunks from cache:        4
+  chunks translated:        18
+  chunks sent to reasoning: 2
+  chunks failed:            1
+```
+
+`chunks sent to reasoning` is only shown when the reasoning model was used for at least one chunk. `chunks failed` is only shown when at least one chunk failed after all retries.
+
 #### `translate all`
 
 ```
@@ -444,6 +455,21 @@ lesia translate all english
 lesia translate all catalan --vocabulary vocab.csv
 lesia translate all AmEng --use-reasoning-model
 ```
+
+After each file is translated, a per-file statistics summary is printed. Once all files are done, a total summary across all files is shown:
+
+```
+  chunks from cache:        2
+  chunks translated:        10
+  chunks sent to reasoning: 1
+--- Total statistics ---
+  chunks from cache:        6
+  chunks translated:        32
+  chunks sent to reasoning: 1
+  chunks failed:            1
+```
+
+Failed files are excluded from the per-file callback and their chunks do not count toward the totals.
 
 #### `--use-reasoning-model`
 

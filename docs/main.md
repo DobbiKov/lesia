@@ -24,6 +24,7 @@ For a conceptual overview of how the tool works, see the [profound explanation](
   - [Custom language management](#custom-language-management)
   - [File management](#file-management)
   - [Translation](#translation)
+  - [TranslationStats](#translationstats)
   - [Cache management](#cache-management)
   - [LLM configuration](#llm-configuration)
   - [Typst configuration](#typst-configuration)
@@ -78,8 +79,9 @@ project.set_file_translatability("analysis_notes_fr/main.tex", True)
 # Copy untranslatable files (images, bibliography, etc.) to the target directory
 project.sync_untranslatable_files()
 
-# Translate (async)
-asyncio.run(project.translate_single_file("analysis_notes_fr/main.tex", Language.ENGLISH, None))
+# Translate (async) — returns a TranslationStats object
+stats = asyncio.run(project.translate_single_file("analysis_notes_fr/main.tex", Language.ENGLISH, None))
+print(f"Translated {stats.chunks_translated} chunks, {stats.chunks_from_cache} from cache")
 ```
 
 To use a custom language not in the predefined list:
@@ -93,7 +95,8 @@ american_english = project.config.resolve_language("AmEng")  # or "American Engl
 
 # Use it just like a predefined language
 project.add_target_language(american_english)
-asyncio.run(project.translate_all_for_language(american_english, None))
+total_stats = asyncio.run(project.translate_all_for_language(american_english, None))
+print(f"Total chunks translated: {total_stats.chunks_translated}")
 ```
 
 To work with an existing project, load it from the current directory (searched upward, like `git`):
@@ -477,18 +480,19 @@ await project.translate_single_file(
     file_path_str: str,
     target_lang: Language | CustomLanguage,
     vocab_list: VocabList | None,
-) -> None
+) -> TranslationStats
 ```
 
-Translates one file into `target_lang`. The file must be marked as translatable. Optionally accepts a `VocabList` to guide terminology.
+Translates one file into `target_lang`. The file must be marked as translatable. Optionally accepts a `VocabList` to guide terminology. Returns a `TranslationStats` instance with per-file chunk counts.
 
 ```python
 import asyncio
-asyncio.run(project.translate_single_file("notes_fr/main.tex", Language.ENGLISH, None))
+stats = asyncio.run(project.translate_single_file("notes_fr/main.tex", Language.ENGLISH, None))
+print(stats.chunks_translated, stats.chunks_from_cache)
 
 # With a custom language:
 catalan = project.config.resolve_language("Catalan")
-asyncio.run(project.translate_single_file("notes_fr/main.tex", catalan, None))
+stats = asyncio.run(project.translate_single_file("notes_fr/main.tex", catalan, None))
 ```
 
 **Raises:** `TranslateFileError` — if the file is not marked as translatable, the language is not configured, or translation fails unrecoverably.
@@ -499,12 +503,63 @@ asyncio.run(project.translate_single_file("notes_fr/main.tex", catalan, None))
 await project.translate_all_for_language(
     target_lang: Language | CustomLanguage,
     vocab_list: VocabList | None,
-) -> None
+    on_file_translated: Callable[[Path, TranslationStats], None] | None = None,
+) -> TranslationStats
 ```
 
-Translates all translatable files into `target_lang`. Files are processed sequentially. Individual chunk failures are logged and the chunk is left untranslated, but the run continues.
+Translates all translatable files into `target_lang`. Files are processed sequentially. Individual chunk failures are logged and the chunk is left untranslated, but the run continues. Returns a `TranslationStats` instance that is the sum of all per-file stats (failed files are excluded).
+
+The optional `on_file_translated` callback is called after each file is successfully translated. It receives the absolute `Path` of the source file and its `TranslationStats`. This lets you react to per-file results (e.g. print progress) without putting loop logic in your own code.
+
+```python
+import asyncio
+
+def on_file(path, stats):
+    print(f"{path.name}: {stats.chunks_translated} translated, {stats.chunks_from_cache} from cache")
+
+total = asyncio.run(project.translate_all_for_language(
+    Language.ENGLISH,
+    None,
+    on_file_translated=on_file,
+))
+print(f"Total: {total.total} chunks processed")
+```
 
 **Raises:** `TranslateFileError` — for unrecoverable errors.
+
+---
+
+### TranslationStats
+
+```python
+from lesia.translator_retrieval import TranslationStats
+```
+
+A dataclass returned by `translate_single_file` and `translate_all_for_language` that summarises chunk-level translation activity.
+
+```python
+@dataclass
+class TranslationStats:
+    chunks_from_cache: int = 0           # chunks retrieved from the on-disk cache
+    chunks_translated: int = 0           # chunks successfully translated by the LLM
+    chunks_passed_to_reasoning: int = 0  # chunks where the reasoning model was attempted
+    chunks_failed: int = 0               # chunks that failed after all retries
+
+    @property
+    def total(self) -> int:
+        # chunks_from_cache + chunks_translated + chunks_failed
+        ...
+
+    def __add__(self, other: TranslationStats) -> TranslationStats:
+        # Returns a new TranslationStats with all fields summed.
+        ...
+```
+
+**Notes:**
+- `chunks_passed_to_reasoning` counts chunks for which the reasoning model was called at least once (whether or not translation ultimately succeeded).
+- `chunks_failed` counts only chunks that were left untranslated after exhausting all retries. A chunk counted here is never counted in `chunks_translated`.
+- For `translate_all_for_language`, the returned stats are the sum over all *successful* files; stats from files that raised `TranslateFileError` are not included.
+- `TranslationStats` supports `+` for manual aggregation: `combined = stats_a + stats_b`.
 
 ---
 
