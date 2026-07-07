@@ -3,7 +3,7 @@ from __future__ import annotations
 import os
 import shutil
 from pathlib import Path
-from typing import List, Optional, TYPE_CHECKING
+from typing import Callable, List, Optional, TYPE_CHECKING
 
 from .enums import Language, CustomLanguage
 from .project_config_models import ProjectConfig, LangDir
@@ -486,11 +486,11 @@ class Project:
         return await _project_runtime.translate_single_file(self, file_path_str, target_lang, vocab_list, use_reasoning_model=use_reasoning_model)
 
 
-    async def translate_all_for_language(self, target_lang: Language | CustomLanguage, vocab_list: VocabList | None, use_reasoning_model: bool = False) -> TranslationStats:
+    async def translate_all_for_language(self, target_lang: Language | CustomLanguage, vocab_list: VocabList | None, use_reasoning_model: bool = False, on_file_translated: Callable[[Path, TranslationStats], None] | None = None) -> TranslationStats:
         """Translates all translatable files to the specified target language."""
         from . import project_runtime as _project_runtime
 
-        return await _project_runtime.translate_all_for_language(self, target_lang, vocab_list, use_reasoning_model=use_reasoning_model)
+        return await _project_runtime.translate_all_for_language(self, target_lang, vocab_list, use_reasoning_model=use_reasoning_model, on_file_translated=on_file_translated)
 
 # TODO: remove this, as it is diff, it must be implemented in the translation, after XML tagging
 # DEBUG!

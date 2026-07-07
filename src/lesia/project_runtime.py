@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Callable
 
 from .errors import (
     CorrectTranslationError,
@@ -457,6 +457,7 @@ async def translate_all_for_language(
     target_lang: Language | CustomLanguage,
     vocab_list: VocabList | None,
     use_reasoning_model: bool = False,
+    on_file_translated: Callable[[Path, TranslationStats], None] | None = None,
 ) -> TranslationStats:
     translatable_files = project.get_translatable_files()
     if not translatable_files:
@@ -470,6 +471,8 @@ async def translate_all_for_language(
         try:
             file_stats = await translate_single_file(project, str(file_path), target_lang, vocab_list, use_reasoning_model=use_reasoning_model)
             total_stats = total_stats + file_stats
+            if on_file_translated is not None:
+                on_file_translated(file_path, file_stats)
         except TranslateFileError as e:
             print(f"ERROR translating {file_path.name}: {e}. Skipping this file.")
     print(f"Finished translation to {target_lang}.")

@@ -13,6 +13,7 @@ from typing_extensions import Annotated # For Typer < 0.7 or for more complex an
 from lesia.enums import Language
 from lesia import errors
 from lesia.errors import AddCustomLanguageError, RemoveCustomLanguageError
+from lesia.translator_retrieval import TranslationStats
 from lesia.vocab_list import vocab_list_from_vocab_db # Import the errors module
 
 try:
@@ -744,9 +745,12 @@ async def _translate_all_command(project: Project, lang: str, vocab: Path | None
         if vocab is not None:
             vocabulary = vocab_list_from_vocab_db(_read_vocab_from_file(vocab), project.get_source_langugage(), resolved_lang)
 
-        stats = await project.translate_all_for_language(resolved_lang, vocabulary, use_reasoning_model=use_reasoning_model)
+        def on_file_translated(file_path, file_stats):
+            _print_translation_stats(file_stats)
+
+        total_stats = await project.translate_all_for_language(resolved_lang, vocabulary, use_reasoning_model=use_reasoning_model, on_file_translated=on_file_translated)
         typer.echo("--- Total statistics ---")
-        _print_translation_stats(stats)
+        _print_translation_stats(total_stats)
         typer.secho(f"All translatable files processed for language {resolved_lang}.", fg=typer.colors.GREEN)
     except errors.TranslateFileError as e:
         typer.secho(f"Error during 'translate all' for {resolved_lang}: {e}", fg=typer.colors.RED, err=True)
