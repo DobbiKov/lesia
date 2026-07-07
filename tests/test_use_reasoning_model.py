@@ -58,8 +58,9 @@ def _run_translate_single_file(
 ) -> tuple:
     """Run translate_single_file with a mocked translate_file_to_file_async.
     Returns the call_args of the mock."""
+    from lesia.translator_retrieval import TranslationStats
     project, source_file = _make_project(tmp_path, with_reasoning=with_reasoning)
-    mock_fn = AsyncMock()
+    mock_fn = AsyncMock(return_value=TranslationStats())
 
     with pytest.MonkeyPatch().context() as mp:
         mp.setattr(doc_translator, "translate_file_to_file_async", mock_fn)
@@ -128,8 +129,9 @@ class TestProjectRuntimeTranslateAll:
     """Verify translate_all_for_language passes use_reasoning_model to each file."""
 
     def test_reasoning_flag_forwarded_to_each_file(self, tmp_path):
+        from lesia.translator_retrieval import TranslationStats
         project, _ = _make_project(tmp_path, with_reasoning=True)
-        mock_fn = AsyncMock()
+        mock_fn = AsyncMock(return_value=TranslationStats())
 
         with pytest.MonkeyPatch().context() as mp:
             mp.setattr(doc_translator, "translate_file_to_file_async", mock_fn)
@@ -147,8 +149,9 @@ class TestProjectRuntimeTranslateAll:
             assert kwargs.get("use_reasoning_model") is True
 
     def test_regular_flag_forwarded_to_each_file(self, tmp_path):
+        from lesia.translator_retrieval import TranslationStats
         project, _ = _make_project(tmp_path, with_reasoning=True)
-        mock_fn = AsyncMock()
+        mock_fn = AsyncMock(return_value=TranslationStats())
 
         with pytest.MonkeyPatch().context() as mp:
             mp.setattr(doc_translator, "translate_file_to_file_async", mock_fn)

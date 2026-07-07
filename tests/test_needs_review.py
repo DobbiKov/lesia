@@ -22,8 +22,10 @@ class FakeTranslator:
     """Fake ChunkTranslator that returns a fixed (text, from_cache) pair."""
 
     def __init__(self, result: str, from_cache: bool):
+        from lesia.translator_retrieval import TranslationStats
         self._result = result
         self._from_cache = from_cache
+        self.stats = TranslationStats()
 
     async def translate_or_fetch(self, meta):
         return self._result, self._from_cache

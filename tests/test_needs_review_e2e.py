@@ -43,8 +43,10 @@ TRANSLATED = "Texte traduit."
 
 class FakeTranslator:
     def __init__(self, result: str, from_cache: bool):
+        from lesia.translator_retrieval import TranslationStats
         self._result = result
         self._from_cache = from_cache
+        self.stats = TranslationStats()
 
     async def translate_or_fetch(self, meta):
         return self._result, self._from_cache
@@ -290,6 +292,10 @@ class TestDuplicateChunkEdgeCases:
         call_count = [0]
 
         class TrackingTranslator:
+            def __init__(self):
+                from lesia.translator_retrieval import TranslationStats
+                self.stats = TranslationStats()
+
             async def translate_or_fetch(self, meta):
                 call_count[0] += 1
                 return TRANSLATED, False  # always LLM

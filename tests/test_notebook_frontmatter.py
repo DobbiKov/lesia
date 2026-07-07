@@ -16,6 +16,10 @@ TGT = Language.FRENCH
 
 
 class FakeTranslator:
+    def __init__(self):
+        from lesia.translator_retrieval import TranslationStats
+        self.stats = TranslationStats()
+
     async def translate_or_fetch(self, meta):
         return "Texte traduit.", False
 

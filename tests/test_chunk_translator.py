@@ -66,6 +66,7 @@ from lesia.translator_retrieval import (
     ChunkTranslator,
     Meta,
     ModelOverloadedError,
+    TranslationStats,
     _split_typst_chunk_for_internal_translation,
 )
 from lesia.xml_manipulator_mod.mod import typst_to_xml_mod
@@ -567,3 +568,383 @@ def test_oversized_typst_subchunking_skips_model_for_placeholder_only_subchunks(
     assert from_cache is False
     assert len(calls) == 2
     assert all("```python\n" not in call for call in calls)
+
+
+# ---------------------------------------------------------------------------
+# TranslationStats tracking
+# ---------------------------------------------------------------------------
+
+import xml.etree.ElementTree as ET
+
+
+def _make_myst_meta(chunk: str = "Hello world.") -> Meta:
+    return Meta(
+        chunk=chunk,
+        src_lang=Language.ENGLISH,
+        tgt_lang=Language.FRENCH,
+        doc_type=DocumentType.Markdown,
+        chunk_type=ChunkType.Myst,
+        vocab=None,
+        rel_path="docs/test.md",
+    )
+
+
+def _make_typst_meta(chunk: str) -> Meta:
+    return Meta(
+        chunk=chunk,
+        src_lang=Language.ENGLISH,
+        tgt_lang=Language.FRENCH,
+        doc_type=DocumentType.Typst,
+        chunk_type=ChunkType.Typst,
+        vocab=None,
+        rel_path="docs/test.typ",
+    )
+
+
+class TestTranslationStats:
+    """Tests for TranslationStats tracking in ChunkTranslator.translate_or_fetch."""
+
+    # ------------------------------------------------------------------
+    # TranslationStats dataclass itself
+    # ------------------------------------------------------------------
+
+    def test_stats_add(self):
+        a = TranslationStats(chunks_from_cache=2, chunks_translated=3, chunks_passed_to_reasoning=1, chunks_failed=1)
+        b = TranslationStats(chunks_from_cache=1, chunks_translated=0, chunks_passed_to_reasoning=2, chunks_failed=2)
+        c = a + b
+        assert c.chunks_from_cache == 3
+        assert c.chunks_translated == 3
+        assert c.chunks_passed_to_reasoning == 3
+        assert c.chunks_failed == 3
+
+    def test_stats_total_property(self):
+        stats = TranslationStats(chunks_from_cache=2, chunks_translated=3, chunks_failed=1)
+        assert stats.total == 6
+
+    def test_stats_default_zeros(self):
+        stats = TranslationStats()
+        assert stats.chunks_from_cache == 0
+        assert stats.chunks_translated == 0
+        assert stats.chunks_passed_to_reasoning == 0
+        assert stats.chunks_failed == 0
+        assert stats.total == 0
+
+    # ------------------------------------------------------------------
+    # Passthrough cases — no stats change
+    # ------------------------------------------------------------------
+
+    def test_whitespace_chunk_does_not_affect_stats(self):
+        translator = ChunkTranslator(InMemoryStore())
+        asyncio.run(translator.translate_or_fetch(_make_myst_meta("   \n   ")))
+        assert translator.stats.chunks_from_cache == 0
+        assert translator.stats.chunks_translated == 0
+        assert translator.stats.chunks_failed == 0
+
+    def test_placeholder_only_chunk_does_not_affect_stats(self):
+        translator = ChunkTranslator(InMemoryStore())
+        # Code cell is ph_only for JupyterNotebook/Myst chunks
+        chunk = "```{code-cell} python3\nprint('Hello')\n```\n"
+        meta = Meta(
+            chunk=chunk,
+            src_lang=Language.ENGLISH,
+            tgt_lang=Language.FRENCH,
+            doc_type=DocumentType.JupyterNotebook,
+            chunk_type=ChunkType.Myst,
+            vocab=None,
+            rel_path="docs/test.md",
+        )
+        asyncio.run(translator.translate_or_fetch(meta))
+        assert translator.stats.chunks_from_cache == 0
+        assert translator.stats.chunks_translated == 0
+        assert translator.stats.chunks_failed == 0
+
+    # ------------------------------------------------------------------
+    # Cache hit
+    # ------------------------------------------------------------------
+
+    def test_cache_hit_increments_from_cache(self):
+        chunk = "Hello world."
+        store = InMemoryLookupStore({calculate_checksum(chunk): "Bonjour monde."})
+        translator = ChunkTranslator(store)
+        asyncio.run(translator.translate_or_fetch(_make_myst_meta(chunk)))
+        assert translator.stats.chunks_from_cache == 1
+        assert translator.stats.chunks_translated == 0
+        assert translator.stats.chunks_failed == 0
+        assert translator.stats.chunks_passed_to_reasoning == 0
+
+    def test_multiple_cache_hits_accumulate(self):
+        chunks = ["Hello.", "World.", "Goodbye."]
+        store = InMemoryLookupStore({calculate_checksum(c): f"<{c}>" for c in chunks})
+        translator = ChunkTranslator(store)
+        for c in chunks:
+            asyncio.run(translator.translate_or_fetch(_make_myst_meta(c)))
+        assert translator.stats.chunks_from_cache == 3
+        assert translator.stats.chunks_translated == 0
+
+    # ------------------------------------------------------------------
+    # Standard model success
+    # ------------------------------------------------------------------
+
+    def test_standard_model_success_increments_translated(self, monkeypatch):
+        translator = ChunkTranslator(InMemoryStore())
+
+        async def succeed(self, strategy, meta, caller):
+            return "Bonjour monde."
+        monkeypatch.setattr(ChunkTranslator, "_run_with_caller", succeed)
+
+        asyncio.run(translator.translate_or_fetch(_make_myst_meta()))
+
+        assert translator.stats.chunks_translated == 1
+        assert translator.stats.chunks_from_cache == 0
+        assert translator.stats.chunks_failed == 0
+        assert translator.stats.chunks_passed_to_reasoning == 0
+
+    def test_standard_model_succeeds_after_xml_retry_no_reasoning_counted(self, monkeypatch):
+        """XML error on attempt 1, success on attempt 2 (still standard): no reasoning counted."""
+        reasoning_caller = object()
+        translator = ChunkTranslator(InMemoryStore(), reasoning_caller=reasoning_caller, xml_retries_before_reasoning=2)
+
+        attempt = [0]
+        async def xml_then_succeed(self, strategy, meta, caller):
+            attempt[0] += 1
+            if attempt[0] == 1:
+                raise ET.ParseError("bad xml")
+            return "Bonjour."
+        monkeypatch.setattr(ChunkTranslator, "_run_with_caller", xml_then_succeed)
+
+        asyncio.run(translator.translate_or_fetch(_make_myst_meta()))
+
+        assert translator.stats.chunks_translated == 1
+        assert translator.stats.chunks_passed_to_reasoning == 0
+        assert translator.stats.chunks_failed == 0
+
+    # ------------------------------------------------------------------
+    # Reasoning model fallback
+    # ------------------------------------------------------------------
+
+    def test_reasoning_model_success_after_xml_failures(self, monkeypatch):
+        """Standard model fails twice with XML error, reasoning model succeeds."""
+        reasoning_caller = object()
+        translator = ChunkTranslator(InMemoryStore(), reasoning_caller=reasoning_caller, xml_retries_before_reasoning=2)
+
+        attempt = [0]
+        async def xml_then_reasoning_success(self, strategy, meta, caller):
+            attempt[0] += 1
+            if attempt[0] < 3:
+                raise ET.ParseError("bad xml")
+            return "Bonjour."
+        monkeypatch.setattr(ChunkTranslator, "_run_with_caller", xml_then_reasoning_success)
+
+        asyncio.run(translator.translate_or_fetch(_make_myst_meta()))
+
+        assert translator.stats.chunks_translated == 1
+        assert translator.stats.chunks_passed_to_reasoning == 1
+        assert translator.stats.chunks_failed == 0
+
+    def test_reasoning_model_also_fails_after_xml_failures(self, monkeypatch):
+        """All attempts fail with XML errors, including the reasoning model on the final attempt."""
+        reasoning_caller = object()
+        translator = ChunkTranslator(InMemoryStore(), reasoning_caller=reasoning_caller, xml_retries_before_reasoning=2)
+
+        async def always_bad_xml(self, strategy, meta, caller):
+            raise ET.ParseError("bad xml")
+        monkeypatch.setattr(ChunkTranslator, "_run_with_caller", always_bad_xml)
+
+        with pytest.raises(ChunkTranslationFailed):
+            asyncio.run(translator.translate_or_fetch(_make_myst_meta()))
+
+        assert translator.stats.chunks_failed == 1
+        assert translator.stats.chunks_passed_to_reasoning == 1
+        assert translator.stats.chunks_translated == 0
+
+    def test_xml_retries_zero_always_uses_reasoning_on_success(self, monkeypatch):
+        """With xml_retries_before_reasoning=0, the only attempt uses the reasoning model."""
+        reasoning_caller = object()
+        translator = ChunkTranslator(InMemoryStore(), reasoning_caller=reasoning_caller, xml_retries_before_reasoning=0)
+
+        async def succeed(self, strategy, meta, caller):
+            return "Bonjour."
+        monkeypatch.setattr(ChunkTranslator, "_run_with_caller", succeed)
+
+        asyncio.run(translator.translate_or_fetch(_make_myst_meta()))
+
+        assert translator.stats.chunks_translated == 1
+        assert translator.stats.chunks_passed_to_reasoning == 1
+        assert translator.stats.chunks_failed == 0
+
+    def test_xml_retries_zero_reasoning_fails(self, monkeypatch):
+        """With xml_retries_before_reasoning=0, one attempt with reasoning, which fails."""
+        reasoning_caller = object()
+        translator = ChunkTranslator(InMemoryStore(), reasoning_caller=reasoning_caller, xml_retries_before_reasoning=0)
+
+        async def bad_xml(self, strategy, meta, caller):
+            raise ET.ParseError("bad xml")
+        monkeypatch.setattr(ChunkTranslator, "_run_with_caller", bad_xml)
+
+        with pytest.raises(ChunkTranslationFailed):
+            asyncio.run(translator.translate_or_fetch(_make_myst_meta()))
+
+        assert translator.stats.chunks_failed == 1
+        assert translator.stats.chunks_passed_to_reasoning == 1
+
+    # ------------------------------------------------------------------
+    # Non-XML exceptions
+    # ------------------------------------------------------------------
+
+    def test_non_xml_exception_before_final_attempt_no_reasoning_counted(self, monkeypatch):
+        """ApiCallError on attempt 1 (standard) immediately fails — reasoning never reached."""
+        reasoning_caller = object()
+        translator = ChunkTranslator(InMemoryStore(), reasoning_caller=reasoning_caller, xml_retries_before_reasoning=2)
+
+        async def api_error(self, strategy, meta, caller):
+            raise ApiCallError("api error")
+        monkeypatch.setattr(ChunkTranslator, "_run_with_caller", api_error)
+
+        with pytest.raises(ChunkTranslationFailed):
+            asyncio.run(translator.translate_or_fetch(_make_myst_meta()))
+
+        assert translator.stats.chunks_failed == 1
+        assert translator.stats.chunks_passed_to_reasoning == 0
+
+    def test_non_xml_exception_on_final_reasoning_attempt(self, monkeypatch):
+        """XML errors exhaust standard retries, then reasoning model raises ApiCallError."""
+        reasoning_caller = object()
+        translator = ChunkTranslator(InMemoryStore(), reasoning_caller=reasoning_caller, xml_retries_before_reasoning=1)
+
+        attempt = [0]
+        async def xml_then_api_error(self, strategy, meta, caller):
+            attempt[0] += 1
+            if attempt[0] == 1:
+                raise ET.ParseError("bad xml")
+            raise ApiCallError("api error on reasoning")
+        monkeypatch.setattr(ChunkTranslator, "_run_with_caller", xml_then_api_error)
+
+        with pytest.raises(ChunkTranslationFailed):
+            asyncio.run(translator.translate_or_fetch(_make_myst_meta()))
+
+        assert translator.stats.chunks_failed == 1
+        assert translator.stats.chunks_passed_to_reasoning == 1
+
+    # ------------------------------------------------------------------
+    # No reasoning caller configured
+    # ------------------------------------------------------------------
+
+    def test_no_reasoning_caller_xml_failure_no_reasoning_counted(self, monkeypatch):
+        """When no reasoning caller is set, XML failures should not affect chunks_passed_to_reasoning."""
+        # no reasoning caller — standard model used for all attempts
+        translator = ChunkTranslator(InMemoryStore(), xml_retries_before_reasoning=1)
+
+        async def always_bad_xml(self, strategy, meta, caller):
+            raise ET.ParseError("bad xml")
+        monkeypatch.setattr(ChunkTranslator, "_run_with_caller", always_bad_xml)
+
+        with pytest.raises(ChunkTranslationFailed):
+            asyncio.run(translator.translate_or_fetch(_make_myst_meta()))
+
+        assert translator.stats.chunks_failed == 1
+        assert translator.stats.chunks_passed_to_reasoning == 0
+
+    def test_no_reasoning_caller_success_no_reasoning_counted(self, monkeypatch):
+        """When no reasoning caller is set, a successful translation should not affect chunks_passed_to_reasoning."""
+        translator = ChunkTranslator(InMemoryStore(), xml_retries_before_reasoning=0)
+
+        async def succeed(self, strategy, meta, caller):
+            return "Bonjour."
+        monkeypatch.setattr(ChunkTranslator, "_run_with_caller", succeed)
+
+        asyncio.run(translator.translate_or_fetch(_make_myst_meta()))
+
+        assert translator.stats.chunks_translated == 1
+        assert translator.stats.chunks_passed_to_reasoning == 0
+
+    # ------------------------------------------------------------------
+    # Multiple chunks accumulate correctly
+    # ------------------------------------------------------------------
+
+    def test_mixed_outcomes_across_chunks_accumulate(self, monkeypatch):
+        """Cache hit + standard success + reasoning failure = correct totals."""
+        chunk_cached = "I am cached."
+        chunk_ok = "Translate me."
+        chunk_fail = "I will fail."
+
+        store = InMemoryLookupStore({calculate_checksum(chunk_cached): "Je suis en cache."})
+        reasoning_caller = object()
+        translator = ChunkTranslator(store, reasoning_caller=reasoning_caller, xml_retries_before_reasoning=2)
+
+        async def by_chunk(self, strategy, meta, caller):
+            if meta.chunk == chunk_ok:
+                return "Traduit."
+            raise ET.ParseError("bad xml")  # chunk_fail fails all 3 attempts
+        monkeypatch.setattr(ChunkTranslator, "_run_with_caller", by_chunk)
+
+        asyncio.run(translator.translate_or_fetch(_make_myst_meta(chunk_cached)))
+        asyncio.run(translator.translate_or_fetch(_make_myst_meta(chunk_ok)))
+        with pytest.raises(ChunkTranslationFailed):
+            asyncio.run(translator.translate_or_fetch(_make_myst_meta(chunk_fail)))
+
+        assert translator.stats.chunks_from_cache == 1
+        assert translator.stats.chunks_translated == 1
+        assert translator.stats.chunks_failed == 1
+        assert translator.stats.chunks_passed_to_reasoning == 1  # only chunk_fail reached reasoning
+        assert translator.stats.total == 3
+
+    # ------------------------------------------------------------------
+    # Oversized Typst: stats tracked at parent level, not per-subchunk
+    # ------------------------------------------------------------------
+
+    def _make_oversized_typst_chunk(self) -> str:
+        body = " ".join(["word"] * 1800)
+        return "#figure(caption: [A])[" + body + "]\n"
+
+    def test_oversized_typst_translated_counted_once_not_per_subchunk(self, monkeypatch):
+        """A translated oversized Typst chunk counts as 1 translated chunk, not N subchunks."""
+        store = InMemoryStore()
+        translator = ChunkTranslator(store)
+
+        call_count = [0]
+        async def succeed(self, strategy, meta, caller):
+            call_count[0] += 1
+            return f"[t{call_count[0]}]"
+        monkeypatch.setattr(ChunkTranslator, "_run_with_caller", succeed)
+
+        chunk = self._make_oversized_typst_chunk()
+        asyncio.run(translator.translate_or_fetch(_make_typst_meta(chunk)))
+
+        assert call_count[0] > 1, "must have split into subchunks"
+        assert translator.stats.chunks_translated == 1
+        assert translator.stats.chunks_from_cache == 0
+        assert translator.stats.chunks_failed == 0
+
+    def test_oversized_typst_cached_subchunks_counted_once(self, monkeypatch):
+        """When all subchunks are cached, the parent counts as 1 cache hit, not N."""
+        chunk = self._make_oversized_typst_chunk()
+        parts = _split_typst_chunk_for_internal_translation(chunk)
+        assert len(parts) > 1
+
+        store = InMemoryLookupStore({calculate_checksum(p): f"<{i}>" for i, p in enumerate(parts)})
+        translator = ChunkTranslator(store)
+
+        async def fail_if_called(self, strategy, meta, caller):
+            raise AssertionError("model must not be called when all subchunks are cached")
+        monkeypatch.setattr(ChunkTranslator, "_run_with_caller", fail_if_called)
+
+        asyncio.run(translator.translate_or_fetch(_make_typst_meta(chunk)))
+
+        assert translator.stats.chunks_from_cache == 1
+        assert translator.stats.chunks_translated == 0
+        assert translator.stats.chunks_failed == 0
+
+    def test_oversized_typst_failure_counted_once_not_double(self, monkeypatch):
+        """A failing oversized Typst chunk counts as 1 failure, not 2 (subchunk + parent)."""
+        translator = ChunkTranslator(InMemoryStore())
+
+        async def api_error(self, strategy, meta, caller):
+            raise ApiCallError("api error")
+        monkeypatch.setattr(ChunkTranslator, "_run_with_caller", api_error)
+
+        chunk = self._make_oversized_typst_chunk()
+        with pytest.raises(ChunkTranslationFailed):
+            asyncio.run(translator.translate_or_fetch(_make_typst_meta(chunk)))
+
+        assert translator.stats.chunks_failed == 1
+        assert translator.stats.chunks_translated == 0
