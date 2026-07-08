@@ -188,9 +188,16 @@ def clear_missing_chunks(root_path: Path, source_lang: Language | CustomLanguage
     return stats
 
 
+def _get_chunk_path(cache_dir: Path, lang_name: str, path_hash: str, checksum: str) -> Path:
+    if path_hash:
+        return cache_dir / lang_name / path_hash / checksum
+    return cache_dir / lang_name / checksum
+
+
 def clear_by_checksum(
     root_path: Path,
     checksum: str,
+    source_lang: Language | CustomLanguage,
     lang: Language | CustomLanguage | None = None,
 ) -> CacheDeleteStats:
     stats = CacheDeleteStats()
@@ -198,59 +205,87 @@ def clear_by_checksum(
     if not cache_dir.exists():
         return stats
 
-    deleted_checksums: set[tuple[str, str, str]] = set()
-
-    if lang is not None:
-        lang_names = [str(lang)]
-    else:
-        lang_names = [entry.name for entry in cache_dir.iterdir() if entry.is_dir()]
-
-    for lang_name in lang_names:
-        for row_path_hash, file_checksum, file_path in _iter_lang_cache_files(cache_dir, lang_name):
-            if file_checksum != checksum:
-                continue
-            file_path.unlink()
-            stats.removed_chunk_files += 1
-            deleted_checksums.add((lang_name, row_path_hash, file_checksum))
-
-    if not deleted_checksums:
-        return stats
-
+    source_lang_name = str(source_lang)
     cache_data = read_correspondence_cache(root_path)
+
     if cache_data is None:
+        lang_names = [str(lang)] if lang is not None else [
+            entry.name for entry in cache_dir.iterdir() if entry.is_dir()
+        ]
+        for lang_name in lang_names:
+            for _, file_checksum, file_path in _iter_lang_cache_files(cache_dir, lang_name):
+                if file_checksum == checksum:
+                    file_path.unlink()
+                    stats.removed_chunk_files += 1
         return stats
 
     fields, data_list = cache_data
-    lang_field = str(lang) if lang is not None else ""
+    is_source_checksum = any(row.get(source_lang_name, "") == checksum for row in data_list)
     remaining_rows: list[dict] = []
 
     for row in data_list:
         row_path_hash = row.get(PATH_CHECKSUM_COLUMN, "")
-        row_changed = False
 
-        if lang_field:
-            row_checksum = row.get(lang_field, "")
-            if row_checksum and (lang_field, row_path_hash, row_checksum) in deleted_checksums:
-                row[lang_field] = ""
-                stats.cleared_fields += 1
-                row_changed = True
-        else:
-            for field in fields:
-                if field == PATH_CHECKSUM_COLUMN:
-                    continue
-                row_checksum = row.get(field, "")
-                if row_checksum and (field, row_path_hash, row_checksum) in deleted_checksums:
-                    row[field] = ""
-                    stats.cleared_fields += 1
-                    row_changed = True
+        if is_source_checksum:
+            if row.get(source_lang_name, "") != checksum:
+                remaining_rows.append(row)
+                continue
 
-        if _row_has_any_language_values(row, fields):
-            remaining_rows.append(row)
-        else:
-            if row_changed:
+            if lang is None:
+                # Delete source chunk and all associated target chunks
+                src_path = _get_chunk_path(cache_dir, source_lang_name, row_path_hash, checksum)
+                if src_path.exists():
+                    src_path.unlink()
+                    stats.removed_chunk_files += 1
+                for field in fields:
+                    if field in (PATH_CHECKSUM_COLUMN, source_lang_name):
+                        continue
+                    tgt_checksum = row.get(field, "")
+                    if tgt_checksum:
+                        tgt_path = _get_chunk_path(cache_dir, field, row_path_hash, tgt_checksum)
+                        if tgt_path.exists():
+                            tgt_path.unlink()
+                            stats.removed_chunk_files += 1
                 stats.removed_rows += 1
             else:
+                # Delete only the specified target lang's chunk
+                lang_name = str(lang)
+                tgt_checksum = row.get(lang_name, "")
+                if tgt_checksum:
+                    tgt_path = _get_chunk_path(cache_dir, lang_name, row_path_hash, tgt_checksum)
+                    if tgt_path.exists():
+                        tgt_path.unlink()
+                        stats.removed_chunk_files += 1
+                    row[lang_name] = ""
+                    stats.cleared_fields += 1
+                if _row_has_any_language_values(row, fields):
+                    remaining_rows.append(row)
+                else:
+                    stats.removed_rows += 1
+        else:
+            # Target checksum — delete just the specific target chunk(s)
+            row_changed = False
+            lang_names_to_check = (
+                [str(lang)] if lang is not None
+                else [f for f in fields if f not in (PATH_CHECKSUM_COLUMN, source_lang_name)]
+            )
+            for lang_name in lang_names_to_check:
+                tgt_checksum = row.get(lang_name, "")
+                if tgt_checksum == checksum:
+                    tgt_path = _get_chunk_path(cache_dir, lang_name, row_path_hash, tgt_checksum)
+                    if tgt_path.exists():
+                        tgt_path.unlink()
+                        stats.removed_chunk_files += 1
+                    row[lang_name] = ""
+                    stats.cleared_fields += 1
+                    row_changed = True
+            if _row_has_any_language_values(row, fields):
                 remaining_rows.append(row)
+            else:
+                if row_changed:
+                    stats.removed_rows += 1
+                else:
+                    remaining_rows.append(row)
 
     if stats.removed_rows > 0 or stats.cleared_fields > 0:
         write_correspondence_cache(root_path, remaining_rows, fields)

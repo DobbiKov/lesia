@@ -348,9 +348,13 @@ def clear_translation_cache_by_checksum(
     checksum: str,
     lang: Language | CustomLanguage | None,
 ) -> CacheDeleteStats:
+    source_language = project._get_source_language()
+    if source_language is None:
+        raise TranslationCacheClearError("Cannot clear translation cache: Source language is not set.")
+
     from .translation_cache.cache_cleaner import clear_by_checksum
     try:
-        return clear_by_checksum(project.root_path, checksum, lang)
+        return clear_by_checksum(project.root_path, checksum, source_language, lang)
     except Exception as exc:
         raise TranslationCacheClearError(f"Cannot clear translation cache: {exc}") from exc
 
