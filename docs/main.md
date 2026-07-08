@@ -619,6 +619,35 @@ project.clear_translation_cache_all(
 
 Deletes cache entries, optionally scoped to a language, a file, or a keyword substring match. Passing all three as `None` clears the entire cache. See the [cache maintenance section](./tool-profound-explanation.md#cache-maintenance) of the profound explanation for details on each combination.
 
+#### `clear_translation_cache_by_checksum`
+
+```python
+project.clear_translation_cache_by_checksum(
+    checksum: str,
+    lang: Language | CustomLanguage | None,
+)
+```
+
+Deletes cache chunk files matching the given checksum. The behaviour depends on whether the checksum belongs to a source or target chunk, determined by looking it up in the correspondence CSV:
+
+- **Source checksum, `lang=None`**: deletes the source chunk file and all associated target chunk files for that row, then removes the row from the CSV entirely.
+- **Source checksum, `lang=<language>`**: deletes only the target chunk file for the specified language that is associated with the given source chunk. The source chunk and all other target chunks are preserved; the row is kept with that language's field cleared.
+- **Target checksum**: deletes just the specific target chunk file and clears its field in the CSV. The source chunk and any other target chunks are unaffected. If `lang` is provided, the search is restricted to that language's column — passing the wrong language with a target checksum will find nothing.
+
+```python
+# Source checksum — delete source + all target chunks for that row
+project.clear_translation_cache_by_checksum("abc123def456", None)
+
+# Source checksum + lang — delete only the French target chunk for that row
+project.clear_translation_cache_by_checksum("abc123def456", Language.FRENCH)
+
+# Target checksum — delete just that one target chunk
+fr = project.config.resolve_language("French")
+project.clear_translation_cache_by_checksum("xyz789abc012", None)
+```
+
+**Raises:** `TranslationCacheClearError` — if the source language is not set or an unexpected error occurs.
+
 ---
 
 ### LLM configuration

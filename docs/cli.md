@@ -503,13 +503,15 @@ Rebuilds the translation cache from on-disk source and target files. Run this af
 ```
 lesia cache clear --missing-chunks
 lesia cache clear --all [--lang <language>] [--file <path>] [--keyword <string>]
+lesia cache clear --checksum <checksum> [--lang <language>]
 ```
 
-Cleans up cache entries. Exactly one action flag is required: `--missing-chunks` or `--all`.
+Cleans up cache entries. Exactly one action flag is required: `--missing-chunks`, `--all`, or `--checksum`.
 
 **Rules and constraints:**
-- `--lang`, `--file`, and `--keyword` only work with `--all`.
-- `--keyword` cannot be combined with `--missing-chunks`.
+- `--lang`, `--file`, and `--keyword` only work with `--all` (except `--lang`, which also works with `--checksum`).
+- `--file` cannot be combined with `--checksum`.
+- `--keyword` cannot be combined with `--missing-chunks` or `--checksum`.
 - Language names are case-insensitive and accept predefined language names, custom language names, and short aliases.
 - `--file` expects a project file path (the same path used with `translate file`).
 
@@ -532,6 +534,14 @@ Cleans up cache entries. Exactly one action flag is required: `--missing-chunks`
 - Rows are removed only if all language fields are cleared by the keyword deletion.
 - If the keyword matches nothing, the cache is unchanged.
 
+**What `--checksum <checksum>` does:**
+
+The behaviour depends on whether the checksum belongs to a source or target chunk (determined by looking it up in the correspondence CSV):
+
+- **Source checksum, no `--lang`**: deletes the source chunk file and all associated target chunk files for that row, then removes the row from the CSV entirely.
+- **Source checksum, `--lang <language>`**: deletes only the target chunk file for the specified language that is associated with the given source chunk. The source chunk and all other target chunks are preserved; the row is kept with that language's field cleared.
+- **Target checksum** (no `--lang`, or with `--lang`): deletes just the specific target chunk file and clears its field in the CSV. The source chunk and any other target chunks are unaffected.
+
 **Examples:**
 ```
 lesia cache clear --missing-chunks
@@ -542,6 +552,8 @@ lesia cache clear --all --lang French --file analysis_notes_fr/doc.md
 lesia cache clear --all
 lesia cache clear --all --keyword glossary
 lesia cache clear --all --file analysis_notes_fr/doc.md --keyword glossary
+lesia cache clear --checksum abc123def456
+lesia cache clear --checksum abc123def456 --lang French
 ```
 
 ---
