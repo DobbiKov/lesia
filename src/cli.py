@@ -829,18 +829,26 @@ def clear_cache_cli(
             help="Limit cache deletion to chunks containing the keyword.",
         ),
     ] = None,
+    checksum: Annotated[
+        str | None,
+        typer.Option(
+            "--checksum",
+            help="Delete cache chunk files matching a specific checksum.",
+        ),
+    ] = None,
 ):
     """Clears translation cache entries based on cleanup flags."""
-    if missing_chunks and all_cache:
+    action_flags = [missing_chunks, all_cache, checksum is not None]
+    if sum(action_flags) > 1:
         typer.secho(
-            "Use only one cache clear action flag at a time (--missing-chunks or --all).",
+            "Use only one cache clear action flag at a time (--missing-chunks, --all, or --checksum).",
             fg=typer.colors.RED,
             err=True,
         )
         raise typer.Exit(code=1)
     if (lang is not None or file_path is not None) and missing_chunks:
         typer.secho(
-            "--lang and --file can only be used with --all.",
+            "--lang and --file can only be used with --all or --checksum.",
             fg=typer.colors.RED,
             err=True,
         )
@@ -852,9 +860,16 @@ def clear_cache_cli(
             err=True,
         )
         raise typer.Exit(code=1)
-    if not missing_chunks and not all_cache:
+    if file_path is not None and checksum is not None:
         typer.secho(
-            "No cache clear flags provided. Use --missing-chunks or --all.",
+            "--file cannot be used with --checksum.",
+            fg=typer.colors.RED,
+            err=True,
+        )
+        raise typer.Exit(code=1)
+    if not missing_chunks and not all_cache and checksum is None:
+        typer.secho(
+            "No cache clear flags provided. Use --missing-chunks, --all, or --checksum.",
             fg=typer.colors.RED,
             err=True,
         )
@@ -877,6 +892,23 @@ def clear_cache_cli(
                     f"{stats.cleared_fields} field(s) cleared, "
                     f"{stats.removed_source_chunks} source chunk(s) removed, "
                     f"{stats.removed_target_chunks} target chunk(s) removed."
+                ),
+                fg=typer.colors.GREEN,
+            )
+        elif checksum is not None:
+            stats = project.clear_translation_cache_by_checksum(checksum, resolved_lang)
+            if stats.removed_chunk_files == 0:
+                typer.secho(
+                    f"Warning: no cache files found with checksum '{checksum}'.",
+                    fg=typer.colors.YELLOW,
+                    err=True,
+                )
+            typer.secho(
+                (
+                    "Cache deletion complete: "
+                    f"{stats.removed_rows} row(s) removed, "
+                    f"{stats.cleared_fields} field(s) cleared, "
+                    f"{stats.removed_chunk_files} chunk file(s) removed."
                 ),
                 fg=typer.colors.GREEN,
             )

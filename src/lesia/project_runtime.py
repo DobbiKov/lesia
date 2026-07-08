@@ -343,6 +343,18 @@ def _resolve_relative_cache_path(project: Project, file_path_str: str) -> str:
     )
 
 
+def clear_translation_cache_by_checksum(
+    project: Project,
+    checksum: str,
+    lang: Language | CustomLanguage | None,
+) -> CacheDeleteStats:
+    from .translation_cache.cache_cleaner import clear_by_checksum
+    try:
+        return clear_by_checksum(project.root_path, checksum, lang)
+    except Exception as exc:
+        raise TranslationCacheClearError(f"Cannot clear translation cache: {exc}") from exc
+
+
 def clear_translation_cache_all(
     project: Project,
     lang: Language | CustomLanguage | None,

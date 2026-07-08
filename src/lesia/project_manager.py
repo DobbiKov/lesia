@@ -440,6 +440,16 @@ class Project:
 
         return _project_runtime.clear_translation_cache_missing_chunks(self)
 
+    def clear_translation_cache_by_checksum(
+        self,
+        checksum: str,
+        lang: Language | CustomLanguage | None,
+    ):
+        """Clears translation cache entries matching a specific checksum."""
+        from . import project_runtime as _project_runtime
+
+        return _project_runtime.clear_translation_cache_by_checksum(self, checksum, lang)
+
     def clear_translation_cache_all(
         self,
         lang: Language | CustomLanguage | None,

@@ -188,6 +188,76 @@ def clear_missing_chunks(root_path: Path, source_lang: Language | CustomLanguage
     return stats
 
 
+def clear_by_checksum(
+    root_path: Path,
+    checksum: str,
+    lang: Language | CustomLanguage | None = None,
+) -> CacheDeleteStats:
+    stats = CacheDeleteStats()
+    cache_dir = get_config_dir_from_root(root_path) / CACHE_DIR_NAME
+    if not cache_dir.exists():
+        return stats
+
+    deleted_checksums: set[tuple[str, str, str]] = set()
+
+    if lang is not None:
+        lang_names = [str(lang)]
+    else:
+        lang_names = [entry.name for entry in cache_dir.iterdir() if entry.is_dir()]
+
+    for lang_name in lang_names:
+        for row_path_hash, file_checksum, file_path in _iter_lang_cache_files(cache_dir, lang_name):
+            if file_checksum != checksum:
+                continue
+            file_path.unlink()
+            stats.removed_chunk_files += 1
+            deleted_checksums.add((lang_name, row_path_hash, file_checksum))
+
+    if not deleted_checksums:
+        return stats
+
+    cache_data = read_correspondence_cache(root_path)
+    if cache_data is None:
+        return stats
+
+    fields, data_list = cache_data
+    lang_field = str(lang) if lang is not None else ""
+    remaining_rows: list[dict] = []
+
+    for row in data_list:
+        row_path_hash = row.get(PATH_CHECKSUM_COLUMN, "")
+        row_changed = False
+
+        if lang_field:
+            row_checksum = row.get(lang_field, "")
+            if row_checksum and (lang_field, row_path_hash, row_checksum) in deleted_checksums:
+                row[lang_field] = ""
+                stats.cleared_fields += 1
+                row_changed = True
+        else:
+            for field in fields:
+                if field == PATH_CHECKSUM_COLUMN:
+                    continue
+                row_checksum = row.get(field, "")
+                if row_checksum and (field, row_path_hash, row_checksum) in deleted_checksums:
+                    row[field] = ""
+                    stats.cleared_fields += 1
+                    row_changed = True
+
+        if _row_has_any_language_values(row, fields):
+            remaining_rows.append(row)
+        else:
+            if row_changed:
+                stats.removed_rows += 1
+            else:
+                remaining_rows.append(row)
+
+    if stats.removed_rows > 0 or stats.cleared_fields > 0:
+        write_correspondence_cache(root_path, remaining_rows, fields)
+
+    return stats
+
+
 def clear_all(
     root_path: Path,
     lang: Language | CustomLanguage | None,
