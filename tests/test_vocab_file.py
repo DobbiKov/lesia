@@ -285,7 +285,7 @@ class TestCliInfoShowsVocabFile:
         self._setup_with_source(tmp_path)
         result = runner.invoke(app, ["info"])
         assert result.exit_code == 0
-        assert "Default vocab file" in result.output
+        assert "Ontology" in result.output
         assert "Not set" in result.output
 
     def test_info_shows_vocab_file_path_when_set(self, cli_project, tmp_path):
