@@ -131,8 +131,8 @@ directory.
 ### Important notes
 
 - The source directory can be reset, i.e you can set another directory as a
-  source one using the same `set-source command`.
-- The target languages can be removed using `remove-target` command (in CLI), or
+  source one using the same `lesia config source set` command.
+- The target languages can be removed using `lesia config target remove` command (in CLI), or
   `remove_target_language` method in the library.
 
 ## Translatable and untranslatable files.
