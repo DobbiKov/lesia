@@ -27,6 +27,7 @@ For a conceptual overview of how the tool works, see the [profound explanation](
   - [TranslationStats](#translationstats)
   - [Cache management](#cache-management)
   - [LLM configuration](#llm-configuration)
+    - [API key configuration](#api-key-configuration)
   - [Typst configuration](#typst-configuration)
 - [LaTeX configuration](#latex-configuration)
 - [Error reference](#error-reference)
@@ -106,6 +107,20 @@ from lesia.project_manager import load_project
 
 project = load_project(".")
 ```
+
+To supply API keys via a `.env` file instead of shell environment variables:
+
+```python
+from pathlib import Path
+
+# Store the path once — it is saved to .lesia/config.json
+project.set_env_file(Path(".env"))
+
+# Keys are now read from .env on every translation call.
+stats = asyncio.run(project.translate_single_file("notes_fr/main.tex", Language.ENGLISH, None))
+```
+
+> **Precedence:** shell environment variables always win over the `.env` file. If `LLM_API_KEY` is set in both places, the shell value is used.
 
 ---
 
@@ -455,23 +470,34 @@ Translation methods are `async` and require the `LLM_API_KEY` environment variab
 
 #### Setting the API key
 
-`LLM_API_KEY` is read from the environment **at import time**, so it must be set before `lesia` is imported.
+API keys are resolved **at translation time** (not at import time), so they can be set at any point before calling a translation method. There are three ways to supply them.
 
-**Option 1 — set it in the shell before running your script:**
+**Option 1 — shell environment variable:**
 ```sh
 export LLM_API_KEY=<your_api_key>
 python your_script.py
 ```
 
-**Option 2 — set it in Python before importing lesia:**
+**Option 2 — set it in Python at any point before translating:**
 ```python
 import os
+import lesia  # order doesn't matter
+
 os.environ["LLM_API_KEY"] = "<your_api_key>"
 
-import lesia  # import AFTER setting the key
+# key is read here, not at import time
+asyncio.run(project.translate_single_file(...))
 ```
 
-If you set `os.environ["LLM_API_KEY"]` after lesia is already imported, it will have no effect.
+**Option 3 — `.env` file stored in the project config:**
+
+```python
+project.set_env_file(Path(".env"))
+```
+
+The `.env` file is read on every translation call. Shell environment variables always take precedence over the file, so `LLM_API_KEY` set in the shell will override the file value.
+
+See [API key configuration](#api-key-configuration) for the full `set_env_file` / `unset_env_file` API.
 
 #### `translate_single_file`
 
@@ -682,6 +708,16 @@ Sets an optional reasoning model for harder translation decisions. When set, the
 
 **Raises:** `SetLLMServiceError`.
 
+#### `set_xml_retries_before_reasoning`
+
+```python
+project.set_xml_retries_before_reasoning(n: int) -> None
+```
+
+Sets how many times the standard model is retried on XML parse errors before the reasoning model is used as a fallback for that chunk. `0` means the reasoning model is always used for every chunk; the standard model is never called.
+
+**Raises:** `SetLLMServiceError` — if `n` is negative.
+
 #### Getters
 
 ```python
@@ -689,7 +725,78 @@ project.get_llm_service() -> str
 project.get_llm_model() -> str
 project.get_llm_reasoning_service() -> str | None
 project.get_llm_reasoning_model() -> str | None
+project.get_xml_retries_before_reasoning() -> int
 ```
+
+---
+
+### API key configuration
+
+API keys can be supplied as shell environment variables, as a `.env` file, or both. Shell values always take precedence over the file.
+
+| Variable | Purpose |
+|---|---|
+| `LLM_API_KEY` | Primary key for the standard LLM service |
+| `LLM_REASONING_API_KEY` | Key for the reasoning model; falls back to `LLM_API_KEY` if absent |
+
+Keys are resolved at translation time by `lesia.translator.resolve_api_keys`, which checks the shell environment first and then the configured `.env` file.
+
+#### `set_env_file`
+
+```python
+project.set_env_file(path: Path) -> None
+```
+
+Stores the path to a `.env` file in the project config. On every translation call lesia reads `LLM_API_KEY` and `LLM_REASONING_API_KEY` from this file for any key not already present in the shell environment.
+
+The path is stored relative to the project root when possible, so the config remains portable across machines (as long as the file exists at the same relative location).
+
+```python
+from pathlib import Path
+
+# File in the project root
+project.set_env_file(Path(".env"))
+
+# Absolute path (stored as-is)
+project.set_env_file(Path("/home/user/secrets/lesia.env"))
+```
+
+**Expected file format:**
+```
+# Lines starting with # are ignored, as are blank lines.
+LLM_API_KEY=your_key_here
+LLM_REASONING_API_KEY=your_reasoning_key_here
+```
+
+Values may optionally be surrounded by single or double quotes. Only `LLM_API_KEY` and `LLM_REASONING_API_KEY` are read; all other lines are ignored.
+
+**Raises:** `SetLLMServiceError` — if saving the config fails.
+
+#### `unset_env_file`
+
+```python
+project.unset_env_file() -> None
+```
+
+Removes the configured `.env` file path from the project config. After this call only shell environment variables are consulted for API key resolution.
+
+**Raises:** `SetLLMServiceError` — if saving the config fails.
+
+#### `ProjectConfig.get_env_file_path`
+
+```python
+project.config.get_env_file_path() -> Path | None
+```
+
+Returns the resolved absolute path to the configured `.env` file, or `None` if none is set.
+
+#### `ProjectConfig.env_file`
+
+```python
+project.config.env_file  # Path | None
+```
+
+The raw stored value — relative to the project root if the file is inside it, absolute otherwise. In almost all cases you should use `get_env_file_path()` instead, which always returns an absolute path.
 
 ---
 

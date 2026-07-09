@@ -20,6 +20,7 @@
         - [--use-reasoning-model](#--use-reasoning-model)
     - [Cache management](#cache-management)
     - [LLM configuration](#llm-configuration)
+        - [API key configuration](#api-key-configuration)
         - [Custom LLM services](#custom-llm-services)
     - [Typst configuration](#typst-configuration)
     - [LaTeX configuration](#latex-configuration)
@@ -114,7 +115,9 @@ Follow these instructions to obtain a key for `gemini` models from Google:
         3. Click on `Create API KEY in existing project`
         4. Copy the generated key from the popup
 
-Set the key as an environment variable:
+There are two ways to supply the key:
+
+**Option A — shell environment variable** (set once per terminal session):
 - On Linux/macOS:
     ```sh
     export LLM_API_KEY=<your_key>
@@ -127,6 +130,23 @@ Set the key as an environment variable:
     ```sh
     $env:LLM_API_KEY="<your_key>"
     ```
+
+**Option B — `.env` file** (persisted in the project, read automatically):
+
+Create a file (e.g. `.env`) containing your keys:
+```
+LLM_API_KEY=<your_key>
+LLM_REASONING_API_KEY=<your_reasoning_key>
+```
+
+Then tell lesia where to find it:
+```sh
+lesia set-env-file .env
+```
+
+The path is saved in `.lesia/config.json` and resolved automatically on every translation run. Shell environment variables always take precedence over the file, so you can still override individual keys in CI or on the command line without touching the file.
+
+> **Security note:** treat your `.env` file like a password. Add it to `.gitignore` so it is never committed.
 
 7. Translate one file:
     ```
@@ -279,7 +299,7 @@ lesia remove-target AmEng
 lesia info
 ```
 
-Displays a summary of the current project: name, root path, source language and directory, configured LLM, reasoning model, Typst function arg settings, LaTeX configuration, and all target languages with their directories.
+Displays a summary of the current project: name, root path, source language and directory, configured LLM, reasoning model, env file path (or "Not set" if none is configured), Typst function arg settings, LaTeX configuration, and all target languages with their directories.
 
 #### `sync`
 
@@ -415,7 +435,7 @@ Lists all files currently marked as translatable in the source directory, with p
 
 ### Translation
 
-Translation commands require `LLM_API_KEY` to be set in the environment.
+Translation commands require `LLM_API_KEY` to be set — either as a shell environment variable or via a `.env` file configured with `set-env-file`. See [API key configuration](#api-key-configuration) for details.
 
 #### `translate file`
 
@@ -475,7 +495,7 @@ Failed files are excluded from the per-file callback and their chunks do not cou
 
 Both `translate file` and `translate all` accept the `--use-reasoning-model` flag. When passed, the reasoning model configured via `set-reasoning-model` is used **instead of** the regular model for the entire translation run — the regular model is not called at all.
 
-This requires `LLM_REASONING_API_KEY` to be set (falls back to `LLM_API_KEY` if the reasoning key is not set separately).
+This requires `LLM_REASONING_API_KEY` to be available — either as a shell environment variable or in the configured `.env` file — and falls back to `LLM_API_KEY` if the reasoning key is not set separately.
 
 If no reasoning model has been configured, the flag falls back to the regular model.
 
@@ -588,7 +608,7 @@ Sets an optional reasoning model. By default it is used alongside the regular mo
 lesia set-reasoning-model google gemini-2.0-flash-thinking-exp
 ```
 
-Reasoning models require the `LLM_REASONING_API_KEY` environment variable (falls back to `LLM_API_KEY` if not set separately).
+Reasoning models require `LLM_REASONING_API_KEY` to be available — either as a shell environment variable or in the configured `.env` file — and fall back to `LLM_API_KEY` if not set separately.
 
 #### `list-llms`
 
@@ -597,6 +617,71 @@ lesia list-llms
 ```
 
 Lists all available LLM service names (built-in and custom) that can be used with `set-llm` and `set-reasoning-model`.
+
+#### `set-xml-retries-before-reasoning`
+
+```
+lesia set-xml-retries-before-reasoning <n>
+```
+
+Sets how many times the standard model is retried on XML parse errors before the reasoning model is used as a fallback for that chunk. `0` means the reasoning model is always used (never the standard model). Requires a reasoning model to be configured via `set-reasoning-model`.
+
+```
+lesia set-xml-retries-before-reasoning 3
+lesia set-xml-retries-before-reasoning 0
+```
+
+---
+
+### API key configuration
+
+API keys can be supplied in two ways. Shell environment variables always take precedence; the `.env` file is the fallback.
+
+| Variable | Used for |
+|---|---|
+| `LLM_API_KEY` | Primary key for the standard LLM service |
+| `LLM_REASONING_API_KEY` | Key for the reasoning model service; falls back to `LLM_API_KEY` if not set |
+
+#### `set-env-file`
+
+```
+lesia set-env-file <path>
+```
+
+Saves the path to a `.env` file in the project config. On every translation run lesia reads `LLM_API_KEY` and `LLM_REASONING_API_KEY` from this file when they are not already set in the shell environment.
+
+The path can be absolute or relative to the current directory; it is stored relative to the project root when possible, making the config portable across machines (as long as the file exists at the same relative location).
+
+```sh
+lesia set-env-file .env
+lesia set-env-file /home/user/secrets/lesia.env
+```
+
+If the file does not exist yet a warning is printed but the path is still saved — the file can be created later.
+
+**Expected file format:**
+
+```
+# Lines starting with # are ignored, as are blank lines.
+LLM_API_KEY=your_key_here
+LLM_REASONING_API_KEY=your_reasoning_key_here
+```
+
+Values may optionally be surrounded by single or double quotes. Only `LLM_API_KEY` and `LLM_REASONING_API_KEY` are read; all other lines are ignored.
+
+> **Security note:** add your `.env` file to `.gitignore` so keys are never committed to version control.
+
+#### `unset-env-file`
+
+```
+lesia unset-env-file
+```
+
+Removes the configured `.env` file path from the project config. After this command, only shell environment variables are used for API key resolution.
+
+```sh
+lesia unset-env-file
+```
 
 ---
 
