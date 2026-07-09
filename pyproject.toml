@@ -37,8 +37,8 @@ dev = [
 [project.scripts]
 lesia = "cli:app"
 
-[tool.setuptools] 
-py-modules = ["lesia", "cli"]
+[tool.setuptools]
+py-modules = ["lesia"]
 
 
 [tool.pytest.ini_options]
