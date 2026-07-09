@@ -68,8 +68,8 @@ def configure_latex_settings(
 
         configure_latex_settings(
             extra_placeholder_envs=["myverbatim"],
-            # \cite is built-in — no custom_command_specs needed.
-            # \myfig is custom — register its spec first so pylatexenc
+            # \\cite is built-in — no custom_command_specs needed.
+            # \\myfig is custom — register its spec first so pylatexenc
             # associates {label}{caption} with the command node; then
             # extra_placeholder_commands can suppress the whole expression.
             extra_placeholder_commands=["cite", "myfig"],
