@@ -80,7 +80,7 @@ analysis_notes/
 │   └── bib/
 │       └── bib.tex
 ├── .lesia/
-    ├── config.json
+    ├── config.toml
     └── translate_cache/
         └── ...
 ```
@@ -106,7 +106,7 @@ analysis_notes/
 │   └── bib/
 │       └── bib.tex
 ├── .lesia/
-    ├── config.json
+    ├── config.toml
     └── translate_cache/
         └── ...
 ```
@@ -114,7 +114,7 @@ analysis_notes/
 ## Project initialization and required settings
 
 When you initialize a project, a `.lesia` directory is created that
-stores a `config.json` configuration file. This file will store:
+stores a `config.toml` configuration file. This file will store:
 
 - the project's name
 - the source and target languages

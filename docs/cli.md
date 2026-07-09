@@ -25,6 +25,7 @@
         - [Custom LLM services](#custom-llm-services)
     - [Typst configuration](#typst-configuration)
     - [LaTeX configuration](#latex-configuration)
+    - [Migration](#migration)
 - [Documentation](#documentation)
 
 ## Getting started
@@ -145,7 +146,7 @@ Then tell lesia where to find it:
 lesia set-env-file .env
 ```
 
-The path is saved in `.lesia/config.json` and resolved automatically on every translation run. Shell environment variables always take precedence over the file, so you can still override individual keys in CI or on the command line without touching the file.
+The path is saved in `.lesia/config.toml` and resolved automatically on every translation run. Shell environment variables always take precedence over the file, so you can still override individual keys in CI or on the command line without touching the file.
 
 > **Security note:** treat your `.env` file like a password. Add it to `.gitignore` so it is never committed.
 
@@ -248,7 +249,7 @@ All commands are run as `lesia <command> [options]`. Commands that operate on a 
 lesia init [--name <name>] [--path <path>]
 ```
 
-Initializes a new translation project in the given directory (default: current directory). Creates a `.lesia/config.json` file.
+Initializes a new translation project in the given directory (default: current directory). Creates a `.lesia/config.toml` file.
 
 | Option | Default | Description |
 |---|---|---|
@@ -538,7 +539,7 @@ ordinateur, computer,   Computer
 lesia set-vocab-file <path>
 ```
 
-Sets a default vocabulary CSV file for the project. The path is saved to `.lesia/config.json` relative to the project root when possible, making the config portable.
+Sets a default vocabulary CSV file for the project. The path is saved to `.lesia/config.toml` relative to the project root when possible, making the config portable.
 
 ```sh
 lesia set-vocab-file vocab.csv
@@ -849,7 +850,7 @@ lesia unset-typst-func-args ex
 
 ### LaTeX configuration
 
-The LaTeX parser has hardcoded defaults for common environments and commands. These commands let you extend that behaviour on a per-project basis. All settings are stored in `.lesia/config.json` and applied automatically before every translation run.
+The LaTeX parser has hardcoded defaults for common environments and commands. These commands let you extend that behaviour on a per-project basis. All settings are stored in `.lesia/config.toml` and applied automatically before every translation run.
 
 > **Two layers of control:** these CLI commands are a thin wrapper around the library API. The same settings can be set programmatically via `Project` methods — see the [LaTeX configuration section](./main.md#latex-configuration) of the library reference.
 
@@ -1013,6 +1014,23 @@ Remove the per-argument translation configuration for a command (reverts to defa
 
 ```
 lesia unset-latex-cmd-args myfig
+```
+
+---
+
+## Migration
+
+### `lesia migrate toml`
+
+```sh
+lesia migrate toml
+```
+
+Migrates an existing project from the legacy `config.json` format to `config.toml`. Reads `.lesia/config.json`, writes `.lesia/config.toml`, and deletes the JSON file. Run this once per project after upgrading from an older version of lesia.
+
+```sh
+lesia migrate toml
+# Migrated config.json to config.toml in /path/to/project/.lesia
 ```
 
 ---

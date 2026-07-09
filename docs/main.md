@@ -114,7 +114,7 @@ To supply API keys via a `.env` file instead of shell environment variables:
 ```python
 from pathlib import Path
 
-# Store the path once — it is saved to .lesia/config.json
+# Store the path once — it is saved to .lesia/config.toml
 project.set_env_file(Path(".env"))
 
 # Keys are now read from .env on every translation call.
@@ -281,7 +281,7 @@ from lesia.project_manager import init_project, load_project
 init_project(project_name: str, root_dir_str: str) -> Project
 ```
 
-Creates a new translation project by writing a `.lesia/config.json` file inside `root_dir_str`. The directory must already exist and must not already contain a `.lesia` directory.
+Creates a new translation project by writing a `.lesia/config.toml` file inside `root_dir_str`. The directory must already exist and must not already contain a `.lesia` directory.
 
 **Raises:** `InitProjectError` — if the path is invalid, does not exist, is not a directory, or a project is already initialized there.
 
@@ -424,7 +424,7 @@ project.config.custom_languages       # dict[str, str]  — full name → suffix
 project.config.custom_language_shorts # dict[str, str]  — short alias → full name
 ```
 
-`custom_languages` maps each registered custom language's full name to its directory suffix. `custom_language_shorts` maps each registered short alias to its corresponding full name. Both are persisted to `config.json`.
+`custom_languages` maps each registered custom language's full name to its directory suffix. `custom_language_shorts` maps each registered short alias to its corresponding full name. Both are persisted to `config.toml`.
 
 ---
 
@@ -922,7 +922,7 @@ Returns the current mapping of function names to their registered translatable a
 
 The LaTeX parser has a set of hardcoded defaults — environments like `verbatim` and `lstlisting` are treated as opaque placeholders, commands like `\cite` and `\ref` are never translated, and all unrecognised environments and commands have their body/arguments walked as translatable text. These methods let you extend and fine-tune that behaviour without modifying source code.
 
-All settings are persisted in `.lesia/config.json` and applied automatically before every translation run.
+All settings are persisted in `.lesia/config.toml` and applied automatically before every translation run.
 
 > **Two layers:** Every project method below simply stores the setting and calls `save_config()`. The actual parsing logic lives in `configure_latex_settings()` in `lesia.xml_manipulator_mod.latex`, which can also be called directly without a project (see [Standalone usage](#standalone-usage) below).
 
