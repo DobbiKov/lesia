@@ -99,6 +99,8 @@ class ProjectConfig(BaseModel):
     custom_languages: dict[str, str] = Field(default_factory=dict)
     custom_language_shorts: dict[str, str] = Field(default_factory=dict)  # short → full name
 
+    env_file: Optional[Path] = None
+
     llm_service: str = "google"
     llm_model: str = "gemini-2.0-flash"
     llm_reasoning_service: Optional[str] = None
@@ -158,6 +160,28 @@ class ProjectConfig(BaseModel):
         if n < 0:
             raise ValueError(f"xml_retries_before_reasoning must be >= 0, got {n}")
         self.xml_retries_before_reasoning = n
+
+    def get_env_file_path(self) -> Optional[Path]:
+        """Returns the resolved absolute path to the env file, or None if not set."""
+        if self.env_file is None:
+            return None
+        if self.env_file.is_absolute():
+            return self.env_file
+        return (self._get_runtime_root() / self.env_file).resolve()
+
+    def set_env_file(self, path: Optional[Path]) -> None:
+        """Sets the env file path (stored relative to project root if possible)."""
+        if path is None:
+            self.env_file = None
+            return
+        resolved = path.resolve()
+        try:
+            self.env_file = resolved.relative_to(self._get_runtime_root())
+        except ValueError:
+            self.env_file = resolved
+
+    def unset_env_file(self) -> None:
+        self.env_file = None
 
     def get_typst_translatable_string_args_by_function(self) -> dict[str, list[str]]:
         return {

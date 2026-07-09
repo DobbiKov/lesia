@@ -260,6 +260,22 @@ class Project:
             raise GetTranslatableFilesError(NoSourceLanguageError("No source language set, cannot get translatable files."))
         return self.config.get_translatable_files()
 
+    def set_env_file(self, path: Path) -> None:
+        """Stores the path to the .env file in the project config."""
+        try:
+            self.config.set_env_file(path)
+            self.save_config()
+        except Exception as e:
+            raise SetLLMServiceError(f"Error while setting env file: {e}")
+
+    def unset_env_file(self) -> None:
+        """Removes the .env file path from the project config."""
+        try:
+            self.config.unset_env_file()
+            self.save_config()
+        except Exception as e:
+            raise SetLLMServiceError(f"Error while unsetting env file: {e}")
+
     def set_llm_service_and_model(self, service: str, model: str) -> None:
         """Sets the service and the model that will be used for translation."""
         try:

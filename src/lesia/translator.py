@@ -24,6 +24,56 @@ try:
 except Exception as e:
     logger.error(f"Error configuring LLM api key: {e}")
 
+
+def _parse_env_file(env_file_path: Path) -> dict[str, str]:
+    """Parses a .env file and returns a dict of key-value pairs.
+
+    Lines starting with '#' and empty lines are ignored.
+    Only lines of the form KEY=VALUE are parsed.
+    """
+    result: dict[str, str] = {}
+    try:
+        for line in env_file_path.read_text(encoding="utf-8").splitlines():
+            stripped = line.strip()
+            if not stripped or stripped.startswith("#"):
+                continue
+            if "=" not in stripped:
+                continue
+            key, _, value = stripped.partition("=")
+            key = key.strip()
+            value = value.strip()
+            # Strip surrounding quotes if present
+            if len(value) >= 2 and value[0] == value[-1] and value[0] in ('"', "'"):
+                value = value[1:-1]
+            if key:
+                result[key] = value
+    except OSError as e:
+        logger.warning("Could not read env file '{}': {}", env_file_path, e)
+    return result
+
+
+def resolve_api_keys(
+    env_file_path: Path | None = None,
+) -> tuple[str | None, str | None]:
+    """Returns (llm_api_key, llm_reasoning_api_key).
+
+    Shell environment variables always take precedence.  Values absent from
+    the shell are filled in from *env_file_path* when one is provided.
+    """
+    shell_main = os.getenv("LLM_API_KEY")
+    shell_reasoning = os.getenv("LLM_REASONING_API_KEY")
+
+    file_vars: dict[str, str] = {}
+    if env_file_path is not None:
+        if env_file_path.is_file():
+            file_vars = _parse_env_file(env_file_path)
+        else:
+            logger.warning("Env file '{}' does not exist, ignoring.", env_file_path)
+
+    main_key = shell_main or file_vars.get("LLM_API_KEY")
+    reasoning_key = shell_reasoning or file_vars.get("LLM_REASONING_API_KEY") or main_key
+    return main_key, reasoning_key
+
 def _sanitize_invalid_ssl_env_paths() -> None:
     """
     Removes invalid SSL certificate env vars that break google-genai client

@@ -251,6 +251,44 @@ def set_reasoning_model(
         raise typer.Exit(code=1)
 
 
+@app.command("set-env-file")
+def set_env_file(
+    ctx: typer.Context,
+    env_file_path: Annotated[Path, typer.Argument(help="Path to the .env file containing LLM_API_KEY and/or LLM_REASONING_API_KEY.")],
+):
+    """Sets the path to a .env file from which API keys are read.
+
+    Shell environment variables always take precedence over the file.
+    The path is stored in the project config.
+    """
+    project = get_project_from_context(ctx)
+    resolved = env_file_path.resolve()
+    if not resolved.exists():
+        typer.secho(
+            f"Warning: '{resolved}' does not exist. The path will be stored but keys cannot be read from a missing file.",
+            fg=typer.colors.YELLOW,
+            err=True,
+        )
+    try:
+        project.set_env_file(resolved)
+        typer.secho(f"Env file set to '{resolved}'.", fg=typer.colors.GREEN)
+    except errors.SetLLMServiceError as e:
+        typer.secho(f"Error setting env file: {e}", fg=typer.colors.RED, err=True)
+        raise typer.Exit(code=1)
+
+
+@app.command("unset-env-file")
+def unset_env_file(ctx: typer.Context):
+    """Removes the configured .env file path from the project config."""
+    project = get_project_from_context(ctx)
+    try:
+        project.unset_env_file()
+        typer.secho("Env file path removed from config.", fg=typer.colors.GREEN)
+    except errors.SetLLMServiceError as e:
+        typer.secho(f"Error unsetting env file: {e}", fg=typer.colors.RED, err=True)
+        raise typer.Exit(code=1)
+
+
 @app.command("set-xml-retries-before-reasoning")
 def set_xml_retries_before_reasoning(
     ctx: typer.Context,
@@ -538,6 +576,11 @@ def info_on_project(ctx: typer.Context):
         else:
             print("\tReasoning model: Not set")
         print("\tXML retries before reasoning: {}".format(project.get_xml_retries_before_reasoning()))
+        env_file_path = project.config.get_env_file_path()
+        if env_file_path:
+            print("\tEnv file: {}".format(env_file_path))
+        else:
+            print("\tEnv file: Not set (using shell environment variables)")
         typst_string_args = project.get_typst_translatable_string_args_by_function()
         if typst_string_args:
             print("\tTypst translatable string args:")

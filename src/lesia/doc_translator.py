@@ -5,7 +5,7 @@ from lesia.doc_translator_mod import myst_file_translator
 from lesia.vocab_list import VocabList
 from lesia.translator_retrieval import TranslationStats
 from .enums import DocumentType, Language
-from .translator import LLM_API_KEY, LLM_REASONING_API_KEY, translate_contents_async
+from .translator import resolve_api_keys, translate_contents_async
 from .helpers import read_string_from_file, analyze_document_type
 from .errors import TranslationProcessError
 from .doc_translator_mod.notebook_file_translator import translate_notebook_async
@@ -32,20 +32,22 @@ async def translate_file_to_file_async(
     llm_reasoning_model: str | None = None,
     use_reasoning_model: bool = False,
     xml_retries_before_reasoning: int = 2,
+    env_file: Path | None = None,
 ) -> TranslationStats:
     """Translates a file and writes the result to another file asynchronously."""
     doc_type = analyze_document_type(source_path)
     logger.trace(doc_type)
-    main_api_key = (LLM_REASONING_API_KEY or LLM_API_KEY) if use_reasoning_model else LLM_API_KEY
+    llm_api_key, llm_reasoning_api_key = resolve_api_keys(env_file)
+    main_api_key = (llm_reasoning_api_key or llm_api_key) if use_reasoning_model else llm_api_key
     llm_caller = LLMCaller(llm_service, llm_model, main_api_key or "")
     reasoning_caller = None
     if not main_api_key and llm_caller.requires_token():
         key_name = "LLM_REASONING_API_KEY" if use_reasoning_model else "LLM_API_KEY"
-        raise TranslationProcessError(f"{key_name} environment variable is not set but is required for service '{llm_service}'.", original_exception=None)
+        raise TranslationProcessError(f"{key_name} is not set but is required for service '{llm_service}'. Set it in your shell or via 'lesia set-env-file'.", original_exception=None)
     if llm_reasoning_service and llm_reasoning_model:
-        reasoning_caller = LLMCaller(llm_reasoning_service, llm_reasoning_model, LLM_REASONING_API_KEY or "")
-        if not LLM_REASONING_API_KEY and reasoning_caller.requires_token():
-            raise TranslationProcessError(f"LLM_REASONING_API_KEY (and LLM_API_KEY) environment variable is not set but is required for reasoning service '{llm_reasoning_service}'.", original_exception=None)
+        reasoning_caller = LLMCaller(llm_reasoning_service, llm_reasoning_model, llm_reasoning_api_key or "")
+        if not llm_reasoning_api_key and reasoning_caller.requires_token():
+            raise TranslationProcessError(f"LLM_REASONING_API_KEY (and LLM_API_KEY) is not set but is required for reasoning service '{llm_reasoning_service}'. Set it in your shell or via 'lesia set-env-file'.", original_exception=None)
     try:
         if doc_type == DocumentType.JupyterNotebook:
             logger.debug("translate jupyter")

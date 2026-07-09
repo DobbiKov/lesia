@@ -460,6 +460,7 @@ async def translate_single_file(
             llm_reasoning_model,
             use_reasoning_model=use_reasoning_model,
             xml_retries_before_reasoning=project.get_xml_retries_before_reasoning(),
+            env_file=project.config.get_env_file_path(),
         )
     except TranslationProcessError as e:
         raise TranslateFileError(f"Translation process failed for {file_path.name}: {e}", e)
