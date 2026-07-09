@@ -22,6 +22,12 @@ class WriteConfigError(ProjectConfigError):
         super().__init__(message)
         self.original_exception = original_exception
 
+class MigrateConfigError(ProjectConfigError):
+    """Errors related to migrating project configuration."""
+    def __init__(self, message: str, original_exception: Optional[Exception] = None):
+        super().__init__(message)
+        self.original_exception = original_exception
+
 # Project Errors
 class ProjectError(DirectoryTranslationError):
     """Base exception for general project operations."""

@@ -1,5 +1,6 @@
 
-CONFIG_FILENAME = "config.json"
+CONFIG_FILENAME = "config.toml"
+JSON_CONFIG_FILENAME = "config.json"
 INTER_FILE_TRANSLATION_DELAY_SECONDS = 5 
 
 CACHE_DIR_NAME = "cache"

@@ -1,12 +1,15 @@
 import json
 import os
+import tomllib
 from pathlib import Path
 import shutil
+
+import tomli_w
 
 from lesia.helpers import copy_tree_contents
 
 from .project_config_models import DirectoryModel, FileModel, ProjectConfig
-from .errors import LoadConfigError, WriteConfigError, CopyFileDirError
+from .errors import LoadConfigError, WriteConfigError, CopyFileDirError, MigrateConfigError
 
 def build_directory_tree(root_path: Path) -> DirectoryModel:
     """
@@ -43,30 +46,47 @@ def build_directory_tree(root_path: Path) -> DirectoryModel:
 
 
 def write_project_config(config_file_path: Path, config: ProjectConfig) -> None:
-    """Writes the project configuration to a JSON file."""
+    """Writes the project configuration to a TOML file."""
     try:
-        json_str = config.model_dump_json(indent=2)
-        config_file_path.write_text(json_str, encoding="utf-8")
+        data = config.model_dump(mode="json", exclude_none=True)
+        config_file_path.write_bytes(tomli_w.dumps(data).encode("utf-8"))
     except IOError as e:
         raise WriteConfigError(f"IO error writing config to {config_file_path}: {e}", original_exception=e)
-    except Exception as e: # Pydantic validation or serialization errors
+    except Exception as e:
         raise WriteConfigError(f"Serialization error writing config: {e}", original_exception=e)
 
 
 def load_project_config(config_file_path: Path) -> ProjectConfig:
-    """Loads project configuration from a JSON file."""
+    """Loads project configuration from a TOML file."""
     if not config_file_path.is_file():
         raise LoadConfigError(f"Config file not found: {config_file_path}")
     try:
-        contents = config_file_path.read_text(encoding="utf-8")
-        config = ProjectConfig.model_validate_json(contents)
-        return config
-    except FileNotFoundError: # Should be caught by is_file, but good practice
+        with config_file_path.open("rb") as f:
+            data = tomllib.load(f)
+        return ProjectConfig.model_validate(data)
+    except FileNotFoundError:
         raise LoadConfigError(f"Config file not found: {config_file_path}")
-    except json.JSONDecodeError as e:
-        raise LoadConfigError(f"Incorrect config file format (JSON decode error): {config_file_path}", original_exception=e)
-    except Exception as e: # Pydantic validation errors
+    except tomllib.TOMLDecodeError as e:
+        raise LoadConfigError(f"Incorrect config file format (TOML decode error): {config_file_path}", original_exception=e)
+    except Exception as e:
         raise LoadConfigError(f"Incorrect config file format (validation error): {config_file_path} - {e}", original_exception=e)
+
+
+def migrate_config_json_to_toml(json_config_path: Path, toml_config_path: Path) -> None:
+    """Reads an existing config.json and rewrites it as config.toml, then removes the JSON file."""
+    if not json_config_path.is_file():
+        raise MigrateConfigError(f"No config.json found at: {json_config_path}")
+    if toml_config_path.exists():
+        raise MigrateConfigError(f"config.toml already exists at: {toml_config_path}")
+    try:
+        contents = json_config_path.read_text(encoding="utf-8")
+        config = ProjectConfig.model_validate_json(contents)
+    except json.JSONDecodeError as e:
+        raise MigrateConfigError(f"Could not parse config.json: {e}", original_exception=e)
+    except Exception as e:
+        raise MigrateConfigError(f"Could not load config.json: {e}", original_exception=e)
+    write_project_config(toml_config_path, config)
+    json_config_path.unlink()
 
 def copy_untranslatable_files_recursive(
     from_dir_root_path: Path, # Absolute path to the root of the source directory being copied (e.g. /path/to/project/src_en)
