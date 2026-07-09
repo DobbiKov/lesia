@@ -394,6 +394,22 @@ async def translate_single_file(
     source_language = project._get_source_language()
     if source_language is None:
         raise TranslateFileError(NoSourceLanguageError("Cannot translate: No source language set."))
+
+    if vocab_list is None:
+        vocab_file = project.config.get_vocab_file_path()
+        if vocab_file is not None:
+            if vocab_file.is_file():
+                import csv
+                from .vocab_list import vocab_list_from_vocab_db
+                with open(vocab_file, "r", encoding="utf-8") as _f:
+                    _db = list(csv.DictReader(_f))
+                src_lang = project.get_source_langugage()
+                vocab_list = vocab_list_from_vocab_db(_db, src_lang, target_lang)
+                print(f"  [vocab] Using config vocab file: {vocab_file.name}")
+            else:
+                from loguru import logger
+                logger.warning("Config vocab file '{}' does not exist, skipping.", vocab_file)
+
     if target_lang not in project._get_target_languages():
         raise TranslateFileError(
             TargetLanguageNotInProjectError(

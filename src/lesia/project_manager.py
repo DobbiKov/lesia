@@ -276,6 +276,22 @@ class Project:
         except Exception as e:
             raise SetLLMServiceError(f"Error while unsetting env file: {e}")
 
+    def set_vocab_file(self, path: Path) -> None:
+        """Stores the path to the default vocabulary CSV file in the project config."""
+        try:
+            self.config.set_vocab_file(path)
+            self.save_config()
+        except Exception as e:
+            raise SetLLMServiceError(f"Error while setting vocab file: {e}")
+
+    def unset_vocab_file(self) -> None:
+        """Removes the default vocabulary CSV file path from the project config."""
+        try:
+            self.config.unset_vocab_file()
+            self.save_config()
+        except Exception as e:
+            raise SetLLMServiceError(f"Error while unsetting vocab file: {e}")
+
     def set_llm_service_and_model(self, service: str, model: str) -> None:
         """Sets the service and the model that will be used for translation."""
         try:

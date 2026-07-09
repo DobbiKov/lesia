@@ -289,6 +289,45 @@ def unset_env_file(ctx: typer.Context):
         raise typer.Exit(code=1)
 
 
+@app.command("set-vocab-file")
+def set_vocab_file(
+    ctx: typer.Context,
+    vocab_file_path: Annotated[Path, typer.Argument(help="Path to the CSV vocabulary file to use by default for all translations.")],
+):
+    """Sets a default vocabulary file for the project.
+
+    The file is used automatically when no --vocabulary flag is passed to a
+    translate command. Passing --vocabulary explicitly always takes precedence
+    over this default.
+    """
+    project = get_project_from_context(ctx)
+    resolved = vocab_file_path.resolve()
+    if not resolved.exists():
+        typer.secho(
+            f"Warning: '{resolved}' does not exist. The path will be stored but the file cannot be read until it exists.",
+            fg=typer.colors.YELLOW,
+            err=True,
+        )
+    try:
+        project.set_vocab_file(resolved)
+        typer.secho(f"Default vocab file set to '{resolved}'.", fg=typer.colors.GREEN)
+    except errors.SetLLMServiceError as e:
+        typer.secho(f"Error setting vocab file: {e}", fg=typer.colors.RED, err=True)
+        raise typer.Exit(code=1)
+
+
+@app.command("unset-vocab-file")
+def unset_vocab_file(ctx: typer.Context):
+    """Removes the configured default vocabulary file from the project config."""
+    project = get_project_from_context(ctx)
+    try:
+        project.unset_vocab_file()
+        typer.secho("Default vocab file removed from config.", fg=typer.colors.GREEN)
+    except errors.SetLLMServiceError as e:
+        typer.secho(f"Error unsetting vocab file: {e}", fg=typer.colors.RED, err=True)
+        raise typer.Exit(code=1)
+
+
 @app.command("set-xml-retries-before-reasoning")
 def set_xml_retries_before_reasoning(
     ctx: typer.Context,
@@ -581,6 +620,11 @@ def info_on_project(ctx: typer.Context):
             print("\tEnv file: {}".format(env_file_path))
         else:
             print("\tEnv file: Not set (using shell environment variables)")
+        vocab_file_path = project.config.get_vocab_file_path()
+        if vocab_file_path:
+            print("\tDefault vocab file: {}".format(vocab_file_path))
+        else:
+            print("\tDefault vocab file: Not set")
         typst_string_args = project.get_typst_translatable_string_args_by_function()
         if typst_string_args:
             print("\tTypst translatable string args:")

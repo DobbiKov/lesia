@@ -100,6 +100,7 @@ class ProjectConfig(BaseModel):
     custom_language_shorts: dict[str, str] = Field(default_factory=dict)  # short → full name
 
     env_file: Optional[Path] = None
+    vocab_file: Optional[Path] = None
 
     llm_service: str = "google"
     llm_model: str = "gemini-2.0-flash"
@@ -182,6 +183,28 @@ class ProjectConfig(BaseModel):
 
     def unset_env_file(self) -> None:
         self.env_file = None
+
+    def get_vocab_file_path(self) -> Optional[Path]:
+        """Returns the resolved absolute path to the vocab file, or None if not set."""
+        if self.vocab_file is None:
+            return None
+        if self.vocab_file.is_absolute():
+            return self.vocab_file
+        return (self._get_runtime_root() / self.vocab_file).resolve()
+
+    def set_vocab_file(self, path: Optional[Path]) -> None:
+        """Sets the vocab file path (stored relative to project root if possible)."""
+        if path is None:
+            self.vocab_file = None
+            return
+        resolved = path.resolve()
+        try:
+            self.vocab_file = resolved.relative_to(self._get_runtime_root())
+        except ValueError:
+            self.vocab_file = resolved
+
+    def unset_vocab_file(self) -> None:
+        self.vocab_file = None
 
     def get_typst_translatable_string_args_by_function(self) -> dict[str, list[str]]:
         return {
