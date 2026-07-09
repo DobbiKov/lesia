@@ -206,14 +206,14 @@ def _setup_project_with_custom_target(tmp_path):
 
 def test_cli_translate_file_unknown_language_errors(project, tmp_path):
     _setup_project_with_custom_target(tmp_path)
-    result = runner.invoke(app, ["translate", "file", "src_en/doc.txt", "Klingon"])
+    result = runner.invoke(app, ["translate", "--to", "Klingon", "src_en/doc.txt"])
     assert result.exit_code == 1
     assert "Unknown language" in result.output
 
 
 def test_cli_translate_all_unknown_language_errors(project, tmp_path):
     _setup_project_with_custom_target(tmp_path)
-    result = runner.invoke(app, ["translate", "all", "Klingon"])
+    result = runner.invoke(app, ["translate", "--to", "Klingon", "--all"])
     assert result.exit_code == 1
     assert "Unknown language" in result.output
 
@@ -221,14 +221,14 @@ def test_cli_translate_all_unknown_language_errors(project, tmp_path):
 def test_cli_translate_file_custom_language_resolves(project, tmp_path):
     """Language resolution succeeds — failure is at the LLM call, not 'Unknown language'."""
     _setup_project_with_custom_target(tmp_path)
-    result = runner.invoke(app, ["translate", "file", "src_en/doc.txt", "Catalan"])
+    result = runner.invoke(app, ["translate", "--to", "Catalan", "src_en/doc.txt"])
     assert "Unknown language" not in (result.output or "")
 
 
 def test_cli_translate_all_custom_language_resolves(project, tmp_path):
     """Language resolution succeeds — failure is at the LLM call, not 'Unknown language'."""
     _setup_project_with_custom_target(tmp_path)
-    result = runner.invoke(app, ["translate", "all", "Catalan"])
+    result = runner.invoke(app, ["translate", "--to", "Catalan", "--all"])
     assert "Unknown language" not in (result.output or "")
 
 
@@ -376,7 +376,7 @@ def test_cli_translate_file_with_short_resolves(project, tmp_path):
     _setup_project_with_custom_target(tmp_path)
     runner.invoke(app, ["lang", "add", "American English", "_ae", "--short", "AmEng"])
 
-    result = runner.invoke(app, ["translate", "file", "src_en/doc.txt", "AmEng"])
+    result = runner.invoke(app, ["translate", "--to", "AmEng", "src_en/doc.txt"])
     assert "Unknown language" not in (result.output or "")
 
 
@@ -384,7 +384,7 @@ def test_cli_translate_all_with_short_resolves(project, tmp_path):
     _setup_project_with_custom_target(tmp_path)
     runner.invoke(app, ["lang", "add", "American English", "_ae", "--short", "AmEng"])
 
-    result = runner.invoke(app, ["translate", "all", "AmEng"])
+    result = runner.invoke(app, ["translate", "--to", "AmEng", "--all"])
     assert "Unknown language" not in (result.output or "")
 
 
