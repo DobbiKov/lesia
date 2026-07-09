@@ -12,7 +12,7 @@ from .llm import llm_app
 from .vocab import vocab_app
 from .typst import typst_app
 from .latex import latex_app
-from .translate import translate_app
+from .translate import translate_cli
 from .cache import cache_app
 from .migrate import migrate_app
 
@@ -62,7 +62,7 @@ app.add_typer(llm_app)
 app.add_typer(vocab_app)
 app.add_typer(typst_app)
 app.add_typer(latex_app)
-app.add_typer(translate_app)
+app.command("translate")(translate_cli)
 app.add_typer(cache_app)
 app.add_typer(migrate_app)
 

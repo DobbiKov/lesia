@@ -7,10 +7,9 @@ from typing_extensions import Annotated
 
 from lesia import errors
 from lesia.project_manager import Project
+from lesia.translator_retrieval import TranslationStats
 from lesia.vocab_list import vocab_list_from_vocab_db
 from ._common import get_project_from_context
-
-translate_app = typer.Typer(name="translate", help="Translate files.", no_args_is_help=True)
 
 
 def _read_vocab_from_file(path: Path) -> list[dict]:
@@ -19,7 +18,7 @@ def _read_vocab_from_file(path: Path) -> list[dict]:
         return list(reader)
 
 
-def _print_translation_stats(stats) -> None:
+def _print_translation_stats(stats: TranslationStats) -> None:
     lines = [
         f"  chunks from cache:        {stats.chunks_from_cache}",
         f"  chunks translated:        {stats.chunks_translated}",
@@ -31,92 +30,120 @@ def _print_translation_stats(stats) -> None:
     typer.echo("\n".join(lines))
 
 
-async def _translate_file_command(
+def _resolve_paths_to_files(paths: list[Path], project: Project) -> list[str]:
+    """Expand a mix of file and directory paths into a flat list of file path strings."""
+    translatable = project.get_translatable_files()  # absolute Path objects
+    result: list[str] = []
+
+    for path in paths:
+        resolved = path.resolve()
+        if resolved.is_file():
+            result.append(str(path))
+        elif resolved.is_dir():
+            dir_files = [f for f in translatable if f.is_relative_to(resolved)]
+            if not dir_files:
+                typer.secho(
+                    f"Warning: no translatable files found under '{path}'.",
+                    fg=typer.colors.YELLOW,
+                    err=True,
+                )
+            result.extend(str(f) for f in dir_files)
+        else:
+            typer.secho(f"Error: '{path}' is not a file or directory.", fg=typer.colors.RED, err=True)
+            raise typer.Exit(code=1)
+
+    return result
+
+
+async def _do_translate(
     project: Project,
-    file_path_str: str,
     lang: str,
-    vocab: Path | None,
-    use_reasoning_model: bool = False,
-):
+    paths: list[Path] | None,
+    all_files: bool,
+    vocab_path: Path | None,
+    use_reasoning_model: bool,
+) -> None:
     try:
         resolved_lang = project.config.resolve_language(lang)
     except ValueError as e:
         typer.secho(f"Error: {e}", fg=typer.colors.RED, err=True)
         raise typer.Exit(code=1)
-    try:
-        vocabulary = None
-        if vocab is not None:
-            vocabulary = vocab_list_from_vocab_db(
-                _read_vocab_from_file(vocab), project.get_source_langugage(), resolved_lang
-            )
-        stats = await project.translate_single_file(
-            file_path_str, resolved_lang, vocabulary, use_reasoning_model=use_reasoning_model
+
+    vocabulary = None
+    if vocab_path is not None:
+        vocabulary = vocab_list_from_vocab_db(
+            _read_vocab_from_file(vocab_path), project.get_source_langugage(), resolved_lang
         )
-        _print_translation_stats(stats)
-        typer.secho(f"File '{file_path_str}' translated to {resolved_lang} successfully.", fg=typer.colors.GREEN)
+
+    try:
+        if all_files:
+            def on_file_translated(file_path, file_stats):
+                _print_translation_stats(file_stats)
+
+            total_stats = await project.translate_all_for_language(
+                resolved_lang, vocabulary,
+                use_reasoning_model=use_reasoning_model,
+                on_file_translated=on_file_translated,
+            )
+            typer.echo("--- Total statistics ---")
+            _print_translation_stats(total_stats)
+            typer.secho(f"All translatable files processed for language {resolved_lang}.", fg=typer.colors.GREEN)
+
+        else:
+            files = _resolve_paths_to_files(paths, project)
+            if not files:
+                typer.secho("No files to translate.", fg=typer.colors.YELLOW)
+                return
+
+            total_stats = TranslationStats()
+            for file_path_str in files:
+                stats = await project.translate_single_file(
+                    file_path_str, resolved_lang, vocabulary, use_reasoning_model=use_reasoning_model
+                )
+                _print_translation_stats(stats)
+                typer.secho(f"File '{file_path_str}' translated to {resolved_lang} successfully.", fg=typer.colors.GREEN)
+                total_stats = total_stats + stats
+
+            if len(files) > 1:
+                typer.echo("--- Total statistics ---")
+                _print_translation_stats(total_stats)
+
     except errors.TranslateFileError as e:
-        typer.secho(f"Error translating file '{file_path_str}': {e}", fg=typer.colors.RED, err=True)
+        typer.secho(f"Error during translation: {e}", fg=typer.colors.RED, err=True)
         raise typer.Exit(code=1)
     except Exception as e:
         typer.secho(f"An unexpected error occurred during translation: {e}", fg=typer.colors.RED, err=True)
         raise typer.Exit(code=1)
 
 
-@translate_app.command("file")
-def translate_file_cli(
+def translate_cli(
     ctx: typer.Context,
-    file_path: Annotated[str, typer.Argument(help="Path to the translatable file.")],
-    lang: Annotated[str, typer.Argument(help="Target language for translation (predefined or custom).", case_sensitive=False)],
-    vocabulary: Annotated[Path | None, typer.Option(help="A path to the csv file with the vocabulary.", case_sensitive=False)] = None,
+    to: Annotated[str, typer.Option("--to", help="Target language (predefined or custom).", case_sensitive=False)],
+    paths: Annotated[list[Path] | None, typer.Argument(help="Files or directories to translate. Omit when using --all.")] = None,
+    all_files: Annotated[bool, typer.Option("--all", help="Translate all translatable files in the project.")] = False,
+    vocabulary: Annotated[Path | None, typer.Option(help="Path to a CSV vocabulary file.", case_sensitive=False)] = None,
     use_reasoning_model: Annotated[bool, typer.Option("--use-reasoning-model", help="Use the configured reasoning model instead of the regular model.")] = False,
 ):
-    """Translates a single specified translatable file."""
+    """Translate files to a target language.
+
+    Provide one or more files or directories, or use --all to translate everything.
+
+    Examples:
+
+      lesia translate --to French doc.md
+
+      lesia translate --to French src_en/
+
+      lesia translate --to French foo.md bar.md
+
+      lesia translate --to French --all
+    """
+    if all_files and paths:
+        typer.secho("Cannot combine --all with explicit file paths.", fg=typer.colors.RED, err=True)
+        raise typer.Exit(code=1)
+    if not all_files and not paths:
+        typer.secho("Provide at least one file/directory, or use --all.", fg=typer.colors.RED, err=True)
+        raise typer.Exit(code=1)
+
     project = get_project_from_context(ctx)
-    asyncio.run(_translate_file_command(project, file_path, lang, vocabulary, use_reasoning_model=use_reasoning_model))
-
-
-async def _translate_all_command(
-    project: Project,
-    lang: str,
-    vocab: Path | None,
-    use_reasoning_model: bool = False,
-):
-    try:
-        resolved_lang = project.config.resolve_language(lang)
-    except ValueError as e:
-        typer.secho(f"Error: {e}", fg=typer.colors.RED, err=True)
-        raise typer.Exit(code=1)
-    try:
-        vocabulary = None
-        if vocab is not None:
-            vocabulary = vocab_list_from_vocab_db(
-                _read_vocab_from_file(vocab), project.get_source_langugage(), resolved_lang
-            )
-
-        def on_file_translated(file_path, file_stats):
-            _print_translation_stats(file_stats)
-
-        total_stats = await project.translate_all_for_language(
-            resolved_lang, vocabulary, use_reasoning_model=use_reasoning_model, on_file_translated=on_file_translated
-        )
-        typer.echo("--- Total statistics ---")
-        _print_translation_stats(total_stats)
-        typer.secho(f"All translatable files processed for language {resolved_lang}.", fg=typer.colors.GREEN)
-    except errors.TranslateFileError as e:
-        typer.secho(f"Error during 'translate all' for {resolved_lang}: {e}", fg=typer.colors.RED, err=True)
-        raise typer.Exit(code=1)
-    except Exception as e:
-        typer.secho(f"An unexpected error occurred during 'translate all': {e}", fg=typer.colors.RED, err=True)
-        raise typer.Exit(code=1)
-
-
-@translate_app.command("all")
-def translate_all_cli(
-    ctx: typer.Context,
-    lang: Annotated[str, typer.Argument(help="Target language for translation (predefined or custom).", case_sensitive=False)],
-    vocabulary: Annotated[Path | None, typer.Option(help="A path to the csv file with the vocabulary.", case_sensitive=False)] = None,
-    use_reasoning_model: Annotated[bool, typer.Option("--use-reasoning-model", help="Use the configured reasoning model instead of the regular model.")] = False,
-):
-    """Translates all translatable files to the specified language."""
-    project = get_project_from_context(ctx)
-    asyncio.run(_translate_all_command(project, lang, vocabulary, use_reasoning_model=use_reasoning_model))
+    asyncio.run(_do_translate(project, to, paths, all_files, vocabulary, use_reasoning_model))
