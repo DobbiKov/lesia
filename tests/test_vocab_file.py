@@ -234,14 +234,14 @@ class TestCliSetVocabFile:
     def test_set_existing_file_succeeds(self, cli_project, tmp_path):
         vocab = tmp_path / "vocab.csv"
         _write_vocab_csv(vocab, _VOCAB_ROWS)
-        result = runner.invoke(app, ["set-vocab-file", str(vocab)])
+        result = runner.invoke(app, ["vocab", "set", str(vocab)])
         assert result.exit_code == 0
         reloaded = load_project(str(tmp_path))
         assert reloaded.config.get_vocab_file_path() == vocab.resolve()
 
     def test_set_nonexistent_file_warns_but_stores(self, cli_project, tmp_path):
         vocab = tmp_path / "missing.csv"
-        result = runner.invoke(app, ["set-vocab-file", str(vocab)])
+        result = runner.invoke(app, ["vocab", "set", str(vocab)])
         assert result.exit_code == 0
         assert "Warning" in result.output or "warning" in result.output.lower()
         reloaded = load_project(str(tmp_path))
@@ -251,7 +251,7 @@ class TestCliSetVocabFile:
         import tomllib
         vocab = tmp_path / "vocab.csv"
         _write_vocab_csv(vocab, _VOCAB_ROWS)
-        runner.invoke(app, ["set-vocab-file", str(vocab)])
+        runner.invoke(app, ["vocab", "set", str(vocab)])
         with (tmp_path / CONF_DIR / CONFIG_FILENAME).open("rb") as f:
             raw = tomllib.load(f)
         assert raw.get("vocab_file") is not None
@@ -262,16 +262,16 @@ class TestCliUnsetVocabFile:
     def test_unset_clears_config(self, cli_project, tmp_path):
         vocab = tmp_path / "vocab.csv"
         _write_vocab_csv(vocab, _VOCAB_ROWS)
-        runner.invoke(app, ["set-vocab-file", str(vocab)])
+        runner.invoke(app, ["vocab", "set", str(vocab)])
 
-        result = runner.invoke(app, ["unset-vocab-file"])
+        result = runner.invoke(app, ["vocab", "unset"])
         assert result.exit_code == 0
 
         reloaded = load_project(str(tmp_path))
         assert reloaded.config.get_vocab_file_path() is None
 
     def test_unset_when_not_set_succeeds(self, cli_project):
-        result = runner.invoke(app, ["unset-vocab-file"])
+        result = runner.invoke(app, ["vocab", "unset"])
         assert result.exit_code == 0
 
 
@@ -280,7 +280,7 @@ class TestCliInfoShowsVocabFile:
     def _setup_with_source(self, tmp_path):
         src = tmp_path / "src_fr"
         src.mkdir()
-        runner.invoke(app, ["set-source", "src_fr", "French"])
+        runner.invoke(app, ["config", "source", "set", "src_fr", "French"])
 
     def test_info_shows_not_set_when_no_vocab_file(self, cli_project, tmp_path):
         self._setup_with_source(tmp_path)
@@ -293,7 +293,7 @@ class TestCliInfoShowsVocabFile:
         self._setup_with_source(tmp_path)
         vocab = tmp_path / "vocab.csv"
         _write_vocab_csv(vocab, _VOCAB_ROWS)
-        runner.invoke(app, ["set-vocab-file", str(vocab)])
+        runner.invoke(app, ["vocab", "set", str(vocab)])
 
         result = runner.invoke(app, ["info"])
         assert result.exit_code == 0

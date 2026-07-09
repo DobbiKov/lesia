@@ -361,14 +361,14 @@ class TestCliSetEnvFile:
     def test_set_env_file_existing_file(self, cli_project, tmp_path):
         env_file = tmp_path / ".env"
         env_file.write_text("LLM_API_KEY=abc\n")
-        result = runner.invoke(app, ["set-env-file", str(env_file)])
+        result = runner.invoke(app, ["llm", "env-file", "set", str(env_file)])
         assert result.exit_code == 0
         reloaded = load_project(str(tmp_path))
         assert reloaded.config.get_env_file_path() == env_file.resolve()
 
     def test_set_env_file_nonexistent_file_warns_but_succeeds(self, cli_project, tmp_path):
         env_file = tmp_path / "missing.env"
-        result = runner.invoke(app, ["set-env-file", str(env_file)])
+        result = runner.invoke(app, ["llm", "env-file", "set", str(env_file)])
         assert result.exit_code == 0
         assert "Warning" in result.output or "warning" in result.output.lower()
         reloaded = load_project(str(tmp_path))
@@ -378,7 +378,7 @@ class TestCliSetEnvFile:
         import tomllib
         env_file = tmp_path / ".env"
         env_file.write_text("LLM_API_KEY=abc\n")
-        runner.invoke(app, ["set-env-file", str(env_file)])
+        runner.invoke(app, ["llm", "env-file", "set", str(env_file)])
 
         config_file = tmp_path / CONF_DIR / CONFIG_FILENAME
         with config_file.open("rb") as f:
@@ -391,16 +391,16 @@ class TestCliUnsetEnvFile:
     def test_unset_env_file_clears_config(self, cli_project, tmp_path):
         env_file = tmp_path / ".env"
         env_file.write_text("LLM_API_KEY=abc\n")
-        runner.invoke(app, ["set-env-file", str(env_file)])
+        runner.invoke(app, ["llm", "env-file", "set", str(env_file)])
 
-        result = runner.invoke(app, ["unset-env-file"])
+        result = runner.invoke(app, ["llm", "env-file", "unset"])
         assert result.exit_code == 0
 
         reloaded = load_project(str(tmp_path))
         assert reloaded.config.get_env_file_path() is None
 
     def test_unset_env_file_when_not_set_succeeds(self, cli_project):
-        result = runner.invoke(app, ["unset-env-file"])
+        result = runner.invoke(app, ["llm", "env-file", "unset"])
         assert result.exit_code == 0
 
 
@@ -409,7 +409,7 @@ class TestCliInfoShowsEnvFile:
     def test_info_shows_not_set_when_no_env_file(self, cli_project, tmp_path):
         src = tmp_path / "src_en"
         src.mkdir()
-        runner.invoke(app, ["set-source", "src_en", "English"])
+        runner.invoke(app, ["config", "source", "set", "src_en", "English"])
 
         result = runner.invoke(app, ["info"])
         assert result.exit_code == 0
@@ -422,8 +422,8 @@ class TestCliInfoShowsEnvFile:
         # Need a source dir set for info to print env file details
         src = tmp_path / "src_en"
         src.mkdir()
-        runner.invoke(app, ["set-source", "src_en", "English"])
-        runner.invoke(app, ["set-env-file", str(env_file)])
+        runner.invoke(app, ["config", "source", "set", "src_en", "English"])
+        runner.invoke(app, ["llm", "env-file", "set", str(env_file)])
 
         result = runner.invoke(app, ["info"])
         assert result.exit_code == 0
