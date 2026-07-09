@@ -1,4 +1,4 @@
-import json
+import tomllib
 from pathlib import Path
 
 import pytest
@@ -164,7 +164,8 @@ def test_load_project_rewrites_config_file(tmp_path):
 
     load_project(str(root))
 
-    contents = json.loads(config_path.read_text(encoding="utf-8"))
+    with config_path.open("rb") as f:
+        contents = tomllib.load(f)
     assert contents["src_dir"]["path"] == "src"
 
 
@@ -338,8 +339,9 @@ def test_custom_language_config_round_trip(tmp_path):
     config_path = conf_dir / CONFIG_FILENAME
     write_project_config(config_path, config)
 
-    # Verify JSON structure
-    contents = json.loads(config_path.read_text(encoding="utf-8"))
+    # Verify TOML structure
+    with config_path.open("rb") as f:
+        contents = tomllib.load(f)
     assert contents["custom_languages"] == {"Catalan": "_ca"}
     assert contents["src_dir"]["language"] == "Catalan"
 

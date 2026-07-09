@@ -9,7 +9,6 @@ Covers:
 
 import asyncio
 import csv
-import json
 from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
@@ -248,11 +247,13 @@ class TestCliSetVocabFile:
         reloaded = load_project(str(tmp_path))
         assert reloaded.config.get_vocab_file_path() == vocab.resolve()
 
-    def test_set_persisted_in_config_json(self, cli_project, tmp_path):
+    def test_set_persisted_in_config_toml(self, cli_project, tmp_path):
+        import tomllib
         vocab = tmp_path / "vocab.csv"
         _write_vocab_csv(vocab, _VOCAB_ROWS)
         runner.invoke(app, ["set-vocab-file", str(vocab)])
-        raw = json.loads((tmp_path / CONF_DIR / CONFIG_FILENAME).read_text())
+        with (tmp_path / CONF_DIR / CONFIG_FILENAME).open("rb") as f:
+            raw = tomllib.load(f)
         assert raw.get("vocab_file") is not None
 
 

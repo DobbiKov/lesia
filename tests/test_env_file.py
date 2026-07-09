@@ -10,7 +10,6 @@ Covers:
 """
 
 import asyncio
-import json
 from pathlib import Path
 from unittest.mock import AsyncMock
 
@@ -376,12 +375,14 @@ class TestCliSetEnvFile:
         assert reloaded.config.get_env_file_path() == env_file.resolve()
 
     def test_set_env_file_persisted_in_config(self, cli_project, tmp_path):
+        import tomllib
         env_file = tmp_path / ".env"
         env_file.write_text("LLM_API_KEY=abc\n")
         runner.invoke(app, ["set-env-file", str(env_file)])
 
         config_file = tmp_path / CONF_DIR / CONFIG_FILENAME
-        raw = json.loads(config_file.read_text())
+        with config_file.open("rb") as f:
+            raw = tomllib.load(f)
         assert raw.get("env_file") is not None
 
 
