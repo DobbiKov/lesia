@@ -18,6 +18,7 @@
     - [File management](#file-management)
     - [Translation](#translation)
         - [--use-reasoning-model](#--use-reasoning-model)
+    - [Vocabulary configuration](#vocabulary-configuration)
     - [Cache management](#cache-management)
     - [LLM configuration](#llm-configuration)
         - [API key configuration](#api-key-configuration)
@@ -170,25 +171,28 @@ The path is saved in `.lesia/config.json` and resolved automatically on every tr
 
 ##### Vocabulary
 
-You can use the `--vocabulary` flag with any translation command to provide a custom translation vocabulary. This flag expects the path to a CSV file containing your glossary.
-
-The CSV file should be structured as a table where:
-
-* Each column header is a language name (matching the project's configured language names, e.g. `English`, `French`).
-* Each row lists a term and its translations.
+A vocabulary file is a CSV glossary that guides the LLM to use your preferred terminology. Column headers must be language names (e.g. `French`, `English`); each row contains one term and its translations.
 
 Example `vocab.csv`:
 ```csv
-English,    French,     German
-apple,      pomme,      Apfel
-computer,   ordinateur, Computer
+French,     English,    German
+pomme,      apple,      Apfel
+ordinateur, computer,   Computer
 ```
 
+There are two ways to supply a vocabulary:
+
+**Per-run flag** — pass it directly to the translate command:
 ```sh
 lesia translate all english --vocabulary vocab.csv
 ```
 
-This helps the translation tool choose more accurate terms and maintain consistency across your project.
+**Project default** — store it once in the config so it is used automatically on every translation run:
+```sh
+lesia set-vocab-file vocab.csv
+```
+
+When both are provided the flag always takes precedence over the project default. See [Vocabulary configuration](#vocabulary-configuration) for the full command reference.
 
 #### Correction
 
@@ -445,6 +449,8 @@ lesia translate file <file_path> <language> [--vocabulary <csv_path>] [--use-rea
 
 Translates a single file to the specified target language. The file must be marked as translatable. `language` accepts predefined language names, custom language names, and short aliases.
 
+If `--vocabulary` is omitted and a default vocabulary file is configured via `set-vocab-file`, that file is used automatically. Passing `--vocabulary` always overrides the project default.
+
 ```
 lesia translate file analysis_notes_fr/main.tex english
 lesia translate file analysis_notes_fr/main.tex catalan --vocabulary vocab.csv
@@ -469,6 +475,8 @@ lesia translate all <language> [--vocabulary <csv_path>] [--use-reasoning-model]
 ```
 
 Translates all translatable files to the specified language. `language` accepts predefined language names, custom language names, and short aliases.
+
+If `--vocabulary` is omitted and a default vocabulary file is configured via `set-vocab-file`, that file is used automatically for every file in the run. Passing `--vocabulary` always overrides the project default.
 
 ```
 lesia translate all english
@@ -503,6 +511,49 @@ If no reasoning model has been configured, the flag falls back to the regular mo
 lesia translate all english --use-reasoning-model
 lesia translate file analysis_notes_fr/main.tex english --use-reasoning-model
 ```
+
+---
+
+### Vocabulary configuration
+
+A vocabulary file is a CSV glossary that guides the LLM towards your preferred terminology. It is applied at the prompt level — each chunk is translated with the vocabulary list injected so the model can reference it.
+
+**Precedence: `--vocabulary` flag > project default > no vocabulary.**
+
+The `--vocabulary` flag passed to `translate file` or `translate all` always wins. If no flag is given, the project default configured here is used. If neither is set, translation proceeds without a glossary.
+
+**Expected CSV format:**
+
+Column headers must exactly match the language names used in the project (predefined names like `French`, `English`, or custom names registered with `add-lang`). Each row is one term entry.
+
+```csv
+French,     English,    German
+pomme,      apple,      Apfel
+ordinateur, computer,   Computer
+```
+
+#### `set-vocab-file`
+
+```
+lesia set-vocab-file <path>
+```
+
+Sets a default vocabulary CSV file for the project. The path is saved to `.lesia/config.json` relative to the project root when possible, making the config portable.
+
+```sh
+lesia set-vocab-file vocab.csv
+lesia set-vocab-file /shared/team-glossary.csv
+```
+
+If the file does not exist yet a warning is printed but the path is still saved — the file can be created later.
+
+#### `unset-vocab-file`
+
+```
+lesia unset-vocab-file
+```
+
+Removes the default vocabulary file from the project config. After this, only an explicit `--vocabulary` flag supplies a glossary.
 
 ---
 

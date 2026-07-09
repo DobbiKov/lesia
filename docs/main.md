@@ -25,6 +25,7 @@ For a conceptual overview of how the tool works, see the [profound explanation](
   - [File management](#file-management)
   - [Translation](#translation)
   - [TranslationStats](#translationstats)
+  - [Vocabulary configuration](#vocabulary-configuration)
   - [Cache management](#cache-management)
   - [LLM configuration](#llm-configuration)
     - [API key configuration](#api-key-configuration)
@@ -509,7 +510,9 @@ await project.translate_single_file(
 ) -> TranslationStats
 ```
 
-Translates one file into `target_lang`. The file must be marked as translatable. Optionally accepts a `VocabList` to guide terminology. Returns a `TranslationStats` instance with per-file chunk counts.
+Translates one file into `target_lang`. The file must be marked as translatable. Returns a `TranslationStats` instance with per-file chunk counts.
+
+Pass a `VocabList` to guide terminology. If `vocab_list` is `None` and a default vocabulary file is configured on the project (via `set_vocab_file`), it is loaded and used automatically. An explicit `VocabList` always takes precedence over the project default.
 
 ```python
 import asyncio
@@ -534,6 +537,8 @@ await project.translate_all_for_language(
 ```
 
 Translates all translatable files into `target_lang`. Files are processed sequentially. Individual chunk failures are logged and the chunk is left untranslated, but the run continues. Returns a `TranslationStats` instance that is the sum of all per-file stats (failed files are excluded).
+
+The same vocabulary precedence applies as for `translate_single_file`: an explicit `VocabList` wins over the project default; `None` triggers the config lookup for every file in the run.
 
 The optional `on_file_translated` callback is called after each file is successfully translated. It receives the absolute `Path` of the source file and its `TranslationStats`. This lets you react to per-file results (e.g. print progress) without putting loop logic in your own code.
 
@@ -586,6 +591,77 @@ class TranslationStats:
 - `chunks_failed` counts only chunks that were left untranslated after exhausting all retries. A chunk counted here is never counted in `chunks_translated`.
 - For `translate_all_for_language`, the returned stats are the sum over all *successful* files; stats from files that raised `TranslateFileError` are not included.
 - `TranslationStats` supports `+` for manual aggregation: `combined = stats_a + stats_b`.
+
+---
+
+### Vocabulary configuration
+
+A vocabulary file is a CSV glossary injected into every translation prompt so the LLM uses your preferred terminology. You can supply it per-call or configure a project-level default that is loaded automatically.
+
+**Precedence: explicit `VocabList` argument > project default > no vocabulary.**
+
+#### `set_vocab_file`
+
+```python
+project.set_vocab_file(path: Path) -> None
+```
+
+Stores the path to a default vocabulary CSV file in the project config. On every `translate_single_file` or `translate_all_for_language` call where `vocab_list=None`, this file is read and used automatically.
+
+The path is stored relative to the project root when possible, keeping the config portable across machines.
+
+```python
+from pathlib import Path
+
+project.set_vocab_file(Path("vocab.csv"))
+project.set_vocab_file(Path("/shared/team-glossary.csv"))
+```
+
+**Raises:** `SetLLMServiceError` — if saving the config fails.
+
+#### `unset_vocab_file`
+
+```python
+project.unset_vocab_file() -> None
+```
+
+Removes the default vocabulary file from the project config. After this call only an explicit `VocabList` argument supplies a glossary.
+
+**Raises:** `SetLLMServiceError` — if saving the config fails.
+
+#### `ProjectConfig.get_vocab_file_path`
+
+```python
+project.config.get_vocab_file_path() -> Path | None
+```
+
+Returns the resolved absolute path to the configured vocabulary file, or `None` if none is set.
+
+#### `ProjectConfig.vocab_file`
+
+```python
+project.config.vocab_file  # Path | None
+```
+
+The raw stored value — relative to the project root if the file is inside it, absolute otherwise. Prefer `get_vocab_file_path()` in almost all cases.
+
+#### Example
+
+```python
+import asyncio
+from pathlib import Path
+
+# Set a project-wide glossary
+project.set_vocab_file(Path("vocab.csv"))
+
+# Used automatically — no need to pass a VocabList
+stats = asyncio.run(project.translate_single_file("notes_fr/main.tex", Language.ENGLISH, None))
+
+# Explicit VocabList takes precedence over the config default
+from lesia.vocab_list import VocabList
+override = VocabList(["pomme"], ["apple"])
+stats = asyncio.run(project.translate_single_file("notes_fr/main.tex", Language.ENGLISH, override))
+```
 
 ---
 
