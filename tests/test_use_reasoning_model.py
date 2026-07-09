@@ -200,8 +200,7 @@ def _run_doc_translator(
 
     _MockLLMCaller.instances = []
 
-    monkeypatch.setattr(doc_translator, "LLM_API_KEY", casual_key)
-    monkeypatch.setattr(doc_translator, "LLM_REASONING_API_KEY", reasoning_key)
+    monkeypatch.setattr(doc_translator, "resolve_api_keys", lambda env_file=None: (casual_key, reasoning_key or casual_key))
     monkeypatch.setattr(doc_translator, "LLMCaller", _MockLLMCaller)
     monkeypatch.setattr(
         doc_translator.myst_file_translator, "translate_file_async", AsyncMock()
@@ -287,8 +286,7 @@ class TestDocTranslatorApiKeyErrors:
         tgt = tmp_path / "tgt" / "doc.md"
         tgt.parent.mkdir(parents=True)
 
-        monkeypatch.setattr(doc_translator, "LLM_API_KEY", None)
-        monkeypatch.setattr(doc_translator, "LLM_REASONING_API_KEY", None)
+        monkeypatch.setattr(doc_translator, "resolve_api_keys", lambda env_file=None: (None, None))
         monkeypatch.setattr(doc_translator, "LLMCaller", self._make_requiring_caller())
 
         from lesia.errors import TranslationProcessError
@@ -307,8 +305,7 @@ class TestDocTranslatorApiKeyErrors:
         tgt = tmp_path / "tgt" / "doc.md"
         tgt.parent.mkdir(parents=True)
 
-        monkeypatch.setattr(doc_translator, "LLM_API_KEY", None)
-        monkeypatch.setattr(doc_translator, "LLM_REASONING_API_KEY", None)
+        monkeypatch.setattr(doc_translator, "resolve_api_keys", lambda env_file=None: (None, None))
         monkeypatch.setattr(doc_translator, "LLMCaller", self._make_requiring_caller())
 
         from lesia.errors import TranslationProcessError
