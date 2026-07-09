@@ -592,101 +592,130 @@ def info_on_project(ctx: typer.Context):
     """
     Provides an info about the project
     """
+    from lesia.constants import CUSTOM_SERVICES_DIR_NAME, CUSTOM_SERVICES_TEMPLATE_FILENAME
+    from lesia.project_manager import _get_service_names_from_file
+
     project = get_project_from_context(ctx)
-    print("Project Information:")
-    print("\tProject Name: {}".format(project.config.get_name()) )
-    print("\tRoot Path: {}".format(project.root_path))
+
+    print("Project name: {}".format(project.config.get_name()))
+    try:
+        rel_root = project.root_path.relative_to(Path.cwd())
+        display_root = str(rel_root)
+    except ValueError:
+        display_root = str(project.root_path)
+    print("Root Path: {}".format(display_root))
 
     src_dir = project.config.get_src_dir()
     if src_dir is None:
-        print("\tSource directory: Is not set")
+        print("Source language: Not set")
     else:
         src_dir_name = src_dir.get_path().name
         src_dir_lang = src_dir.get_lang()
-        llm_service = project.get_llm_service()
-        llm_model = project.get_llm_model()
-        llm_reasoning_service = project.get_llm_reasoning_service()
-        llm_reasoning_model = project.get_llm_reasoning_model()
-        print("\tSource language: {}".format(src_dir_lang))
-        print("\tSource directory: {}".format(src_dir_name))
-        print("\tStandard model: {} {}".format(llm_service, llm_model))
-        if llm_reasoning_model:
-            print("\tReasoning model: {} {}".format(llm_reasoning_service, llm_reasoning_model))
-        else:
-            print("\tReasoning model: Not set")
-        print("\tXML retries before reasoning: {}".format(project.get_xml_retries_before_reasoning()))
-        env_file_path = project.config.get_env_file_path()
-        if env_file_path:
-            print("\tEnv file: {}".format(env_file_path))
-        else:
-            print("\tEnv file: Not set (using shell environment variables)")
-        vocab_file_path = project.config.get_vocab_file_path()
-        if vocab_file_path:
-            print("\tDefault vocab file: {}".format(vocab_file_path))
-        else:
-            print("\tDefault vocab file: Not set")
-        typst_string_args = project.get_typst_translatable_string_args_by_function()
-        if typst_string_args:
-            print("\tTypst translatable string args:")
-            for func, args in sorted(typst_string_args.items()):
-                print("\t  {}: {}".format(func, ", ".join(args)))
-        else:
-            print("\tTypst translatable string args: Not set")
-        latex_settings = project.get_latex_settings()
-        placeholder_envs = latex_settings["extra_placeholder_envs"]
-        math_envs = latex_settings["extra_math_envs"]
-        placeholder_cmds = latex_settings["extra_placeholder_commands"]
-        cmd_args = latex_settings["command_translatable_args"]
-        cmd_specs = latex_settings["custom_command_specs"]
-        if placeholder_envs or math_envs or placeholder_cmds or cmd_args or cmd_specs:
-            print("\tLaTeX settings:")
-            if placeholder_envs:
-                print("\t  Placeholder envs: {}".format(", ".join(sorted(placeholder_envs))))
-            if math_envs:
-                print("\t  Math envs: {}".format(", ".join(sorted(math_envs))))
-            if placeholder_cmds:
-                print("\t  Placeholder commands: {}".format(", ".join(sorted(placeholder_cmds))))
-            if cmd_specs:
-                print("\t  Custom command specs:")
-                for cmd, spec in sorted(cmd_specs.items()):
-                    print("\t    {}: mandatory={}, optional={}".format(
-                        cmd, spec.get("mandatory", 0), spec.get("optional", 0)
-                    ))
-            if cmd_args:
-                print("\t  Command translatable args:")
-                for cmd, spec in sorted(cmd_args.items()):
-                    parts = []
-                    if "mandatory" in spec:
-                        parts.append("mandatory={}".format(spec["mandatory"]))
-                    if "optional" in spec:
-                        parts.append("optional={}".format(spec["optional"]))
-                    print("\t    {}: {}".format(cmd, ", ".join(parts)))
-        else:
-            print("\tLaTeX settings: Not set")
+        print("Source language:")
+        print("- {}, directory: {}".format(src_dir_lang, src_dir_name))
 
+    target_langs = project._get_target_languages()
+    if len(target_langs) == 0:
+        print("Target language(s): None")
+    else:
+        print("Target language(s):")
+        for lang in target_langs:
+            tgt_dir = project.config.get_target_dir_path_by_lang(lang)
+            tgt_dir_name = None if tgt_dir is None else tgt_dir.name
+            print("- {}, directory: {}".format(lang, tgt_dir_name))
+
+    vocab_file_path = project.config.get_vocab_file_path()
+    if vocab_file_path:
+        print("Ontology: {}".format(vocab_file_path))
+    else:
+        print("Ontology: Not set")
+
+    env_file_path = project.config.get_env_file_path()
+    if env_file_path:
+        print("Env file: {}".format(env_file_path))
+    else:
+        print("Env file: Not set (using shell environment variables)")
+
+    llm_service = project.get_llm_service()
+    llm_model = project.get_llm_model()
+    llm_reasoning_service = project.get_llm_reasoning_service()
+    llm_reasoning_model = project.get_llm_reasoning_model()
+    print("Default models:")
+    print("- lightweight: {} {}".format(llm_service, llm_model))
+    if llm_reasoning_model:
+        print("- heavyweight: {} {}".format(llm_reasoning_service, llm_reasoning_model))
+    else:
+        print("- heavyweight: Not set")
+
+    print("XML retries before reasoning: {}".format(project.get_xml_retries_before_reasoning()))
+
+    typst_string_args = project.get_typst_translatable_string_args_by_function()
+    if typst_string_args:
+        print("Typst translatable string args:")
+        for func, args in sorted(typst_string_args.items()):
+            print("- {}: {}".format(func, ", ".join(args)))
+    else:
+        print("Typst translatable string args: Not set")
+
+    latex_settings = project.get_latex_settings()
+    placeholder_envs = latex_settings["extra_placeholder_envs"]
+    math_envs = latex_settings["extra_math_envs"]
+    placeholder_cmds = latex_settings["extra_placeholder_commands"]
+    cmd_args = latex_settings["command_translatable_args"]
+    cmd_specs = latex_settings["custom_command_specs"]
+    if placeholder_envs or math_envs or placeholder_cmds or cmd_args or cmd_specs:
+        print("LaTeX settings:")
+        if placeholder_envs:
+            print("  Placeholder envs: {}".format(", ".join(sorted(placeholder_envs))))
+        if math_envs:
+            print("  Math envs: {}".format(", ".join(sorted(math_envs))))
+        if placeholder_cmds:
+            print("  Placeholder commands: {}".format(", ".join(sorted(placeholder_cmds))))
+        if cmd_specs:
+            print("  Custom command specs:")
+            for cmd, spec in sorted(cmd_specs.items()):
+                print("    {}: mandatory={}, optional={}".format(
+                    cmd, spec.get("mandatory", 0), spec.get("optional", 0)
+                ))
+        if cmd_args:
+            print("  Command translatable args:")
+            for cmd, spec in sorted(cmd_args.items()):
+                parts = []
+                if "mandatory" in spec:
+                    parts.append("mandatory={}".format(spec["mandatory"]))
+                if "optional" in spec:
+                    parts.append("optional={}".format(spec["optional"]))
+                print("    {}: {}".format(cmd, ", ".join(parts)))
+    else:
+        print("LaTeX settings: Not set")
 
     custom_languages = project.config.custom_languages
     custom_shorts = project.config.custom_language_shorts
-    # Build reverse map: full_name → short
     shorts_by_name = {full: short for short, full in custom_shorts.items()}
     if custom_languages:
         print("Custom languages:")
         for lang_name, suffix in sorted(custom_languages.items()):
             short = shorts_by_name.get(lang_name)
             short_str = f" (short: {short})" if short else ""
-            print("\t{:<20} suffix: {}{}".format(lang_name, suffix, short_str))
+            print("- {}, suffix: {}{}".format(lang_name, suffix, short_str))
     else:
         print("Custom languages: None")
 
-    target_langs = project._get_target_languages()
-    if len( target_langs ) == 0:
-        print("\tTarget langauges: There is no target languages")
+    services_dir = project.config_dir_path / CUSTOM_SERVICES_DIR_NAME
+    custom_service_names = []
+    if services_dir.is_dir():
+        for service_file in sorted(services_dir.glob("*.py")):
+            if service_file.name == CUSTOM_SERVICES_TEMPLATE_FILENAME:
+                continue
+            custom_service_names.extend(_get_service_names_from_file(service_file))
+    if custom_service_names:
+        print("Custom llm services:")
+        for name in custom_service_names:
+            print("- {}".format(name))
     else:
-        print("Target languages:")
-        for lang in target_langs:
-            tgt_dir = project.config.get_target_dir_path_by_lang(lang)
-            tgt_dir_name = None if tgt_dir is None else tgt_dir.name
-            print("\tLanguage: {:<10} | Directory: {}".format(lang, tgt_dir_name))
+        print("Custom llm services: None")
+
+    print("Custom llm models: None")
 
 @app.command("status")
 def translation_status(
