@@ -8,7 +8,7 @@ site:
 
 +++ {"kind": "centered"}
 
-v0.1.7 — Early Beta
+v0.1.11 — Early Beta
 
 ## Translate scientific documents with AI
 
