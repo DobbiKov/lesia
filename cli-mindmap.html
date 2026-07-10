@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>LESIA CLI — Mind Map</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: #1c1e2e;
+    color: #e4e6f0;
+    font-family: system-ui, -apple-system, sans-serif;
+    height: 100vh;
+    overflow: hidden;
+    cursor: grab;
+  }
+  body.dragging { cursor: grabbing; }
+
+  #viewport {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+  }
+
+  #world {
+    position: absolute;
+    top: 0; left: 0;
+    transform-origin: 0 0;
+  }
+
+  svg#lines {
+    position: absolute;
+    top: 0; left: 0;
+    width: 9999px;
+    height: 9999px;
+    pointer-events: none;
+    overflow: visible;
+  }
+
+  /* ── PILLS ── */
+  .node {
+    position: absolute;
+    display: flex;
+    align-items: center;
+    border-radius: 10px;
+    font-family: 'Courier New', monospace;
+    font-size: 13px;
+    white-space: nowrap;
+    background: #23253a;
+    transition: background 0.12s;
+    cursor: pointer;
+  }
+  .node:hover { background: #2b2d46; }
+  .node.root {
+    background: #3b3d5c;
+    font-size: 15px;
+    font-weight: 500;
+    cursor: default;
+  }
+  .node.root:hover { background: #3b3d5c; }
+
+  .node-label {
+    padding: 12px 16px;
+    flex: 1;
+  }
+
+  .node-btn {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    margin-right: 8px;
+    background: #2e3050;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    color: #7072a0;
+    flex-shrink: 0;
+    transition: background 0.12s, color 0.12s, transform 0.2s;
+    font-family: system-ui;
+  }
+  .node:hover .node-btn { background: #5558a0; color: #fff; }
+  .node-btn.expanded { transform: rotate(90deg); background: #5558a0; color: #fff; }
+
+  /* ── DETAIL PANEL ── */
+  #detail {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    background: #20223a;
+    border-top: 1px solid #2c2e48;
+    padding: 16px 28px 18px;
+    transform: translateY(100%);
+    transition: transform 0.25s cubic-bezier(0.4,0,0.2,1);
+    z-index: 100;
+    cursor: default;
+  }
+  #detail.open { transform: translateY(0); }
+  #d-close {
+    position: absolute; top: 12px; right: 16px;
+    background: none; border: none; color: #5c5e80;
+    font-size: 14px; cursor: pointer; padding: 4px 8px; border-radius: 6px;
+  }
+  #d-close:hover { background: #2c2e48; color: #e4e6f0; }
+  #d-path  { font-size: 11px; color: #5c5e80; font-family: 'Courier New', monospace; margin-bottom: 2px; }
+  #d-title { font-size: 15px; font-weight: 600; font-family: 'Courier New', monospace; margin-bottom: 4px; }
+  #d-desc  { font-size: 13px; color: #8890b0; line-height: 1.5; margin-bottom: 10px; }
+  #d-body  { display: flex; flex-wrap: wrap; gap: 20px; }
+  .d-section { flex: 1; min-width: 180px; }
+  .d-sec-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #484a68; margin-bottom: 6px; }
+  .d-row { display: flex; gap: 8px; align-items: flex-start; margin-bottom: 5px; }
+  .d-tag { font-family: 'Courier New', monospace; font-size: 11px; background: #2c2e48; border-radius: 5px; padding: 3px 9px; white-space: nowrap; color: #9698c0; flex-shrink: 0; }
+  .d-tdesc { font-size: 12px; color: #5c5e80; padding-top: 2px; line-height: 1.4; }
+
+  /* ── HINT ── */
+  #hint {
+    position: fixed;
+    bottom: 18px; right: 18px;
+    font-size: 11px;
+    color: #333550;
+    pointer-events: none;
+    line-height: 1.7;
+    text-align: right;
+  }
+</style>
+</head>
+<body>
+
+<div id="viewport">
+  <div id="world">
+    <svg id="lines"></svg>
+  </div>
+</div>
+
+<div id="detail">
+  <button id="d-close" onclick="closeDetail()">✕</button>
+  <div id="d-path"></div>
+  <div id="d-title"></div>
+  <div id="d-desc"></div>
+  <div id="d-body"></div>
+</div>
+
+<div id="hint">drag to pan · click › to expand · click label for details</div>
+
+<script>
+// ─── DATA ─────────────────────────────────────────────────────────────────────
+const TREE = {
+  id:'lesia', label:'lesia', desc:'A tool for managing and translating directory structures.',
+  children:[
+    { id:'init', label:'init', desc:'Initialize a new translation project.',
+      flags:[{name:'--name',desc:'Project name (default: MyTranslationProject)'},{name:'--path',desc:'Directory to initialize in (default: .)'}] },
+    { id:'info', label:'info', desc:'Show information about the current project configuration.' },
+    { id:'status', label:'status', desc:'Show translation progress — untranslated chunks per language.',
+      flags:[{name:'--files',desc:'Show per-file chunk statistics'}] },
+    { id:'list', label:'list', desc:'List all files marked as translatable in the source directory.' },
+    { id:'sync', label:'sync', desc:'Synchronize untranslatable files from source to all target dirs.' },
+    { id:'translate', label:'translate', desc:'Translate files to a target language.',
+      args:[{name:'paths',desc:'Files or directories (omit with --all)'}],
+      flags:[{name:'--to',desc:'Target language — required'},{name:'--all',desc:'Translate all translatable files'},{name:'--vocabulary',desc:'Path to CSV vocabulary file'},{name:'--use-reasoning-model',desc:'Use the reasoning model'}] },
+    { id:'lang', label:'lang', desc:'Language management.',
+      children:[
+        { id:'lang-add', label:'add', desc:'Register a new custom language.',
+          args:[{name:'name',desc:"Custom language name, e.g. 'American English'"},{name:'suffix',desc:"Directory suffix, e.g. '_ae'"}],
+          flags:[{name:'--short',desc:"Short alias, e.g. 'AmEng'"}] },
+        { id:'lang-remove', label:'remove', desc:'Remove a custom language.',
+          args:[{name:'name',desc:'Language name to remove'}] },
+        { id:'lang-list', label:'list', desc:'List all languages (assigned and unassigned).' }
+      ]
+    },
+    { id:'config', label:'config', desc:'Configure source and target directories.',
+      children:[
+        { id:'config-source', label:'source', desc:'Source directory configuration.',
+          children:[
+            { id:'config-source-set', label:'set', desc:'Set the source directory and language.',
+              args:[{name:'dir_name',desc:'Source dir (relative to root)'},{name:'lang',desc:'Source language'}] },
+            { id:'config-source-info', label:'info', desc:'Show current source directory and language.' }
+          ]
+        },
+        { id:'config-target', label:'target', desc:'Target directory configuration.',
+          children:[
+            { id:'config-target-set', label:'set', desc:'Add or update a target language directory.',
+              args:[{name:'dir_name',desc:'Target dir (relative to root)'},{name:'lang',desc:'Target language'}] },
+            { id:'config-target-remove', label:'remove', desc:'Remove a target language directory.',
+              args:[{name:'lang',desc:'Target language to remove'}] },
+            { id:'config-target-list', label:'list', desc:'List all configured target directories.' }
+          ]
+        }
+      ]
+    },
+    { id:'file', label:'file', desc:'Manage translatable files.',
+      children:[
+        { id:'file-add', label:'add', desc:'Mark file(s) as translatable.',
+          args:[{name:'file_paths',desc:'Path(s) to files — multiple allowed'}] },
+        { id:'file-remove', label:'remove', desc:'Mark file(s) as untranslatable.',
+          args:[{name:'file_paths',desc:'Path(s) to files — multiple allowed'}] }
+      ]
+    },
+    { id:'llm', label:'llm', desc:'Configure LLM services and models.',
+      children:[
+        { id:'llm-set', label:'set', desc:'Set the standard LLM service and model.',
+          args:[{name:'service',desc:'Service name'},{name:'model',desc:'Model name'}] },
+        { id:'llm-set-reasoning', label:'set-reasoning', desc:'Set the reasoning LLM service and model.',
+          args:[{name:'service',desc:'Service name'},{name:'model',desc:'Model name'}] },
+        { id:'llm-list', label:'list', desc:'List all available LLM services.' },
+        { id:'llm-set-xml-retries', label:'set-xml-retries', desc:'Set retry count before falling back to reasoning model.',
+          args:[{name:'retries',desc:'Count (0 = always use reasoning model)'}] },
+        { id:'llm-env-file', label:'env-file', desc:'Manage .env file path for API keys.',
+          children:[
+            { id:'llm-env-file-set', label:'set', desc:'Set .env file path.',
+              args:[{name:'env_file_path',desc:'Path to .env with LLM_API_KEY'}] },
+            { id:'llm-env-file-unset', label:'unset', desc:'Remove the configured .env file path.' }
+          ]
+        }
+      ]
+    },
+    { id:'vocab', label:'vocab', desc:'Configure the default vocabulary CSV file.',
+      children:[
+        { id:'vocab-set', label:'set', desc:'Set a default vocabulary file.',
+          args:[{name:'vocab_file_path',desc:'Path to the CSV vocabulary file'}] },
+        { id:'vocab-unset', label:'unset', desc:'Remove the configured vocabulary file.' }
+      ]
+    },
+    { id:'typst', label:'typst', desc:'Configure Typst translation settings.',
+      children:[
+        { id:'typst-set-func-args', label:'set-func-args', desc:'Set translatable Typst argument names for a function.',
+          args:[{name:'function_name',desc:'Typst function name'},{name:'arg_names',desc:'Translatable arg names — multiple'}] },
+        { id:'typst-unset-func-args', label:'unset-func-args', desc:'Remove Typst function arg settings.',
+          args:[{name:'function_name',desc:'Typst function name'}] }
+      ]
+    },
+    { id:'latex', label:'latex', desc:'Configure LaTeX translation settings.',
+      children:[
+        { id:'latex-placeholder-env', label:'placeholder-env', desc:'Non-translatable LaTeX environments.',
+          children:[
+            { id:'latex-pe-add', label:'add', desc:'Mark a LaTeX environment as a placeholder.',
+              args:[{name:'env_name',desc:'LaTeX environment name'}] },
+            { id:'latex-pe-remove', label:'remove', desc:'Remove from placeholder list.',
+              args:[{name:'env_name',desc:'LaTeX environment name'}] }
+          ]
+        },
+        { id:'latex-math-env', label:'math-env', desc:'LaTeX math environments.',
+          children:[
+            { id:'latex-me-add', label:'add', desc:'Mark a LaTeX environment as math.',
+              args:[{name:'env_name',desc:'LaTeX environment name'}] },
+            { id:'latex-me-remove', label:'remove', desc:'Remove from math list.',
+              args:[{name:'env_name',desc:'LaTeX environment name'}] }
+          ]
+        },
+        { id:'latex-placeholder-cmd', label:'placeholder-cmd', desc:'Non-translatable LaTeX commands.',
+          children:[
+            { id:'latex-pc-add', label:'add', desc:'Mark a LaTeX command as a placeholder.',
+              args:[{name:'cmd_name',desc:'LaTeX command name'}] },
+            { id:'latex-pc-remove', label:'remove', desc:'Remove from placeholder list.',
+              args:[{name:'cmd_name',desc:'LaTeX command name'}] }
+          ]
+        },
+        { id:'latex-cmd-spec', label:'cmd-spec', desc:'Define argument structure of custom LaTeX commands.',
+          children:[
+            { id:'latex-cs-set', label:'set', desc:'Define the argument structure.',
+              args:[{name:'cmd_name',desc:'LaTeX command name'}],
+              flags:[{name:'--mandatory, -m',desc:'Number of mandatory {..} args'},{name:'--optional, -o',desc:'Number of optional [..] args'}] },
+            { id:'latex-cs-unset', label:'unset', desc:'Remove the argument structure definition.',
+              args:[{name:'cmd_name',desc:'LaTeX command name'}] }
+          ]
+        },
+        { id:'latex-cmd-args', label:'cmd-args', desc:'Which LaTeX command arguments are translatable.',
+          children:[
+            { id:'latex-ca-set', label:'set', desc:'Set translatable argument indices.',
+              args:[{name:'cmd_name',desc:'LaTeX command name'}],
+              flags:[{name:'--mandatory, -m',desc:'1-based mandatory arg indices'},{name:'--optional, -o',desc:'1-based optional arg indices'}] },
+            { id:'latex-ca-unset', label:'unset', desc:'Remove per-argument translation config.',
+              args:[{name:'cmd_name',desc:'LaTeX command name'}] }
+          ]
+        }
+      ]
+    },
+    { id:'cache', label:'cache', desc:'Manage translation cache.',
+      children:[
+        { id:'cache-sync', label:'sync', desc:'Synchronize translation cache for all target languages.' },
+        { id:'cache-clear', label:'clear', desc:'Clear translation cache entries.',
+          flags:[
+            {name:'--missing-chunks',desc:'Remove entries with missing chunk files'},
+            {name:'--all',desc:'Delete all cache entries'},
+            {name:'--lang',desc:'Limit to a specific language'},
+            {name:'--file',desc:'Limit to a specific file path'},
+            {name:'--keyword',desc:'Limit to chunks containing keyword'},
+            {name:'--checksum',desc:'Delete chunks matching a checksum'}
+          ]
+        }
+      ]
+    },
+    { id:'migrate', label:'migrate', desc:'Migration utilities.',
+      children:[
+        { id:'migrate-toml', label:'toml', desc:'Migrate config.json to config.toml.' }
+      ]
+    }
+  ]
+};
+
+// ─── LAYOUT CONSTANTS ─────────────────────────────────────────────────────────
+const COL_W    = 260;   // horizontal distance between levels
+const PILL_H   = 42;
+const PILL_GAP = 10;
+const START_X  = 60;
+const START_Y  = 80;
+
+// ─── STATE ────────────────────────────────────────────────────────────────────
+const expanded = new Set();   // node ids that are expanded
+const nodeEls  = new Map();   // id → DOM element
+const nodePos  = new Map();   // id → {x, y, w, h}
+
+let panX = 0, panY = 0;
+let dragging = false, dragStartX, dragStartY, panStartX, panStartY;
+let scale = 1;
+
+const world  = document.getElementById('world');
+const svgEl  = document.getElementById('lines');
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+function init() {
+  // Center root vertically
+  const vh = window.innerHeight;
+  panX = 40;
+  panY = vh / 2 - PILL_H / 2;
+  buildNode(TREE, 0, 0);
+  layout();
+  applyPan();
+}
+
+// ─── BUILD DOM NODE ───────────────────────────────────────────────────────────
+function buildNode(data, col, row) {
+  if (nodeEls.has(data.id)) return;
+
+  const el = document.createElement('div');
+  el.className = 'node' + (data.id === 'lesia' ? ' root' : '');
+  el.dataset.id = data.id;
+
+  const label = document.createElement('span');
+  label.className = 'node-label';
+  label.textContent = data.label;
+
+  el.appendChild(label);
+
+  if (data.children) {
+    const btn = document.createElement('span');
+    btn.className = 'node-btn';
+    btn.textContent = '›';
+    btn.onclick = (e) => { e.stopPropagation(); toggleExpand(data); };
+    el.appendChild(btn);
+  }
+
+  if (data.id !== 'lesia') {
+    label.onclick = (e) => { e.stopPropagation(); showDetail(data); };
+    if (!data.children) el.onclick = () => showDetail(data);
+  }
+
+  world.appendChild(el);
+  nodeEls.set(data.id, el);
+}
+
+// ─── TOGGLE EXPAND ───────────────────────────────────────────────────────────
+function toggleExpand(data) {
+  if (expanded.has(data.id)) {
+    // Collapse this node and all descendants
+    collapseSubtree(data);
+  } else {
+    expanded.add(data.id);
+    // Build child DOM nodes
+    if (data.children) {
+      data.children.forEach(ch => buildNode(ch));
+    }
+  }
+  layout();
+  updateExpandedBtns();
+}
+
+function collapseSubtree(data) {
+  expanded.delete(data.id);
+  if (data.children) {
+    data.children.forEach(ch => {
+      collapseSubtree(ch);
+      // Remove DOM node
+      const el = nodeEls.get(ch.id);
+      if (el) { el.remove(); nodeEls.delete(ch.id); nodePos.delete(ch.id); }
+    });
+  }
+}
+
+function updateExpandedBtns() {
+  nodeEls.forEach((el, id) => {
+    const btn = el.querySelector('.node-btn');
+    if (btn) btn.classList.toggle('expanded', expanded.has(id));
+  });
+}
+
+// ─── LAYOUT ──────────────────────────────────────────────────────────────────
+// Returns the total height consumed by this node's subtree
+function layoutNode(data, x, y) {
+  const isExpanded = expanded.has(data.id);
+  const children = isExpanded && data.children ? data.children : [];
+
+  let subtreeH;
+
+  if (children.length === 0) {
+    subtreeH = PILL_H;
+    setPos(data, x, y);
+  } else {
+    // Layout children first to get their heights
+    let childY = y;
+    const childHeights = [];
+    children.forEach(ch => {
+      const h = subtreeHeight(ch);
+      childHeights.push(h);
+    });
+    const totalChildH = childHeights.reduce((a, b) => a + b, 0) + (children.length - 1) * PILL_GAP;
+    subtreeH = Math.max(PILL_H, totalChildH);
+
+    // Center this node vertically in its subtree
+    const myY = y + (subtreeH - PILL_H) / 2;
+    setPos(data, x, myY);
+
+    // Layout children
+    let cy = y;
+    children.forEach((ch, i) => {
+      layoutNode(ch, x + COL_W, cy);
+      cy += childHeights[i] + PILL_GAP;
+    });
+  }
+
+  return subtreeH;
+}
+
+function subtreeHeight(data) {
+  const isExpanded = expanded.has(data.id);
+  const children = isExpanded && data.children ? data.children : [];
+  if (children.length === 0) return PILL_H;
+  const childTotal = children.reduce((sum, ch) => sum + subtreeHeight(ch), 0) + (children.length - 1) * PILL_GAP;
+  return Math.max(PILL_H, childTotal);
+}
+
+function setPos(data, x, y) {
+  nodePos.set(data.id, { x, y });
+  const el = nodeEls.get(data.id);
+  if (el) {
+    el.style.left = x + 'px';
+    el.style.top  = y + 'px';
+    // Measure pill width
+    el.style.minWidth = (data.id === 'lesia' ? 180 : 160) + 'px';
+  }
+}
+
+function layout() {
+  layoutNode(TREE, 0, 0);
+  drawLines();
+  // Animate pills in
+  nodeEls.forEach(el => {
+    el.style.opacity = '1';
+  });
+}
+
+// ─── LINES ───────────────────────────────────────────────────────────────────
+function drawLines() {
+  let paths = '';
+
+  function recurse(data) {
+    if (!expanded.has(data.id) || !data.children) return;
+    const pp = nodePos.get(data.id);
+    if (!pp) return;
+    const el = nodeEls.get(data.id);
+    const pw = el ? el.offsetWidth : 180;
+
+    // origin: right-center of parent pill
+    const ox = pp.x + pw;
+    const oy = pp.y + PILL_H / 2;
+
+    // Fan all lines from single convergence point
+    data.children.forEach(ch => {
+      const cp = nodePos.get(ch.id);
+      if (!cp) return;
+      const tx = cp.x;
+      const ty = cp.y + PILL_H / 2;
+      const mx = ox + (tx - ox) * 0.5;
+      paths += `<path d="M${ox},${oy} C${mx},${oy} ${mx},${ty} ${tx},${ty}"
+        fill="none" stroke="#6870c4" stroke-width="1.5" stroke-opacity="0.5"/>`;
+      recurse(ch);
+    });
+  }
+
+  recurse(TREE);
+  svgEl.innerHTML = paths;
+}
+
+// ─── PAN ─────────────────────────────────────────────────────────────────────
+function applyPan() {
+  world.style.transform = `translate(${panX}px, ${panY}px) scale(${scale})`;
+}
+
+document.addEventListener('mousedown', e => {
+  if (e.target.closest('#detail') || e.target.closest('.node-btn')) return;
+  dragging = true;
+  dragStartX = e.clientX;
+  dragStartY = e.clientY;
+  panStartX  = panX;
+  panStartY  = panY;
+  document.body.classList.add('dragging');
+});
+
+document.addEventListener('mousemove', e => {
+  if (!dragging) return;
+  panX = panStartX + (e.clientX - dragStartX);
+  panY = panStartY + (e.clientY - dragStartY);
+  applyPan();
+});
+
+document.addEventListener('mouseup', () => {
+  dragging = false;
+  document.body.classList.remove('dragging');
+});
+
+document.addEventListener('wheel', e => {
+  e.preventDefault();
+  const delta = e.deltaY > 0 ? 0.9 : 1.1;
+  scale = Math.min(2, Math.max(0.3, scale * delta));
+  applyPan();
+}, { passive: false });
+
+// ─── DETAIL ──────────────────────────────────────────────────────────────────
+function getPath(data) {
+  const parts = [];
+  function search(node) {
+    if (node === data) { parts.push(node.label); return true; }
+    if (node.children) for (const ch of node.children) {
+      if (search(ch)) { parts.unshift(node.label); return true; }
+    }
+    return false;
+  }
+  search(TREE);
+  return parts.join(' ');
+}
+
+function showDetail(data) {
+  document.getElementById('d-path').textContent  = getPath(data);
+  document.getElementById('d-title').textContent = data.label;
+  document.getElementById('d-desc').textContent  = data.desc || '';
+  let body = '';
+  if (data.args?.length) {
+    body += `<div class="d-section"><div class="d-sec-label">Arguments</div>`;
+    data.args.forEach(a => body += `<div class="d-row"><span class="d-tag">${a.name}</span><span class="d-tdesc">${a.desc}</span></div>`);
+    body += '</div>';
+  }
+  if (data.flags?.length) {
+    body += `<div class="d-section"><div class="d-sec-label">Options & Flags</div>`;
+    data.flags.forEach(f => body += `<div class="d-row"><span class="d-tag">${f.name}</span><span class="d-tdesc">${f.desc}</span></div>`);
+    body += '</div>';
+  }
+  document.getElementById('d-body').innerHTML = body;
+  document.getElementById('detail').classList.add('open');
+}
+
+function closeDetail() {
+  document.getElementById('detail').classList.remove('open');
+}
+
+// ─── START ────────────────────────────────────────────────────────────────────
+window.addEventListener('resize', () => { drawLines(); });
+init();
+// Auto-expand root
+expanded.add('lesia');
+layout();
+updateExpandedBtns();
+</script>
+</body>
+</html>
