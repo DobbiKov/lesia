@@ -6,7 +6,7 @@ from typing_extensions import Annotated
 
 from .project import init, info_on_project, translation_status, list_translatable_files, sync_files
 from .lang import lang_app
-from .config import config_app
+from .config import source_app, target_app
 from .file import file_app
 from .llm import llm_app
 from .vocab import vocab_app
@@ -56,7 +56,8 @@ app.command("sync")(sync_files)
 
 # --- Sub-apps ---
 app.add_typer(lang_app)
-app.add_typer(config_app)
+app.add_typer(source_app)
+app.add_typer(target_app)
 app.add_typer(file_app)
 app.add_typer(llm_app)
 app.add_typer(vocab_app)

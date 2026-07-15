@@ -5,14 +5,8 @@ from pathlib import Path
 from lesia import errors
 from ._common import get_project_from_context
 
-config_app = typer.Typer(name="config", help="Configure project source and target directories.", no_args_is_help=True)
-
 source_app = typer.Typer(name="source", help="Manage the source directory.", no_args_is_help=True)
 target_app = typer.Typer(name="target", help="Manage target directories.", no_args_is_help=True)
-
-config_app.add_typer(source_app)
-config_app.add_typer(target_app)
-
 
 @source_app.command("set")
 def set_source_dir(
