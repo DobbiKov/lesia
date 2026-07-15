@@ -167,10 +167,17 @@ class TranslationProcessError(TranslateFileError):
 
 
 class ChunkTranslationFailed(TranslateFileError):
-    """Signals that a chunk could not be translated and should be left unchanged."""
+    """Signals that a chunk could not be translated."""
 
     def __init__(self, chunk: str, original_exception: Optional[Exception] = None):
-        super().__init__("Chunk translation failed.")
+        if original_exception is None:
+            message = "Chunk translation failed."
+        else:
+            message = (
+                "Chunk translation failed due to "
+                f"{original_exception.__class__.__name__}: {original_exception}"
+            )
+        super().__init__(message)
         self.chunk = chunk
         self.original_exception = original_exception
 

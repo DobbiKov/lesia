@@ -371,49 +371,45 @@ def test_model_overloaded_exhausts_retries(monkeypatch):
     assert caller.calls == 2
 
 
-def test_myst_chunk_metadata_tagged_on_failure():
+def test_myst_chunk_failure_propagates():
     chunk = "Paragraph needing translation.\n"
     cell = {"metadata": {}, "source": chunk}
 
     error = ChunkTranslationFailed(chunk, RuntimeError("boom"))
 
-    result_cell = asyncio.run(
-        myst_file_translator.translate_chunk_async(
-            cell=cell,
-            source_language=Language.ENGLISH,
-            target_language=Language.FRENCH,
-            relative_path="docs/example.md",
-            vocab_list=None,
-            tr=FailingTranslator(error),
+    with pytest.raises(ChunkTranslationFailed, match="RuntimeError: boom"):
+        asyncio.run(
+            myst_file_translator.translate_chunk_async(
+                cell=cell,
+                source_language=Language.ENGLISH,
+                target_language=Language.FRENCH,
+                relative_path="docs/example.md",
+                vocab_list=None,
+                tr=FailingTranslator(error),
+            )
         )
-    )
-
-    assert result_cell["source"] == chunk
-    assert result_cell["metadata"].get("not-translated-due-to-exception") == "True"
 
 
-def test_latex_chunk_metadata_tagged_on_failure():
+def test_latex_chunk_failure_propagates():
     chunk = "\\section{Title}"
     cell = {"metadata": {}, "source": chunk}
 
     error = ChunkTranslationFailed(chunk, RuntimeError("boom"))
 
-    result_cell = asyncio.run(
-        latex_file_translator.translate_chunk_async(
-            cell=cell,
-            source_language=Language.ENGLISH,
-            target_language=Language.FRENCH,
-            relative_path="docs/example.md",
-            vocab_list=None,
-            tr=FailingTranslator(error),
+    with pytest.raises(ChunkTranslationFailed, match="RuntimeError: boom"):
+        asyncio.run(
+            latex_file_translator.translate_chunk_async(
+                cell=cell,
+                source_language=Language.ENGLISH,
+                target_language=Language.FRENCH,
+                relative_path="docs/example.md",
+                vocab_list=None,
+                tr=FailingTranslator(error),
+            )
         )
-    )
-
-    assert result_cell["source"] == chunk
-    assert result_cell["metadata"].get("not-translated-due-to-exception") == "True"
 
 
-def test_notebook_cell_metadata_tagged_on_failure():
+def test_notebook_cell_failure_propagates():
     chunk = "Notebook cell text."
     cell = {
         "cell_type": "markdown",
@@ -423,19 +419,17 @@ def test_notebook_cell_metadata_tagged_on_failure():
 
     error = ChunkTranslationFailed(chunk, RuntimeError("boom"))
 
-    result_cell = asyncio.run(
-        notebook_file_translator.translate_jupyter_cell_async(
-            cell=cell,
-            source_language=Language.ENGLISH,
-            target_language=Language.FRENCH,
-            vocab_list=None,
-            tr=FailingTranslator(error),
-            relative_path="docs/example.md",
+    with pytest.raises(ChunkTranslationFailed, match="RuntimeError: boom"):
+        asyncio.run(
+            notebook_file_translator.translate_jupyter_cell_async(
+                cell=cell,
+                source_language=Language.ENGLISH,
+                target_language=Language.FRENCH,
+                vocab_list=None,
+                tr=FailingTranslator(error),
+                relative_path="docs/example.md",
+            )
         )
-    )
-
-    assert result_cell["source"] == chunk
-    assert "not-translated-due-to-exception" in result_cell["metadata"].get("tags", [])
 
 
 def test_oversized_typst_chunk_is_translated_via_internal_subchunks(monkeypatch):

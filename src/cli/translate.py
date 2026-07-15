@@ -1,5 +1,6 @@
 import asyncio
 import csv
+import traceback
 from pathlib import Path
 
 import typer
@@ -62,6 +63,7 @@ async def _do_translate(
     all_files: bool,
     vocab_path: Path | None,
     use_reasoning_model: bool,
+    verbose: bool = False,
 ) -> None:
     try:
         resolved_lang = project.config.resolve_language(lang)
@@ -109,9 +111,13 @@ async def _do_translate(
                 _print_translation_stats(total_stats)
 
     except errors.TranslateFileError as e:
+        if verbose:
+            traceback.print_exception(type(e), e, e.__traceback__)
         typer.secho(f"Error during translation: {e}", fg=typer.colors.RED, err=True)
         raise typer.Exit(code=1)
     except Exception as e:
+        if verbose:
+            traceback.print_exception(type(e), e, e.__traceback__)
         typer.secho(f"An unexpected error occurred during translation: {e}", fg=typer.colors.RED, err=True)
         raise typer.Exit(code=1)
 
@@ -146,4 +152,5 @@ def translate_cli(
         raise typer.Exit(code=1)
 
     project = get_project_from_context(ctx)
-    asyncio.run(_do_translate(project, to, paths, all_files, vocabulary, use_reasoning_model))
+    verbose = bool((ctx.obj or {}).get("verbose"))
+    asyncio.run(_do_translate(project, to, paths, all_files, vocabulary, use_reasoning_model, verbose))

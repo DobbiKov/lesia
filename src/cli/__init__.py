@@ -34,6 +34,7 @@ def main(
     ver: Annotated[bool, typer.Option("--version", help="Show the version and exit.", is_eager=True)] = False,
 ) -> None:
     from loguru import logger
+    ctx.obj = {"verbose": verbose}
     if ver:
         typer.echo(f"lesia {_version}")
         raise typer.Exit()

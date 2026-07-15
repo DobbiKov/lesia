@@ -3,7 +3,6 @@ from ..prompts import prompt_jupyter_code, prompt_jupyter_md
 from pathlib import Path
 
 from lesia.translator_retrieval import ChunkTranslator, CodeMeta, Meta, TranslationStats, build_translator_with_model
-from lesia.errors import ChunkTranslationFailed
 from lesia.vocab_list import VocabList
 from ..enums import ChunkType, DocumentType, Language
 from ..helpers import calculate_checksum
@@ -50,25 +49,18 @@ async def translate_jupyter_cell_async(
     cell["metadata"].setdefault("tags", [])
     cell["metadata"]["src_checksum"] = checksum
 
-    try:
-        if cell_type == "code":
-            translated, from_cache = await translate_code_cell_async(src_txt, source_language, target_language, vocab_list, tr, relative_path)
-        else:
-            translated, from_cache = await translate_markdown_cell_async(src_txt, source_language, target_language, vocab_list, tr, relative_path)
-        cell["source"] = translated
-        tags = cell["metadata"]["tags"]
-        if not from_cache:
-            if "needs_review" not in tags:
-                tags.append("needs_review")
-        elif existing_meta and "needs_review" in (existing_meta.get(checksum) or {}).get("tags", []):
-            if "needs_review" not in tags:
-                tags.append("needs_review")
-    except ChunkTranslationFailed as exc:
-        tags = cell["metadata"].setdefault("tags", [])
-        if "not-translated-due-to-exception" not in tags:
-            tags.append("not-translated-due-to-exception")
-        cell["metadata"]["not-translated-due-to-exception"] = "True"
-        cell["source"] = exc.chunk
+    if cell_type == "code":
+        translated, from_cache = await translate_code_cell_async(src_txt, source_language, target_language, vocab_list, tr, relative_path)
+    else:
+        translated, from_cache = await translate_markdown_cell_async(src_txt, source_language, target_language, vocab_list, tr, relative_path)
+    cell["source"] = translated
+    tags = cell["metadata"]["tags"]
+    if not from_cache:
+        if "needs_review" not in tags:
+            tags.append("needs_review")
+    elif existing_meta and "needs_review" in (existing_meta.get(checksum) or {}).get("tags", []):
+        if "needs_review" not in tags:
+            tags.append("needs_review")
 
     return cell
 

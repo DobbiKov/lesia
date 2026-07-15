@@ -7,7 +7,6 @@ from lesia.translator_retrieval import ChunkTranslator, Meta, TranslationStats, 
 from lesia.vocab_list import VocabList
 from ..enums import ChunkType, DocumentType, Language
 from ..helpers import calculate_checksum
-from lesia.errors import ChunkTranslationFailed
 from loguru import logger
 
 
@@ -94,16 +93,12 @@ async def translate_chunk_async(
 
    cell["metadata"]["src_checksum"] = checksum
 
-   try:
-       translated, from_cache = await translate_any_chunk_async(src_txt, source_language, target_language, relative_path, vocab_list, tr)
-       cell["source"] = translated
-       if not from_cache:
-           cell["metadata"]["needs_review"] = "True"
-       elif existing_meta and (existing_meta.get(checksum) or {}).get("needs_review") == "True":
-           cell["metadata"]["needs_review"] = "True"
-   except ChunkTranslationFailed as exc:
-       cell["metadata"]["not-translated-due-to-exception"] = "True"
-       cell["source"] = exc.chunk
+   translated, from_cache = await translate_any_chunk_async(src_txt, source_language, target_language, relative_path, vocab_list, tr)
+   cell["source"] = translated
+   if not from_cache:
+       cell["metadata"]["needs_review"] = "True"
+   elif existing_meta and (existing_meta.get(checksum) or {}).get("needs_review") == "True":
+       cell["metadata"]["needs_review"] = "True"
 
    return cell
 
