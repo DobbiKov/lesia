@@ -8,7 +8,7 @@ from ._common import get_project_from_context
 source_app = typer.Typer(name="source", help="Manage the source directory.", no_args_is_help=True)
 target_app = typer.Typer(name="target", help="Manage target directories.", no_args_is_help=True)
 
-@source_app.command("set")
+@source_app.command("add")
 def set_source_dir(
     ctx: typer.Context,
     dir_name: Annotated[str, typer.Argument(help="Name of the source directory (relative to project root).")],
@@ -44,7 +44,7 @@ def source_info(ctx: typer.Context):
     typer.echo(f"  directory: {src_dir_name}/")
 
 
-@target_app.command("set")
+@target_app.command("add")
 def set_target_dir(
     ctx: typer.Context,
     dir_name: Annotated[Path, typer.Argument(help="Target directory name (relative to project root).", case_sensitive=True)],
