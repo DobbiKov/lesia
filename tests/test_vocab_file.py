@@ -280,7 +280,7 @@ class TestCliInfoShowsVocabFile:
     def _setup_with_source(self, tmp_path):
         src = tmp_path / "src_fr"
         src.mkdir()
-        runner.invoke(app, ["config", "source", "set", "src_fr", "French"])
+        runner.invoke(app, ["source", "add", "src_fr", "French"])
 
     def test_info_shows_not_set_when_no_vocab_file(self, cli_project, tmp_path):
         self._setup_with_source(tmp_path)

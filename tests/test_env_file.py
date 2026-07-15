@@ -409,7 +409,7 @@ class TestCliInfoShowsEnvFile:
     def test_info_shows_not_set_when_no_env_file(self, cli_project, tmp_path):
         src = tmp_path / "src_en"
         src.mkdir()
-        runner.invoke(app, ["config", "source", "set", "src_en", "English"])
+        runner.invoke(app, ["source", "add", "src_en", "English"])
 
         result = runner.invoke(app, ["info"])
         assert result.exit_code == 0
@@ -422,7 +422,7 @@ class TestCliInfoShowsEnvFile:
         # Need a source dir set for info to print env file details
         src = tmp_path / "src_en"
         src.mkdir()
-        runner.invoke(app, ["config", "source", "set", "src_en", "English"])
+        runner.invoke(app, ["source", "add", "src_en", "English"])
         runner.invoke(app, ["llm", "env-file", "set", str(env_file)])
 
         result = runner.invoke(app, ["info"])

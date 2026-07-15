@@ -71,7 +71,7 @@ def test_cli_set_source_with_predefined_language(project, tmp_path):
     src_dir = tmp_path / "src_en"
     src_dir.mkdir()
 
-    result = runner.invoke(app, ["config", "source", "set", "src_en", "English"])
+    result = runner.invoke(app, ["source", "add", "src_en", "English"])
     assert result.exit_code == 0
     assert "English" in result.output
 
@@ -85,7 +85,7 @@ def test_cli_set_source_with_custom_language(project, tmp_path):
     src_dir.mkdir()
     runner.invoke(app, ["lang", "add", "Catalan", "_ca"])
 
-    result = runner.invoke(app, ["config", "source", "set", "src_ca", "Catalan"])
+    result = runner.invoke(app, ["source", "add", "src_ca", "Catalan"])
     assert result.exit_code == 0
     assert "Catalan" in result.output
 
@@ -98,7 +98,7 @@ def test_cli_set_source_unknown_language_errors(project, tmp_path):
     src_dir = tmp_path / "src_kl"
     src_dir.mkdir()
 
-    result = runner.invoke(app, ["config", "source", "set", "src_kl", "Klingon"])
+    result = runner.invoke(app, ["source", "add", "src_kl", "Klingon"])
     assert result.exit_code == 1
     assert "Unknown language" in result.output
 
@@ -110,9 +110,9 @@ def test_cli_set_target_with_predefined_language(project, tmp_path):
     tgt_dir = tmp_path / "tgt_fr"
     src_dir.mkdir()
     tgt_dir.mkdir()
-    runner.invoke(app, ["config", "source", "set", "src_en", "English"])
+    runner.invoke(app, ["source", "add", "src_en", "English"])
 
-    result = runner.invoke(app, ["config", "target", "set", "tgt_fr", "French"])
+    result = runner.invoke(app, ["target", "add", "tgt_fr", "French"])
     assert result.exit_code == 0
     assert "French" in result.output
 
@@ -125,10 +125,10 @@ def test_cli_set_target_with_custom_language(project, tmp_path):
     tgt_dir = tmp_path / "tgt_ca"
     src_dir.mkdir()
     tgt_dir.mkdir()
-    runner.invoke(app, ["config", "source", "set", "src_en", "English"])
+    runner.invoke(app, ["source", "add", "src_en", "English"])
     runner.invoke(app, ["lang", "add", "Catalan", "_ca"])
 
-    result = runner.invoke(app, ["config", "target", "set", "tgt_ca", "Catalan"])
+    result = runner.invoke(app, ["target", "add", "tgt_ca", "Catalan"])
     assert result.exit_code == 0
     assert "Catalan" in result.output
 
@@ -140,9 +140,9 @@ def test_cli_set_target_with_custom_language(project, tmp_path):
 def test_cli_set_target_rejects_source_directory(project, tmp_path):
     shared_dir = tmp_path / "doc"
     shared_dir.mkdir()
-    runner.invoke(app, ["config", "source", "set", "doc", "French"])
+    runner.invoke(app, ["source", "add", "doc", "French"])
 
-    result = runner.invoke(app, ["config", "target", "set", "doc", "English"])
+    result = runner.invoke(app, ["target", "add", "doc", "English"])
 
     assert result.exit_code == 1
     assert "same as the source directory" in result.output
@@ -153,9 +153,9 @@ def test_cli_set_target_unknown_language_errors(project, tmp_path):
     tgt_dir = tmp_path / "tgt_kl"
     src_dir.mkdir()
     tgt_dir.mkdir()
-    runner.invoke(app, ["config", "source", "set", "src_en", "English"])
+    runner.invoke(app, ["source", "add", "src_en", "English"])
 
-    result = runner.invoke(app, ["config", "target", "set", "tgt_kl", "Klingon"])
+    result = runner.invoke(app, ["target", "add", "tgt_kl", "Klingon"])
     assert result.exit_code == 1
     assert "Unknown language" in result.output
 
@@ -168,10 +168,10 @@ def test_cli_remove_target_with_custom_language(project, tmp_path):
     src_dir.mkdir()
     tgt_dir.mkdir()
     runner.invoke(app, ["lang", "add", "Catalan", "_ca"])
-    runner.invoke(app, ["config", "source", "set", "src_en", "English"])
-    runner.invoke(app, ["config", "target", "set", "tgt_ca", "Catalan"])
+    runner.invoke(app, ["source", "add", "src_en", "English"])
+    runner.invoke(app, ["target", "add", "tgt_ca", "Catalan"])
 
-    result = runner.invoke(app, ["config", "target", "remove", "Catalan"])
+    result = runner.invoke(app, ["target", "remove", "Catalan"])
     assert result.exit_code == 0
     assert "Catalan" in result.output
 
@@ -181,7 +181,7 @@ def test_cli_remove_target_with_custom_language(project, tmp_path):
 
 
 def test_cli_remove_target_unknown_language_errors(project, tmp_path):
-    result = runner.invoke(app, ["config", "target", "remove", "Klingon"])
+    result = runner.invoke(app, ["target", "remove", "Klingon"])
     assert result.exit_code == 1
     assert "Unknown language" in result.output
 
@@ -198,8 +198,8 @@ def _setup_project_with_custom_target(tmp_path):
     trans_file.write_text("Hello world", encoding="utf-8")
 
     runner.invoke(app, ["lang", "add", "Catalan", "_ca"])
-    runner.invoke(app, ["config", "source", "set", "src_en", "English"])
-    runner.invoke(app, ["config", "target", "set", "tgt_ca", "Catalan"])
+    runner.invoke(app, ["source", "add", "src_en", "English"])
+    runner.invoke(app, ["target", "add", "tgt_ca", "Catalan"])
     runner.invoke(app, ["file", "add", "src_en/doc.txt"])
     return trans_file
 
@@ -312,7 +312,7 @@ def test_cli_set_source_with_short(project, tmp_path):
     src_dir.mkdir()
     runner.invoke(app, ["lang", "add", "American English", "_ae", "--short", "AmEng"])
 
-    result = runner.invoke(app, ["config", "source", "set", "src_ae", "AmEng"])
+    result = runner.invoke(app, ["source", "add", "src_ae", "AmEng"])
     assert result.exit_code == 0
 
     reloaded = load_project(str(tmp_path))
@@ -325,10 +325,10 @@ def test_cli_set_target_with_short(project, tmp_path):
     tgt_dir = tmp_path / "tgt_ae"
     src_dir.mkdir()
     tgt_dir.mkdir()
-    runner.invoke(app, ["config", "source", "set", "src_en", "English"])
+    runner.invoke(app, ["source", "add", "src_en", "English"])
     runner.invoke(app, ["lang", "add", "American English", "_ae", "--short", "AmEng"])
 
-    result = runner.invoke(app, ["config", "target", "set", "tgt_ae", "AmEng"])
+    result = runner.invoke(app, ["target", "add", "tgt_ae", "AmEng"])
     assert result.exit_code == 0
 
     reloaded = load_project(str(tmp_path))
@@ -342,10 +342,10 @@ def test_cli_remove_target_with_short(project, tmp_path):
     src_dir.mkdir()
     tgt_dir.mkdir()
     runner.invoke(app, ["lang", "add", "American English", "_ae", "--short", "AmEng"])
-    runner.invoke(app, ["config", "source", "set", "src_en", "English"])
-    runner.invoke(app, ["config", "target", "set", "tgt_ae", "AmEng"])
+    runner.invoke(app, ["source", "add", "src_en", "English"])
+    runner.invoke(app, ["target", "add", "tgt_ae", "AmEng"])
 
-    result = runner.invoke(app, ["config", "target", "remove", "AmEng"])
+    result = runner.invoke(app, ["target", "remove", "AmEng"])
     assert result.exit_code == 0
 
     reloaded = load_project(str(tmp_path))
