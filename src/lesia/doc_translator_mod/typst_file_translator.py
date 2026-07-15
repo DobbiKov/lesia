@@ -106,8 +106,17 @@ async def translate_chunk_async(
         cell["source"] = translated
         if not from_cache:
             cell["metadata"]["needs_review"] = "True"
-        elif existing_meta and (existing_meta.get(checksum) or {}).get("needs_review") == "True":
-            cell["metadata"]["needs_review"] = "True"
+            if getattr(tr, "last_translation_service", None):
+                cell["metadata"]["translation_service"] = tr.last_translation_service
+            if getattr(tr, "last_translation_model", None):
+                cell["metadata"]["translation_model"] = tr.last_translation_model
+        else:
+            prev_meta = (existing_meta or {}).get(checksum) or {}
+            if prev_meta.get("needs_review") == "True":
+                cell["metadata"]["needs_review"] = "True"
+            for key in ("translation_service", "translation_model"):
+                if prev_meta.get(key):
+                    cell["metadata"][key] = prev_meta[key]
     except ChunkTranslationFailed as exc:
         cell["metadata"]["not-translated-due-to-exception"] = "True"
         cell["source"] = exc.chunk

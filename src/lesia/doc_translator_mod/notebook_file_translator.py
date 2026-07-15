@@ -60,9 +60,17 @@ async def translate_jupyter_cell_async(
         if not from_cache:
             if "needs_review" not in tags:
                 tags.append("needs_review")
-        elif existing_meta and "needs_review" in (existing_meta.get(checksum) or {}).get("tags", []):
-            if "needs_review" not in tags:
+            if getattr(tr, "last_translation_service", None):
+                cell["metadata"]["translation_service"] = tr.last_translation_service
+            if getattr(tr, "last_translation_model", None):
+                cell["metadata"]["translation_model"] = tr.last_translation_model
+        else:
+            prev_meta = (existing_meta or {}).get(checksum) or {}
+            if "needs_review" in prev_meta.get("tags", []) and "needs_review" not in tags:
                 tags.append("needs_review")
+            for key in ("translation_service", "translation_model"):
+                if prev_meta.get(key):
+                    cell["metadata"][key] = prev_meta[key]
     except ChunkTranslationFailed as exc:
         tags = cell["metadata"].setdefault("tags", [])
         if "not-translated-due-to-exception" not in tags:

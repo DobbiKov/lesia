@@ -352,6 +352,9 @@ class ChunkTranslator:
         self._xml_retries_before_reasoning = max(0, xml_retries_before_reasoning)
         self._session_checksums: set[str] = set()
         self.stats = TranslationStats()
+        # Provenance of the most recent model-backed translation, for chunk metadata.
+        self.last_translation_service: str | None = None
+        self.last_translation_model: str | None = None
 
     async def _translate_oversized_typst_chunk_async(
         self,
@@ -409,6 +412,11 @@ class ChunkTranslator:
                 caller.wait_cooldown()
                 return res
             strategy.set_call_model(f_call_model)
+            self.last_translation_service = caller.service_name
+            self.last_translation_model = caller.model
+        else:
+            self.last_translation_service = None
+            self.last_translation_model = None
         return await self._translate_with_retry(strategy, meta)
 
     async def translate_or_fetch(self, meta: Meta, _skip_stats: bool = False) -> tuple[str, bool]:
