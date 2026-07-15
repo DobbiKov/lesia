@@ -143,6 +143,9 @@ class InMemoryLookupStore(InMemoryStore):
 
 
 class RaisingCaller:
+    service_name = "fake-service"
+    model = "fake-model"
+
     def __init__(self):
         self.called = False
         self.waited = False
@@ -156,6 +159,9 @@ class RaisingCaller:
 
 
 class OverloadedThenSucceedCaller:
+    service_name = "fake-service"
+    model = "fake-model"
+
     def __init__(self, fail_times: int):
         self.fail_times = fail_times
         self.calls = 0
@@ -172,6 +178,9 @@ class OverloadedThenSucceedCaller:
 
 
 class AlwaysOverloadedCaller:
+    service_name = "fake-service"
+    model = "fake-model"
+
     def __init__(self):
         self.calls = 0
 

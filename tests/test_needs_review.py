@@ -184,6 +184,9 @@ class PersistingStore:
 class CountingCaller:
     """Caller that counts invocations and returns a fixed translated string."""
 
+    service_name = "fake-service"
+    model = "fake-model"
+
     def __init__(self):
         self.calls = 0
 
@@ -270,6 +273,9 @@ class TestSessionChecksums:
 
 class RaisingCaller:
     """Caller that must never be invoked — raises if called."""
+
+    service_name = "fake-service"
+    model = "fake-model"
 
     def call(self, prompt: str) -> str:
         raise AssertionError("LLM must not be called for placeholder-only chunks")
