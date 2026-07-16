@@ -194,10 +194,37 @@ class TestChunkLevelErrorsStayChunkLevel:
 # translate_all_for_language stops the run on abort
 # ---------------------------------------------------------------------------
 
+def _make_project_with_files(tmp_path, n_files: int):
+    """Create a project with n_files translatable .md files."""
+    from lesia.constants import CONF_DIR
+    from lesia.project_config_models import ProjectConfig
+    from lesia.project_manager import Project
+
+    project_root = tmp_path / "proj"
+    src_dir = project_root / "src_en"
+    tgt_dir = project_root / "tgt_fr"
+    src_dir.mkdir(parents=True)
+    tgt_dir.mkdir(parents=True)
+    (project_root / CONF_DIR).mkdir(parents=True)
+
+    config = ProjectConfig.new(project_name="proj")
+    config.set_runtime_root_path(project_root)
+    config.set_src_dir_config(src_dir, Language.ENGLISH)
+    config.add_lang_dir_config(tgt_dir, Language.FRENCH)
+    config.set_llm_service_with_model("google", "gemini-2.0-flash")
+
+    source_files = []
+    for i in range(n_files):
+        f = src_dir / f"doc{i}.md"
+        f.write_text(f"Hello {i}.", encoding="utf-8")
+        config.make_file_translatable(f, True)
+        source_files.append(f)
+
+    return Project(project_root, config), source_files
+
+
 class TestTranslateAllAborts:
     def test_abort_stops_remaining_files(self, tmp_path, monkeypatch):
-        from tests.test_translate_all_stats import _make_project_with_files
-
         project, _ = _make_project_with_files(tmp_path, n_files=3)
         mock = AsyncMock(side_effect=TranslationAbortedError("Authentication failed"))
         monkeypatch.setattr(project_runtime, "translate_single_file", mock)
