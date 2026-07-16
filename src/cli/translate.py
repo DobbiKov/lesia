@@ -117,6 +117,9 @@ async def _do_translate(
                 typer.echo("--- Total statistics ---")
                 _print_translation_stats(total_stats)
 
+    except errors.TranslationAbortedError as e:
+        typer.secho(f"Translation aborted: {e}", fg=typer.colors.RED, err=True)
+        raise typer.Exit(code=1)
     except errors.TranslateFileError as e:
         typer.secho(f"Error during translation: {e}", fg=typer.colors.RED, err=True)
         raise typer.Exit(code=1)

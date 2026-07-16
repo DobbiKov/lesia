@@ -13,6 +13,7 @@ from .errors import (
     NoSourceLanguageError,
     TargetLanguageNotInProjectError,
     TranslateFileError,
+    TranslationAbortedError,
     TranslationCacheSyncError,
     TranslationCacheClearError,
     TranslationProcessError,
@@ -509,6 +510,9 @@ async def translate_all_for_language(
             total_stats = total_stats + file_stats
             if on_file_translated is not None:
                 on_file_translated(file_path, file_stats)
+        except TranslationAbortedError:
+            # Service-level failure: the remaining files would fail identically.
+            raise
         except TranslateFileError as e:
             print(f"ERROR translating {file_path.name}: {e}. Skipping this file.")
     print(f"Finished translation to {target_lang}.")

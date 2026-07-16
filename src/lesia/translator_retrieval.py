@@ -17,14 +17,52 @@ from lesia.prompts import xml_translation_prompt
 from lesia.translator import _ask_gemini_model
 from lesia.prompts import prompt4, xml_with_previous_translation_prompt
 from unified_model_caller import LLMCaller
-from unified_model_caller.errors import ApiCallError
-from lesia.errors import ChunkTranslationFailed, PlaceholderVerificationError
-try:
-    from unified_model_caller.errors import ModelOverloadedError
-except ImportError:  # pragma: no cover - unified_model_caller may not expose the new error yet
-    class ModelOverloadedError(ApiCallError):
-        """Fallback stub when unified_model_caller doesn't expose ModelOverloadedError."""
-        pass
+from unified_model_caller.errors import (
+    ApiCallError,
+    ApiConnectionError,
+    AuthenticationError,
+    ModelOverloadedError,
+    NotFoundError,
+    RateLimitError,
+    ServiceUnavailableError,
+)
+from lesia.errors import ChunkTranslationFailed, PlaceholderVerificationError, TranslationAbortedError
+
+# Errors worth retrying with backoff: the service may recover on its own.
+TRANSIENT_API_ERRORS = (
+    ModelOverloadedError,
+    RateLimitError,
+    ServiceUnavailableError,
+    ApiConnectionError,
+)
+
+# Errors that doom every subsequent chunk the same way. Transient errors are
+# fatal too once they survive the backoff retries in `_translate_with_retry`.
+# Base ApiCallError, BadRequestError and InvalidResponseError stay chunk-level:
+# they can be specific to one chunk's prompt or response.
+FATAL_API_ERRORS = (
+    AuthenticationError,
+    NotFoundError,
+) + TRANSIENT_API_ERRORS
+
+
+def _fatal_error_message(exc: ApiCallError, caller: "LLMCaller | None") -> str:
+    """User-facing explanation of why the translation run is being aborted."""
+    service = getattr(exc, "service", None) or getattr(caller, "service_name", None) or "the LLM service"
+    model = getattr(caller, "model", None) or "?"
+    if isinstance(exc, AuthenticationError):
+        return (
+            f"Authentication with service '{service}' failed — check your API key "
+            f"(LLM_API_KEY, or 'lesia set-env-file'). Original error: {exc}"
+        )
+    if isinstance(exc, NotFoundError):
+        return (
+            f"Model '{model}' was not found on service '{service}' — "
+            f"check the configured model name. Original error: {exc}"
+        )
+    if isinstance(exc, ApiConnectionError):
+        return f"Could not reach service '{service}'. Original error: {exc}"
+    return f"Service '{service}' kept failing after retries. Original error: {exc}"
 
 
 @dataclass
@@ -634,8 +672,9 @@ class ChunkTranslator:
                 # if we used all allowed attemps and attempt with reasoning
                 # model, then we raise an error
                 if is_final:
-                    logger.error(
-                        f"Chunk translation failed after {total_attempts} attempts due to {exc.__class__.__name__}: {exc}",
+                    logger.warning(
+                        f"Chunk translation failed after {total_attempts} attempts due to {exc.__class__.__name__}: {exc} — "
+                        "chunk left untranslated, see the failure summary.",
                     )
                     if not _skip_stats:
                         self.stats.chunks_failed += 1
@@ -649,9 +688,14 @@ class ChunkTranslator:
                     logger.warning(f"Invalid XML on attempt {attempt}, retrying with reasoning model...")
                 else:
                     logger.warning(f"Invalid XML on attempt {attempt}, retrying with standard model...")
+            except FATAL_API_ERRORS as exc:
+                message = _fatal_error_message(exc, active_caller)
+                logger.error(f"Aborting translation: {message}")
+                raise TranslationAbortedError(message, exc) from exc
             except Exception as exc:  # noqa: BLE001
-                logger.error(
-                    f"Chunk translation failed on attempt {attempt} due to {exc.__class__.__name__}: {exc}",
+                logger.warning(
+                    f"Chunk translation failed due to {exc.__class__.__name__}: {exc} — "
+                    "chunk left untranslated, see the failure summary.",
                 )
                 if not _skip_stats:
                     self.stats.chunks_failed += 1
@@ -683,16 +727,16 @@ class ChunkTranslator:
         for attempt in range(1, self._overload_attempts + 1):
             try:
                 return await strategy.run(meta)
-            except ModelOverloadedError as exc:
+            except TRANSIENT_API_ERRORS as exc:
                 if attempt >= self._overload_attempts:
                     logger.error(
-                        f"Model overloaded after {attempt} attempts, giving up.",
+                        f"{type(exc).__name__} after {attempt} attempts, giving up.",
                     )
                     raise exc
 
                 wait_seconds = min(delay, self._overload_max_delay)
                 logger.warning(
-                    f"Model overloaded (attempt {attempt}/{self._overload_attempts}). Retrying in {wait_seconds:.2f}s...",
+                    f"{type(exc).__name__}: {exc} (attempt {attempt}/{self._overload_attempts}). Retrying in {wait_seconds:.2f}s...",
                 )
                 await asyncio.sleep(wait_seconds)
                 delay = min(delay * 2, self._overload_max_delay)

@@ -18,7 +18,7 @@ dependencies = [
     "tomli-w>=1.0.0",
     "typer>=0.20.0",
     "typst-syntax>=0.1.6",
-    "unified-model-caller==0.2.7",
+    "unified-model-caller==0.2.8",
 ]
 
 [tool.setuptools.packages.find]

@@ -166,6 +166,16 @@ class TranslationProcessError(TranslateFileError):
         self.original_exception = original_exception
 
 
+class TranslationAbortedError(TranslateFileError):
+    """Fatal service-level failure (bad API key, unknown model, unreachable
+    service): every subsequent chunk would fail identically, so the whole
+    translation run stops instead of failing chunk by chunk."""
+
+    def __init__(self, message: str, original_exception: Optional[Exception] = None):
+        super().__init__(message)
+        self.original_exception = original_exception
+
+
 class ChunkTranslationFailed(TranslateFileError):
     """Signals that a chunk could not be translated and should be left unchanged."""
 

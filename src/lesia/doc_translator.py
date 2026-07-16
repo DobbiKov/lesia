@@ -1,5 +1,6 @@
 from loguru import logger
 from unified_model_caller import LLMCaller
+from unified_model_caller.errors import InvalidServiceError
 
 from lesia.doc_translator_mod import myst_file_translator
 from lesia.vocab_list import VocabList
@@ -39,13 +40,19 @@ async def translate_file_to_file_async(
     logger.trace(doc_type)
     llm_api_key, llm_reasoning_api_key = resolve_api_keys(env_file)
     main_api_key = (llm_reasoning_api_key or llm_api_key) if use_reasoning_model else llm_api_key
-    llm_caller = LLMCaller(llm_service, llm_model, main_api_key or "")
+    try:
+        llm_caller = LLMCaller(llm_service, llm_model, main_api_key or "")
+    except InvalidServiceError as e:
+        raise TranslationProcessError(f"Unknown LLM service '{llm_service}': {e}", original_exception=e)
     reasoning_caller = None
     if not main_api_key and llm_caller.requires_token():
         key_name = "LLM_REASONING_API_KEY" if use_reasoning_model else "LLM_API_KEY"
         raise TranslationProcessError(f"{key_name} is not set but is required for service '{llm_service}'. Set it in your shell or via 'lesia set-env-file'.", original_exception=None)
     if llm_reasoning_service and llm_reasoning_model:
-        reasoning_caller = LLMCaller(llm_reasoning_service, llm_reasoning_model, llm_reasoning_api_key or "")
+        try:
+            reasoning_caller = LLMCaller(llm_reasoning_service, llm_reasoning_model, llm_reasoning_api_key or "")
+        except InvalidServiceError as e:
+            raise TranslationProcessError(f"Unknown LLM reasoning service '{llm_reasoning_service}': {e}", original_exception=e)
         if not llm_reasoning_api_key and reasoning_caller.requires_token():
             raise TranslationProcessError(f"LLM_REASONING_API_KEY (and LLM_API_KEY) is not set but is required for reasoning service '{llm_reasoning_service}'. Set it in your shell or via 'lesia set-env-file'.", original_exception=None)
     try:
