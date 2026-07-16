@@ -128,9 +128,23 @@ async def _do_translate(
         raise typer.Exit(code=1)
 
 
+async def _do_translate_multi(
+    project: Project,
+    langs: list[str],
+    paths: list[Path] | None,
+    all_files: bool,
+    vocab_path: Path | None,
+    use_reasoning_model: bool,
+) -> None:
+    for lang in langs:
+        if len(langs) > 1:
+            typer.secho(f"=== Translating to {lang} ===", fg=typer.colors.CYAN)
+        await _do_translate(project, lang, paths, all_files, vocab_path, use_reasoning_model)
+
+
 def translate_cli(
     ctx: typer.Context,
-    to: Annotated[str, typer.Option("--to", help="Target language (predefined or custom).", case_sensitive=False)],
+    to: Annotated[str | None, typer.Option("--to", help="Target language (predefined or custom). Omit to translate to all configured target languages.", case_sensitive=False)] = None,
     paths: Annotated[list[Path] | None, typer.Argument(help="Files or directories to translate. Omit when using --all.")] = None,
     all_files: Annotated[bool, typer.Option("--all", help="Translate all translatable files in the project.")] = False,
     vocabulary: Annotated[Path | None, typer.Option(help="Path to a CSV vocabulary file.", case_sensitive=False)] = None,
@@ -139,6 +153,7 @@ def translate_cli(
     """Translate files to a target language.
 
     Provide one or more files or directories, or use --all to translate everything.
+    When --to is omitted, translates to every target language configured in the project.
 
     Examples:
 
@@ -149,6 +164,8 @@ def translate_cli(
       lesia translate --to French foo.md bar.md
 
       lesia translate --to French --all
+
+      lesia translate --all
     """
     if all_files and paths:
         typer.secho("Cannot combine --all with explicit file paths.", fg=typer.colors.RED, err=True)
@@ -158,4 +175,17 @@ def translate_cli(
         raise typer.Exit(code=1)
 
     project = get_project_from_context(ctx)
-    asyncio.run(_do_translate(project, to, paths, all_files, vocabulary, use_reasoning_model))
+
+    if to is not None:
+        langs = [to]
+    else:
+        langs = [lang_dir.get_lang() for lang_dir in project.config.get_lang_dirs()]
+        if not langs:
+            typer.secho(
+                "No target languages configured. Add one with 'target add', or pass --to.",
+                fg=typer.colors.RED,
+                err=True,
+            )
+            raise typer.Exit(code=1)
+
+    asyncio.run(_do_translate_multi(project, langs, paths, all_files, vocabulary, use_reasoning_model))
