@@ -505,11 +505,11 @@ Translation requires `LLM_API_KEY` to be set — either as a shell environment v
 #### `translate`
 
 ```
-lesia translate --to <language> [<path> ...] [--vocabulary <csv_path>] [--use-reasoning-model]
-lesia translate --to <language> --all       [--vocabulary <csv_path>] [--use-reasoning-model]
+lesia translate [--to <language>] [<path> ...] [--vocabulary <csv_path>] [--use-reasoning-model]
+lesia translate [--to <language>] --all       [--vocabulary <csv_path>] [--use-reasoning-model]
 ```
 
-Translates files to the specified target language. `--to` is required. You must provide either one or more file/directory paths, or the `--all` flag — not both.
+Translates files to the specified target language. When `--to` is omitted, the files are translated to every target language configured in the project (added with `target add`); if no target languages are configured, the command exits with an error. You must provide either one or more file/directory paths, or the `--all` flag — not both.
 
 `language` accepts predefined language names, custom language names, and short aliases registered with `lang add`.
 
@@ -540,6 +540,15 @@ Use `--all` to translate every file marked as translatable in the project.
 lesia translate --to english --all
 lesia translate --to catalan --all --vocabulary vocab.csv
 lesia translate --to AmEng --all --use-reasoning-model
+```
+
+**Translating to all target languages:**
+
+Omit `--to` to translate to every target language configured in the project. A `=== Translating to <language> ===` header is printed before each language's run when there is more than one target.
+
+```
+lesia translate --all
+lesia translate analysis_notes_fr/main.tex
 ```
 
 If `--vocabulary` is omitted and a default vocabulary file is configured via `lesia vocab set`, that file is used automatically. Passing `--vocabulary` always overrides the project default.

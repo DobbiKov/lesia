@@ -155,7 +155,7 @@ const TREE = {
     { id:'sync', label:'sync', desc:'Synchronize untranslatable files from source to all target dirs.' },
     { id:'translate', label:'translate', desc:'Translate files to a target language.',
       args:[{name:'paths',desc:'Files or directories (omit with --all)'}],
-      flags:[{name:'--to',desc:'Target language — required'},{name:'--all',desc:'Translate all translatable files'},{name:'--vocabulary',desc:'Path to CSV vocabulary file'},{name:'--use-reasoning-model',desc:'Use the reasoning model'}] },
+      flags:[{name:'--to',desc:'Target language — omit to translate to all configured targets'},{name:'--all',desc:'Translate all translatable files'},{name:'--vocabulary',desc:'Path to CSV vocabulary file'},{name:'--use-reasoning-model',desc:'Use the reasoning model'}] },
     { id:'lang', label:'lang', desc:'Language management.',
       children:[
         { id:'lang-add', label:'add', desc:'Register a new custom language.',
