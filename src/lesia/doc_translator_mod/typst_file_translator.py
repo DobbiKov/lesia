@@ -9,7 +9,16 @@ from lesia.doc_translator_mod.typst_chunker import split_typst_document_into_chu
 from lesia.enums import ChunkType, DocumentType, Language
 from lesia.errors import ChunkTranslationFailed
 from lesia.helpers import calculate_checksum
-from lesia.translator_retrieval import ChunkTranslator, Meta, TranslationStats, build_translator_with_model
+from lesia.translator_retrieval import (
+    ChunkFailure,
+    ChunkTranslator,
+    Meta,
+    TranslationStats,
+    build_translator_with_model,
+    chunk_failure_from_exception,
+    fill_failure_locations,
+    locate_chunk_start_lines,
+)
 from lesia.vocab_list import VocabList
 
 
@@ -21,14 +30,22 @@ def _format_metadata_block(metadata: dict[str, str]) -> str:
     return "\n".join(lines) + "\n"
 
 
-def compile_typst_cells(cells: list[dict]) -> str:
+def compile_typst_cells_with_lines(cells: list[dict]) -> tuple[str, list[int]]:
+    """Compiles Typst cells into file contents; also returns the 1-based line
+    where each cell's source starts in the compiled output."""
     result = ""
+    start_lines: list[int] = []
     for cell in cells:
         if result and not result.endswith("\n"):
             result += "\n"
         result += _format_metadata_block(cell["metadata"])
+        start_lines.append(result.count("\n") + 1)
         result += cell["source"]
-    return result
+    return result, start_lines
+
+
+def compile_typst_cells(cells: list[dict]) -> str:
+    return compile_typst_cells_with_lines(cells)[0]
 
 
 def get_typst_cells(source_file_path: Path) -> list[dict]:
@@ -60,7 +77,10 @@ async def translate_file_async(
     tr = build_translator_with_model(root_path, llm_caller, reasoning_caller, xml_retries_before_reasoning)
 
     cells = get_typst_cells(source_file_path)
+    source_text = source_file_path.read_text(encoding="utf-8")
+    src_start_lines = locate_chunk_start_lines(source_text, [c["source"] for c in cells])
 
+    failures: list[ChunkFailure] = []
     for index in range(len(cells)):
         cell = cells[index]
         cells[index] = await translate_chunk_async(
@@ -71,11 +91,16 @@ async def translate_file_async(
             vocab_list,
             tr,
             existing_meta,
+            failures=failures,
+            chunk_index=index + 1,
         )
 
+    compiled, tgt_start_lines = compile_typst_cells_with_lines(cells)
     with open(target_file_path, "w", encoding="utf-8") as file:
-        file.write(compile_typst_cells(cells))
+        file.write(compiled)
 
+    fill_failure_locations(failures, root_path, source_file_path, target_file_path, src_start_lines, tgt_start_lines)
+    tr.stats.failures.extend(failures)
     return tr.stats
 
 
@@ -87,6 +112,8 @@ async def translate_chunk_async(
     vocab_list: VocabList | None,
     tr: ChunkTranslator,
     existing_meta: dict[str, dict] | None = None,
+    failures: list[ChunkFailure] | None = None,
+    chunk_index: int = 0,
 ) -> dict:
     src_txt = cell["source"]
     logger.debug(f"{src_txt}")
@@ -120,6 +147,8 @@ async def translate_chunk_async(
     except ChunkTranslationFailed as exc:
         cell["metadata"]["not-translated-due-to-exception"] = "True"
         cell["source"] = exc.chunk
+        if failures is not None:
+            failures.append(chunk_failure_from_exception(chunk_index, exc))
 
     return cell
 

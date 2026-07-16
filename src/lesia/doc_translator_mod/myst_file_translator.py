@@ -7,7 +7,16 @@ from lesia.doc_translator_mod.myst_chunker import split_myst_document_into_chunk
 from lesia.enums import ChunkType, DocumentType, Language
 from lesia.helpers import calculate_checksum
 from lesia.errors import ChunkTranslationFailed
-from lesia.translator_retrieval import ChunkTranslator, Meta, TranslationStats, build_translator_with_model
+from lesia.translator_retrieval import (
+    ChunkFailure,
+    ChunkTranslator,
+    Meta,
+    TranslationStats,
+    build_translator_with_model,
+    chunk_failure_from_exception,
+    fill_failure_locations,
+    locate_chunk_start_lines,
+)
 from lesia.vocab_list import VocabList
 
 
@@ -20,14 +29,21 @@ def _format_metadata_block(metadata: dict[str, str]) -> str:
     return "\n".join(lines) + "\n" # Add a newline at the end for separation
 
 
+def compile_myst_cells_with_lines(cells: list[dict]) -> tuple[str, list[int]]:
+    """Compiles MyST cells into file contents; also returns the 1-based line
+    where each cell's source starts in the compiled output."""
+    res = ""
+    start_lines: list[int] = []
+    for cell in cells:
+        res += _format_metadata_block(cell["metadata"])
+        start_lines.append(res.count("\n") + 1)
+        res += cell["source"]
+    return res, start_lines
+
+
 def compile_myst_cells(cells: list[dict]) -> str:
     """Takes a list of MyST cells and compiles a final file contents and returns it in string format."""
-    res = ""
-    for cell in cells:
-        temp_res = _format_metadata_block(cell["metadata"])
-        temp_res += cell["source"]
-        res += temp_res
-    return res
+    return compile_myst_cells_with_lines(cells)[0]
 
 def get_myst_cells(source_file_path: Path) -> list[dict]:
     """Get's a path to the file and returns it in the cells format"""
@@ -68,14 +84,20 @@ async def translate_file_async(
     tr = build_translator_with_model(root_path, llm_caller, reasoning_caller, xml_retries_before_reasoning)
 
     cells = get_myst_cells(source_file_path)
+    source_text = source_file_path.read_text(encoding="utf-8")
+    src_start_lines = locate_chunk_start_lines(source_text, [c["source"] for c in cells])
 
+    failures: list[ChunkFailure] = []
     for i in range(len(cells)):
         cell = cells[i]
-        cells[i] = await translate_chunk_async(cell, source_language, target_language, relative_path, vocab_list, tr, existing_meta)
+        cells[i] = await translate_chunk_async(cell, source_language, target_language, relative_path, vocab_list, tr, existing_meta, failures=failures, chunk_index=i + 1)
 
+    compiled, tgt_start_lines = compile_myst_cells_with_lines(cells)
     with open(target_file_path, "w") as f:
-        f.write(compile_myst_cells(cells))
+        f.write(compiled)
 
+    fill_failure_locations(failures, root_path, source_file_path, target_file_path, src_start_lines, tgt_start_lines)
+    tr.stats.failures.extend(failures)
     return tr.stats
 
 
@@ -87,6 +109,8 @@ async def translate_chunk_async(
     vocab_list: VocabList | None,
     tr: ChunkTranslator,
     existing_meta: dict[str, dict] | None = None,
+    failures: list[ChunkFailure] | None = None,
+    chunk_index: int = 0,
 ) -> dict:
    """Handler for a myst chunk translation"""
    src_txt = cell["source"]
@@ -114,6 +138,8 @@ async def translate_chunk_async(
    except ChunkTranslationFailed as exc:
        cell["metadata"]["not-translated-due-to-exception"] = "True"
        cell["source"] = exc.chunk
+       if failures is not None:
+           failures.append(chunk_failure_from_exception(chunk_index, exc))
 
    return cell
 

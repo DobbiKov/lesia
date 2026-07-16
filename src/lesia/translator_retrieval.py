@@ -1,6 +1,6 @@
 import asyncio
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Callable
 import xml.etree.ElementTree as ET
 from loguru import logger
@@ -28,12 +28,106 @@ except ImportError:  # pragma: no cover - unified_model_caller may not expose th
 
 
 @dataclass
+class ChunkFailure:
+    """Details about a single chunk that could not be translated."""
+    chunk_index: int  # 1-based index of the chunk within its file
+    error_type: str   # e.g. "JSONDecodeError"
+    error_message: str
+    source_path: str | None = None
+    target_path: str | None = None
+    source_line: int | None = None
+    target_line: int | None = None
+
+    def format_lines(self, max_message_len: int = 200) -> list[str]:
+        """Human-readable multi-line description of the failure."""
+        message = self.error_message.strip()
+        if len(message) > max_message_len:
+            message = message[:max_message_len] + "..."
+        header = f"Translation failure on chunk #{self.chunk_index} ({self.error_type})"
+        if message:
+            header += f": {message}"
+        lines = [header]
+        for label, path, line in (
+            ("source", self.source_path, self.source_line),
+            ("target", self.target_path, self.target_line),
+        ):
+            if path is not None:
+                location = path if line is None else f"{path}:{line}"
+                lines.append(f"  {label}: {location}")
+        return lines
+
+
+def locate_chunk_start_lines(source_text: str, chunks: list[str]) -> list[int | None]:
+    """Map each chunk to the 1-based line where it starts in `source_text`.
+
+    Chunks are located by sequential substring search, so this stays correct
+    even if the chunker dropped or normalized some separators. Returns None
+    for chunks that cannot be located.
+    """
+    start_lines: list[int | None] = []
+    search_pos = 0
+    for chunk in chunks:
+        if not chunk:
+            start_lines.append(None)
+            continue
+        idx = source_text.find(chunk, search_pos)
+        if idx == -1:
+            idx = source_text.find(chunk)
+        if idx == -1:
+            start_lines.append(None)
+            continue
+        start_lines.append(source_text.count("\n", 0, idx) + 1)
+        search_pos = idx + len(chunk)
+    return start_lines
+
+
+def chunk_failure_from_exception(chunk_index: int, exc: ChunkTranslationFailed) -> ChunkFailure:
+    """Build a ChunkFailure record from a caught ChunkTranslationFailed."""
+    root = exc.original_exception if exc.original_exception is not None else exc
+    return ChunkFailure(
+        chunk_index=chunk_index,
+        error_type=type(root).__name__,
+        error_message=str(root),
+    )
+
+
+def display_path(path: Path, root: Path) -> str:
+    """Path relative to the project root when possible, otherwise as given."""
+    try:
+        return path.resolve().relative_to(root.resolve()).as_posix()
+    except (ValueError, OSError):
+        return str(path)
+
+
+def fill_failure_locations(
+    failures: list[ChunkFailure],
+    root_path: Path,
+    source_file_path: Path,
+    target_file_path: Path,
+    src_start_lines: list[int | None],
+    tgt_start_lines: list[int],
+) -> None:
+    """Attach file paths and start lines to failure records by chunk index."""
+    src_display = display_path(source_file_path, root_path)
+    tgt_display = display_path(target_file_path, root_path)
+    for failure in failures:
+        failure.source_path = src_display
+        failure.target_path = tgt_display
+        idx = failure.chunk_index - 1
+        if 0 <= idx < len(src_start_lines):
+            failure.source_line = src_start_lines[idx]
+        if 0 <= idx < len(tgt_start_lines):
+            failure.target_line = tgt_start_lines[idx]
+
+
+@dataclass
 class TranslationStats:
     """Aggregated statistics for a single file translation run."""
     chunks_from_cache: int = 0
     chunks_translated: int = 0
     chunks_passed_to_reasoning: int = 0
     chunks_failed: int = 0
+    failures: list[ChunkFailure] = field(default_factory=list)
 
     @property
     def total(self) -> int:
@@ -45,6 +139,7 @@ class TranslationStats:
             chunks_translated=self.chunks_translated + other.chunks_translated,
             chunks_passed_to_reasoning=self.chunks_passed_to_reasoning + other.chunks_passed_to_reasoning,
             chunks_failed=self.chunks_failed + other.chunks_failed,
+            failures=self.failures + other.failures,
         )
 
 

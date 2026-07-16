@@ -2,7 +2,16 @@ from unified_model_caller import LLMCaller
 from ..prompts import prompt_jupyter_code, prompt_jupyter_md 
 from pathlib import Path
 
-from lesia.translator_retrieval import ChunkTranslator, CodeMeta, Meta, TranslationStats, build_translator_with_model
+from lesia.translator_retrieval import (
+    ChunkFailure,
+    ChunkTranslator,
+    CodeMeta,
+    Meta,
+    TranslationStats,
+    build_translator_with_model,
+    chunk_failure_from_exception,
+    display_path,
+)
 from lesia.errors import ChunkTranslationFailed
 from lesia.vocab_list import VocabList
 from ..enums import ChunkType, DocumentType, Language
@@ -27,10 +36,19 @@ async def translate_notebook_async(
     tr = build_translator_with_model(root_path, llm_caller, reasoning_caller, xml_retries_before_reasoning)
 
     nb = jupytext.read(source_file_path)
+    failures: list[ChunkFailure] = []
     for i in range(len(nb.cells)):
-        nb.cells[i] = await translate_jupyter_cell_async(nb.cells[i], source_language, target_language, vocab_list, tr, relative_path, existing_meta)
+        nb.cells[i] = await translate_jupyter_cell_async(nb.cells[i], source_language, target_language, vocab_list, tr, relative_path, existing_meta, failures=failures, chunk_index=i + 1)
     jupytext.write(nb, target_file_path, fmt={"notebook_metadata_filter": "all"})
 
+    # Notebook cells have no meaningful line numbers in the serialized file;
+    # the chunk index is the 1-based cell number instead.
+    src_display = display_path(source_file_path, root_path)
+    tgt_display = display_path(target_file_path, root_path)
+    for failure in failures:
+        failure.source_path = src_display
+        failure.target_path = tgt_display
+    tr.stats.failures.extend(failures)
     return tr.stats
 
 async def translate_jupyter_cell_async(
@@ -41,6 +59,8 @@ async def translate_jupyter_cell_async(
     tr: ChunkTranslator,
     relative_path: str,
     existing_meta: dict[str, dict] | None = None,
+    failures: list[ChunkFailure] | None = None,
+    chunk_index: int = 0,
 ) -> dict:
     src_txt = cell["source"]
     cell_type = cell["cell_type"]
@@ -77,6 +97,8 @@ async def translate_jupyter_cell_async(
             tags.append("not-translated-due-to-exception")
         cell["metadata"]["not-translated-due-to-exception"] = "True"
         cell["source"] = exc.chunk
+        if failures is not None:
+            failures.append(chunk_failure_from_exception(chunk_index, exc))
 
     return cell
 

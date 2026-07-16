@@ -28,6 +28,15 @@ def _print_translation_stats(stats: TranslationStats) -> None:
     if stats.chunks_failed > 0:
         lines.append(f"  chunks failed:            {stats.chunks_failed}")
     typer.echo("\n".join(lines))
+    _print_chunk_failures(stats)
+
+
+def _print_chunk_failures(stats: TranslationStats) -> None:
+    for failure in stats.failures:
+        header, *locations = failure.format_lines()
+        typer.secho(f"  - {header}", fg=typer.colors.RED, err=True)
+        for location in locations:
+            typer.secho(f"    {location}", fg=typer.colors.RED, err=True)
 
 
 def _resolve_paths_to_files(paths: list[Path], project: Project) -> list[str]:

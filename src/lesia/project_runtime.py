@@ -443,7 +443,10 @@ async def translate_single_file(
     target_file_path = target_dir_root_path / relative_path
     relative_path_str = relative_path.as_posix()
 
-    print(f"Translating {file_path.name} to {target_lang} -> {target_file_path}...")
+    from .translator_retrieval import display_path
+    src_display = display_path(file_path, project.root_path)
+    tgt_display = display_path(target_file_path, project.root_path)
+    print(f"Translating {src_display} ({source_language}) -> {tgt_display} ({target_lang})...")
     if use_reasoning_model:
         llm_service = project.get_llm_reasoning_service() or project.get_llm_service()
         llm_model = project.get_llm_reasoning_model() or project.get_llm_model()
