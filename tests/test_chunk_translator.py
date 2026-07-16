@@ -60,7 +60,7 @@ if "google" not in sys.modules:  # pragma: no cover - optional dependency stub
 
 from lesia.doc_translator_mod import myst_file_translator, latex_file_translator, notebook_file_translator
 from lesia.enums import ChunkType, DocumentType, Language
-from lesia.errors import ChunkTranslationFailed
+from lesia.errors import ChunkTranslationFailed, TranslationAbortedError
 from lesia.helpers import calculate_checksum
 from lesia.translator_retrieval import (
     ChunkTranslator,
@@ -372,10 +372,12 @@ def test_model_overloaded_exhausts_retries(monkeypatch):
         rel_path="docs/example.md",
     )
 
-    with pytest.raises(ChunkTranslationFailed) as excinfo:
+    # Persistent overload is a service-level failure: the run aborts instead of
+    # burning through the remaining chunks.
+    with pytest.raises(TranslationAbortedError) as excinfo:
         asyncio.run(translator.translate_or_fetch(meta))
 
-    assert excinfo.value.chunk == chunk
+    assert isinstance(excinfo.value.original_exception, ModelOverloadedError)
     assert store.persisted == []
     assert caller.calls == 2
 
