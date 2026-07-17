@@ -20,6 +20,8 @@ project:
       children:
       - file: docs/main.md
         title: Library Documentation
+      - file: docs/standalone-api.md
+        title: Standalone API Reference
       - file: docs/cli.md
         title: CLI Documentation
       - file: docs/tool-profound-explanation.md

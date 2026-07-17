@@ -7,6 +7,11 @@ translation, and maintains a persistent translation cache.
 
 For a conceptual overview of how the tool works, see the [profound explanation](./tool-profound-explanation.md).
 
+Everything below is `Project`-centric. If you just want to chunk a document
+or separate syntax from translatable text without setting up a `Project`
+(e.g. `parse_latex`, `parse_myst`, `create_translation_xml`, ...), see the
+[Standalone API Reference](./standalone-api.md) instead.
+
 > **Note:** The library is in early development. Expect bugs and incomplete features.
 
 ## Table of Contents
@@ -916,6 +921,13 @@ project.get_typst_translatable_string_args_by_function() -> dict[str, list[str]]
 
 Returns the current mapping of function names to their registered translatable argument names.
 
+These `project.*` methods wrap module-level, process-wide settings —
+`configure_typst_translatable_string_args_by_function` / `reset_typst_translatable_string_args_by_function`
+in `lesia.xml_manipulator_mod.typst` — that you can call directly without a
+`Project`, e.g. when calling `parse_typst` from your own code. See
+[Typst parsing configuration](./standalone-api.md#typst-parsing-configuration)
+in the Standalone API Reference.
+
 ---
 
 ### LaTeX configuration
@@ -1077,43 +1089,12 @@ Returns the current LaTeX configuration as a plain dict:
 
 #### Standalone usage
 
-All of the above can be used without a `Project` by calling `configure_latex_settings` directly in the `lesia.xml_manipulator_mod.latex` module. This is useful when you call `parse_latex` from your own code without managing a project.
-
-```python
-from lesia.xml_manipulator_mod.latex import (
-    configure_latex_settings,
-    reset_latex_settings,
-    parse_latex,
-)
-
-configure_latex_settings(
-    extra_placeholder_envs=["myverbatim", "algorithm"],
-    extra_math_envs=["myequation"],
-    # \myfig and \mybox are custom commands — their argument structure must
-    # be declared in custom_command_specs so pylatexenc associates the {…}
-    # groups with the command node.  Without that, extra_placeholder_commands
-    # would only suppress the bare command token and the arguments would
-    # still be walked as translatable text.
-    extra_placeholder_commands=["myfig", "mybox"],
-    custom_command_specs={
-        "myfig": {"mandatory": 2, "optional": 0},
-        "mybox": {"mandatory": 2, "optional": 1},
-    },
-    command_translatable_args={
-        "myfig": {"mandatory": [2]},
-        "mybox": {"mandatory": [2], "optional": []},
-        "section": {"mandatory": [1], "optional": [1]},
-    },
-)
-
-segments = parse_latex(r"\myfig{fig:label}{My caption} \section[Short]{Full title}")
-# [('placeholder', '\\myfig{fig:label}{My caption}'),
-#  ('placeholder', '\\section[Short]'), ('text', 'Full title'), ('placeholder', '}'), ...]
-
-reset_latex_settings()  # restore defaults
-```
-
-Settings are **process-wide and additive** on top of the hardcoded defaults — you cannot accidentally remove built-in entries such as `\cite` or `verbatim`. Calling `configure_latex_settings` again replaces the previous call entirely; call `reset_latex_settings` to return to defaults.
+All of the above is just `project.*` sugar over module-level, process-wide
+settings — `configure_latex_settings` / `reset_latex_settings` in
+`lesia.xml_manipulator_mod.latex` — that you can call directly without a
+`Project`, e.g. when calling `parse_latex` from your own code. See
+[LaTeX parsing configuration](./standalone-api.md#latex-parsing-configuration)
+in the Standalone API Reference for the full signature and an example.
 
 ---
 
