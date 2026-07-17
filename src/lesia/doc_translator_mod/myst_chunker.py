@@ -57,15 +57,30 @@ def _myst_to_simple_chunks(source_text: str) -> list[dict]:
 def _simple_chunks_to_section_chunks(simple_chunks: list[dict]):
     """
     Unifies simple chunks into chunks by sections
+
+    A `myst_target` (e.g. `(label)=`) labels the section that follows it, so it
+    is held back in `pending` until we know whether a heading comes next: if so
+    it starts the new section instead of trailing the previous one.
     """
     curr = {"elems": [], "content": ""}
     chunks = []
+    pending: list[dict] = []
     for s_chunk in simple_chunks:
+        if s_chunk["type"] == "myst_target":
+            pending.append(s_chunk)
+            continue
         if s_chunk["type"] == "heading_open" and curr["elems"] != []:
             chunks.append(curr)
             curr = {"elems": [], "content": ""}
+        for p_chunk in pending:
+            curr["elems"].append(p_chunk)
+            curr["content"] += p_chunk["content"]
+        pending = []
         curr["elems"].append(s_chunk)
         curr["content"] += s_chunk["content"]
+    for p_chunk in pending:
+        curr["elems"].append(p_chunk)
+        curr["content"] += p_chunk["content"]
     if curr["elems"] != []:
         chunks.append(curr)
     return chunks
